@@ -1,0 +1,27 @@
+# 敏感文件
+.env
+*.key
+deploy-*.exp
+check-*.exp
+remote.sh
+
+# 依赖
+node_modules/
+
+# IDE
+.DS_Store
+.vscode/
+.idea/
+
+# 日志
+*.log
+npm-debug.log*
+
+# 工作区
+.workbuddy/
+miniprogram。/
+miniprogram。.bak/
+
+# 临时文件
+generated-products/
+images/
