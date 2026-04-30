@@ -99,7 +99,10 @@ router.get('/export-data', (req, res) => {
 // 接收 JSON 数据，逐表导入
 router.post('/import-data', (req, res) => {
   try {
-    const db = getDB();
+    const Database = require('better-sqlite3');
+    const db = new Database(DB_PATH);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = OFF'); // 关闭外键检查，避免导入时约束冲突
     const data = req.body;
     const results = { imported: 0, errors: [] };
 
@@ -126,6 +129,8 @@ router.post('/import-data', (req, res) => {
       }
     }
 
+    db.pragma('wal_checkpoint(TRUNCATE)'); // 确保数据刷盘
+    db.close();
     success(res, results);
   } catch (err) {
     console.error('导入数据失败:', err);

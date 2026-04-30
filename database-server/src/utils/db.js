@@ -13,30 +13,13 @@ if (!fs.existsSync(path.dirname(DB_PATH))) {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 }
 
-// 如果数据库文件不存在但预置种子数据库存在，则使用种子
+// 仅在数据库文件不存在时才使用预置种子（避免覆盖生产数据）
 if (!fs.existsSync(DB_PATH) && fs.existsSync(DB_PRESEED)) {
   console.log('🌱 检测到预置数据库，正在初始化...');
   fs.copyFileSync(DB_PRESEED, DB_PATH);
   console.log('✅ 预置数据库已就绪');
 }
-
-// 如果数据库存在但几乎是空的（只有初始表，少于5条用户数据），也使用种子
-if (fs.existsSync(DB_PATH) && fs.existsSync(DB_PRESEED)) {
-  try {
-    const Database = require('better-sqlite3');
-    const checkDb = new Database(DB_PATH, { readonly: true });
-    const userCount = checkDb.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
-    checkDb.close();
-    if (userCount < 5) {
-      console.log(`🌱 当前数据库仅有 ${userCount} 个用户，使用预置数据库...`);
-      fs.copyFileSync(DB_PRESEED, DB_PATH);
-      console.log('✅ 预置数据库已就绪');
-    }
-  } catch (err) {
-    // 检查失败则跳过
-    console.log('⚠️ 数据库预置检查跳过:', err.message);
-  }
-}
+// 注意：不再根据用户数判断是否覆盖，防止每次部署覆盖生产数据
 
 let db;
 
