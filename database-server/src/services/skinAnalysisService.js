@@ -12,7 +12,7 @@ const DB_PATH = path.join(__dirname, '../../data/jinglaimei.db');
 function getDb() {
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+  // 注意：不开启 foreign_keys，避免 agent_id=0 等边界情况触发外键错误
   return db;
 }
 
@@ -74,6 +74,7 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       result.问题列表,
       result.详细检测报告?.问题列表,
       result.详细检测报告?.检测结果,
+      result.详细报告,  // AI可能直接返回"详细报告"数组
     ];
     for (const src of possibleIssueSources) {
       if (Array.isArray(src) && src.length > 0) {
@@ -82,12 +83,18 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       }
     }
 
-    // 如果还没找到，检查 详细检测报告 中的分类对象（如 A_色素类/B_痘痘类 等）
-    if (issues.length === 0 && result.详细检测报告 && typeof result.详细检测报告 === 'object') {
-      for (const key of Object.keys(result.详细检测报告)) {
-        const val = result.详细检测报告[key];
-        if (Array.isArray(val) && val.length > 0) {
-          issues = issues.concat(val);
+    // 如果还没找到，检查 详细检测报告/详细报告 中的分类对象（如 A_色素类/B_痘痘类 等）
+    if (issues.length === 0) {
+      for (const reportKey of ['详细检测报告', '详细报告', '检测报告']) {
+        const report = result[reportKey];
+        if (report && typeof report === 'object' && !Array.isArray(report)) {
+          for (const key of Object.keys(report)) {
+            const val = report[key];
+            if (Array.isArray(val) && val.length > 0) {
+              issues = issues.concat(val);
+            }
+          }
+          if (issues.length > 0) break;
         }
       }
     }
