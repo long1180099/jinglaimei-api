@@ -17,6 +17,12 @@ node_modules/
 *.log
 npm-debug.log*
 
+# SQLite临时文件
+*.db-shm
+*.db-wal
+# SQLite数据库文件（使用持久化存储，不通过git分发）
+database-server/data/jinglaimei.db
+
 # 工作区
 .workbuddy/
 miniprogram。/
