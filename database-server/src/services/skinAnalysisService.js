@@ -242,7 +242,7 @@ function getMatchedProducts(issueId) {
   const db = getDb();
   try {
     return db.prepare(
-      'SELECT sp.*, p.product_name, p.retail_price, p.image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ? ORDER BY sp.priority DESC'
+      'SELECT sp.*, p.product_name, p.retail_price, p.main_image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ? ORDER BY sp.priority DESC'
     ).all(issueId) || [];
   } finally {
     db.close();
@@ -333,7 +333,7 @@ function getIssueDetail(issueId) {
     if (!issue) return null;
     const causes = db.prepare('SELECT * FROM skin_issue_causes WHERE issue_id = ?').all(issueId) || [];
     const products = db.prepare(
-      'SELECT sp.*, p.product_name, p.retail_price, p.image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ?'
+      'SELECT sp.*, p.product_name, p.retail_price, p.main_image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ?'
     ).all(issueId) || [];
     return { ...issue, causes, products };
   } finally {
