@@ -58,34 +58,61 @@ function buildMultimodalMessage(imageData) {
 function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
   const db = getDb();
   try {
-    const skinType = (result.skin_type || result.skinType || 'unknown');
-    const overallScore = (result.overall_score || result.overallScore || 0);
-    const summary = (result.summary || '');
-    const recommendations = (result.recommendations || []);
-    const aiRawResponse = result.ai_raw_response || result.aiRawResponse || JSON.stringify(result);
+    // 兼容中英文 AI 返回字段
+    const _ = (key, cnKey, fallback) => {
+      return result[key] ?? result[cnKey] ?? fallback;
+    };
+
+    const skinType = _('skin_type', '肤质类型', 'unknown');
+    const overallScore = _('overall_score', '综合评分', 0);
+    const summary = _('summary', '综合建议', '');
+    const recommendations = _('recommendations', '产品推荐', []);
+    const aiOverview = _('ai_overview', '综合分析', summary) || summary;
+    const causeAnalysis = _('cause_analysis', '成因分析', '');
+    const detectionReport = _('detailed_report', '详细检测报告', {});
+    const issueCount = result.issue_count ?? detectionReport?.总问题数 ?? result.总问题数 ?? 0;
+
+    // 尝试提取 issues 列表（支持嵌套或平铺）
+    let issues = result.issues || result.问题列表 || detectionReport?.问题列表 || [];
+    if (!Array.isArray(issues)) issues = [];
+    // 如果 issues 是中文对象数组，转成英文格式
+    issues = issues.map((iss, idx) => ({
+      issue_id: iss.issue_id || iss.issueId || iss.id || idx + 1,
+      issue_name: iss.issue_name || iss.问题名称 || iss.name || '',
+      category: iss.category || iss.类别 || '',
+      severity: iss.severity || iss.严重等级 || 3,
+      description: iss.description || iss.描述 || '',
+    }));
+
     const insertReport = db.prepare(
       `INSERT INTO skin_reports (user_id, agent_id, image_url, skin_type, skin_type_confidence, ai_overview, ai_cause_analysis, ai_script, ai_raw_response, issue_count, total_severity, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
     const insertIssue = db.prepare(
       'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
     );
-    const reportId = insertReport.run(
+    const stmtResult = insertReport.run(
       userId, agentId, imageUrl || '', skinType,
-      result.skin_type_confidence || result.skinTypeConfidence || 0,
-      summary,
-      result.cause_analysis || result.causeAnalysis || '',
-      JSON.stringify(recommendations),
-      aiRawResponse,
-      (result.issues || []).length,
-      overallScore,
+      _('skin_type_confidence', '肤质置信度', 0),
+      aiOverview,
+      causeAnalysis,
+      JSON.stringify(Array.isArray(recommendations) ? recommendations : []),
+      JSON.stringify(result),
+      issues.length,
+      typeof overallScore === 'number' ? overallScore : 0,
       'completed'
     );
-    if (result.issues && result.issues.length > 0) {
-      for (const issue of result.issues) {
-        insertIssue.run(reportId, issue.issue_id || issue.issueId, issue.severity, issue.description || '');
+    const reportId = stmtResult.lastInsertRowid;
+
+    if (issues.length > 0) {
+      const insertIssue = db.prepare(
+        'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
+      );
+      for (const issue of issues) {
+        insertIssue.run(reportId, issue.issue_id, issue.severity, issue.description || '');
       }
     }
-    return { reportId, ...result };
+
+    return { reportId, skin_type: skinType, overall_score: overallScore, summary, issues, ...result };
   } finally {
     db.close();
   }
@@ -167,7 +194,7 @@ function saveSkinReport(report) {
     const insertReport = db.prepare(
       `INSERT INTO skin_reports (user_id, agent_id, image_url, skin_type, skin_type_confidence, ai_overview, ai_cause_analysis, ai_script, ai_raw_response, issue_count, total_severity, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
-    const reportId = insertReport.run(
+    const stmtResult = insertReport.run(
       report.userId, report.agentId, report.imageUrl || '', report.skinType || 'unknown',
       report.skinTypeConfidence || 0,
       report.summary || '',
@@ -178,6 +205,7 @@ function saveSkinReport(report) {
       report.overallScore || 0,
       'completed'
     );
+    const reportId = stmtResult.lastInsertRowid;
     if (report.issues && report.issues.length > 0) {
       const insertIssue = db.prepare(
         'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
