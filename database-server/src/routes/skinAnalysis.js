@@ -16,6 +16,7 @@ const DB_PATH = path.join(__dirname, '../../data/jinglaimei.db');
 function getDb() {
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = OFF');
   return db;
 }
 

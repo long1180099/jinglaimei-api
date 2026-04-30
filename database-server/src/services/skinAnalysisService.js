@@ -12,7 +12,8 @@ const DB_PATH = path.join(__dirname, '../../data/jinglaimei.db');
 function getDb() {
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
-  // 注意：不开启 foreign_keys，避免 agent_id=0 等边界情况触发外键错误
+  // 明确关闭外键检查，避免 issue_id/agent_id 边界值触发外键错误
+  db.pragma('foreign_keys = OFF');
   return db;
 }
 
@@ -116,6 +117,10 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
 
       // 在 skin_issues 表中查找匹配的 issue_id
       let issueId = iss.issue_id || iss.issueId || iss.id || 0;
+      // 验证 issueId 是否确实存在于 skin_issues 表中
+      if (issueId && !allSkinIssues.find(si => si.id === issueId)) {
+        issueId = 0; // 重置为0，不使用无效的外键值
+      }
       if (!issueId && name) {
         const matched = allSkinIssues.find(si =>
           si.name === name || si.name.includes(name) || name.includes(si.name)
@@ -125,8 +130,9 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
 
       totalSeverity += severity;
 
+      // 如果没有匹配到有效的 skin_issues 记录，issue_id 设为 0
       formattedIssues.push({
-        issue_id: issueId || formattedIssues.length + 1,
+        issue_id: issueId || 0,
         issue_name: name,
         category,
         severity,
