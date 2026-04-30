@@ -12,7 +12,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const multer = require('multer');
 
-const { authMiddleware } = require('./middleware/auth');
+const { authMiddleware, requirePermission, requireRole } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,6 +26,36 @@ app.use(cors({
 }));
 app.use(bodyParser.json({ limit: '20mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// ==================== Admin 前端静态文件服务 ====================
+// 当通过 admin.jinglaimei.com 访问时，返回管理后台前端页面
+// API 请求 (/api/*) 继续走后端路由
+const fs = require('fs');
+// 尝试多个可能的路径（兼容本地开发和云托管部署）
+const _possiblePaths = [
+  path.join(__dirname, '../../admin-backend/build'),   // 本地开发
+  path.join(process.cwd(), 'admin-backend/build'),     // 云托管上传代码包
+  '/app/admin-backend/build',                          // Docker 容器
+  path.join(__dirname, '../../../admin-backend/build'), // 其他情况
+];
+const adminBuildPath = _possiblePaths.find(p => fs.existsSync(path.join(p, 'index.html')));
+console.log('📁 Admin 前端路径:', adminBuildPath || '未找到');
+
+app.use((req, res, next) => {
+  const host = req.headers.host || '';
+  if (adminBuildPath && host.includes('admin.jinglaimei.com') && !req.path.startsWith('/api/')) {
+    // 非 API 请求，返回管理后台前端页面
+    const filePath = path.join(adminBuildPath, req.path === '/' ? 'index.html' : req.path);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      res.sendFile(filePath);
+    } else {
+      // SPA 回退到 index.html
+      res.sendFile(path.join(adminBuildPath, 'index.html'));
+    }
+  } else {
+    next();
+  }
+});
 
 // 静态文件服务 - 上传的文件
 app.use('/uploads', express.static(path.join(__dirname, '../data/uploads')));
@@ -42,23 +72,48 @@ app.use((req, res, next) => {
 
 // ==================== 路由 ====================
 app.use('/api/auth',        require('./routes/auth'));
-app.use('/api/users',       authMiddleware, require('./routes/users'));
-app.use('/api/products',    authMiddleware, require('./routes/products'));
-app.use('/api/orders',      authMiddleware, require('./routes/orders'));
-app.use('/api/commissions', authMiddleware, require('./routes/commissions'));
-app.use('/api/teams',       authMiddleware, require('./routes/teams'));
-app.use('/api/school',      authMiddleware, require('./routes/school'));
-app.use('/api/school',      authMiddleware, require('./routes/schoolBooks')); // 电子书管理
+app.use('/api/admins',      authMiddleware, requireRole('super_admin'), require('./routes/admins')); // 管理员账户管理(仅超管)
+app.use('/api/users',       authMiddleware, requirePermission(['user:read']), require('./routes/users'));
+app.use('/api/products',    authMiddleware, requirePermission(['product:read']), require('./routes/products'));
+app.use('/api/orders',      authMiddleware, requirePermission(['order:read']), require('./routes/orders'));
+app.use('/api/print-logs',  authMiddleware, requirePermission(['order:read']), require('./routes/printLogs')); // 打印记录+设置
+app.use('/api/commissions', authMiddleware, requirePermission(['commission:read']), require('./routes/commissions'));
+app.use('/api/teams',       authMiddleware, requirePermission(['team:read']), require('./routes/teams'));
+// 注意: /api/school 路由已移到文件末尾(videoRoutes > school > schoolBooks 优先级顺序)
 app.use('/api/dashboard',   authMiddleware, require('./routes/dashboard'));
 app.use('/api/mp',          require('./routes/mp')); // 小程序端API（内部自行验证token）
 app.use('/api/mp',          require('./routes/mpExt')); // 小程序端扩展（电子书/行动日志/性格色彩）
+app.use('/api/mp/poster',    require('./routes/posterGenerator')); // AI营销海报生成器
 app.use('/api/announcements', authMiddleware, require('./routes/announcements')); // 公告资讯管理
 app.use('/api/ai-training', authMiddleware, require('./routes/aiTraining')); // AI话术系统管理后台
 app.use('/api/mp',          require('./routes/mpAITraining')); // AI话术系统小程序端
 app.use('/api/inventory',   authMiddleware, require('./routes/inventory')); // 库存管理
 app.use('/api/rankings',    authMiddleware, require('./routes/rankings')); // 排行榜管理
+app.use('/api/migrate',    authMiddleware, requireRole('super_admin'), require('./routes/migrate')); // 数据迁移(仅超管)
 app.use('/api/banners',     authMiddleware, require('./routes/banners'));    // 轮播图管理
 app.use('/api/mp/socratic', require('./routes/mpSocratic')); // 苏格拉底式提问训练
+// 打印记录系统初始化
+try {
+  require('../migrations/006_init_print_logs').init();
+  console.log('✅ 打印记录系统已就绪');
+} catch (err) {
+  console.warn('⚠️ 打印记录系统初始化:', err.message);
+}
+
+// 视频学习系统数据库初始化
+try {
+  require('../migrations/005_init_video_learning');
+  console.log('✅ 视频学习系统已就绪');
+} catch (err) {
+  console.warn('⚠️ 视频学习系统初始化:', err.message);
+}
+
+app.use('/api/mp/skin-analysis', require('./routes/skinAnalysis').router); // AI皮肤分析
+// 视频学习管理(必须在school.js之前, 避免路由被截胡)
+app.use('/api/school', authMiddleware, require('./routes/videoRoutes'));          // Admin视频管理(完整CRUD)
+app.use('/api/school',      authMiddleware, require('./routes/school'));           // 商学院旧路由
+app.use('/api/school',      authMiddleware, require('./routes/schoolBooks'));       // 电子书管理
+app.use('/api/mp',          require('./routes/mpVideoRoutes'));                    // 小程序视频端
 
 // AI话术系统数据库初始化
 const { initAITrainingDB } = require('./routes/aiTrainingInit');
@@ -66,6 +121,14 @@ try {
   initAITrainingDB();
 } catch (err) {
   console.warn('AI话术系统初始化警告:', err.message);
+}
+
+// 皮肤分析系统数据库初始化
+try {
+  require('../migrations/004_init_skin_analysis');
+  console.log('✅ 皮肤分析系统已就绪');
+} catch (err) {
+  console.warn('⚠️ 皮肤分析系统初始化:', err.message);
 }
 
 // ==================== 根路径 ====================

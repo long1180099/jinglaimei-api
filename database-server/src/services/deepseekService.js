@@ -1,12 +1,17 @@
 /**
  * DeepSeek AI 服务层
  * 负责与 DeepSeek API 通信，为话术通关系统提供 AI 对话和评分能力
+ * 同时支持通义千问VL视觉模型（用于皮肤分析等图片场景）
  */
 const https = require('https');
 
 const API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const API_BASE = 'api.deepseek.com';
 const MODEL = 'deepseek-chat';
+
+// 通义千问 VL 配置
+const QWEN_API_KEY = process.env.QWEN_API_KEY || 'sk-7dd97fec3aef4c62a866e7294e167646';
+const QWEN_BASE = 'dashscope.aliyuncs.com';
 
 /**
  * 通用 DeepSeek API 调用
@@ -18,12 +23,13 @@ function callDeepSeek(messages, options = {}) {
   }
 
   const TIMEOUT_MS = options.timeout || 25000; // 默认25秒
+  const MODEL_NAME = options.model || MODEL;    // 支持覆盖模型(如 deepseek-vl)
 
   // 内部实际调用函数
   function doRequest() {
     return new Promise((resolve, reject) => {
       const body = JSON.stringify({
-        model: MODEL,
+        model: MODEL_NAME,
         messages,
         temperature: options.temperature ?? 0.8,
         max_tokens: options.max_tokens ?? 1024,
@@ -99,6 +105,106 @@ function callDeepSeek(messages, options = {}) {
   // 保障3: Promise.race 硬性超时兜底
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error(`DeepSeek 超时(${TIMEOUT_MS}ms), 触发降级`)), TIMEOUT_MS + 5000)
+  );
+
+  return Promise.race([doRequest(), timeoutPromise]);
+}
+
+// ==================== 通义千问 VL（视觉模型） ====================
+
+/**
+ * 调用通义千问 VL 模型 — 支持图片输入
+ * 完全兼容 OpenAI 接口规范，支持多模态（text + image_url）
+ *
+ * @param {Array} messages - 对话消息，content 支持数组格式 [{type:'text', text:'...'}, {type:'image_url', image_url:{url:'data:...'}}]
+ * @param {Object} options - 可选参数 { temperature, max_tokens, model, timeout }
+ * @returns {Promise<string>} AI 回复文本
+ */
+function callQwenVL(messages, options = {}) {
+  if (!QWEN_API_KEY) {
+    return Promise.reject(new Error('通义千问 API Key 未配置'));
+  }
+
+  const TIMEOUT_MS = options.timeout || 60000; // 图片分析默认60秒
+  const MODEL_NAME = options.model || 'qwen-vl-max'; // 默认用最强版
+
+  function doRequest() {
+    return new Promise((resolve, reject) => {
+      const body = JSON.stringify({
+        model: MODEL_NAME,
+        messages,
+        temperature: options.temperature ?? 0.6,
+        max_tokens: options.max_tokens ?? 2500,
+        stream: false,
+      });
+
+      console.log(`[通义VL] 开始请求... 模型:${MODEL_NAME} 消息数:${messages.length} body长度:${body.length}`);
+
+      const reqOptions = {
+        hostname: QWEN_BASE,
+        path: '/compatible-mode/v1/chat/completions',
+        method: 'POST',
+        timeout: TIMEOUT_MS,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${QWEN_API_KEY}`,
+          'Accept': 'application/json',
+        },
+      };
+
+      const startTime = Date.now();
+
+      const req = https.request(reqOptions, (res) => {
+        const elapsed = Date.now() - startTime;
+        console.log(`[通义VL] 收到响应! 状态码:${res.statusCode} 耗时:${elapsed}ms`);
+
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) {
+              console.error('[通义VL] API返回错误:', JSON.stringify(parsed.error));
+              reject(new Error(parsed.error.message || '通义VL API 错误'));
+            } else {
+              const content = parsed.choices?.[0]?.message?.content || '';
+              console.log(`[通义VL] ✅ 成功! 回复长度:${content.length} 总耗时:${Date.now()-startTime}ms`);
+              resolve(content);
+            }
+          } catch (e) {
+            console.error('[通义VL] 解析响应失败:', e.message, '原始数据前300字:', data.substring(0, 300));
+            reject(new Error('解析通义VL响应失败: ' + e.message));
+          }
+        });
+      });
+
+      req.on('timeout', () => {
+        console.warn(`[通义VL] ⚠️ 请求超时(${TIMEOUT_MS}ms), destroy连接`);
+        try { req.destroy(); } catch(e) {}
+        reject(new Error('通义VL API 请求超时'));
+      });
+
+      req.on('socket', (socket) => {
+        socket.setTimeout(TIMEOUT_MS + 10000, () => {
+          console.warn('[通义VL] ⚠️ Socket级别超时, 强制销毁');
+          try { req.destroy(); } catch(e) {}
+          reject(new Error('Socket 连接超时'));
+        });
+      });
+
+      req.on('error', (err) => {
+        console.error('[通义VL] ❌ 请求错误:', err.message);
+        reject(err);
+      });
+
+      req.write(body);
+      req.end();
+    });
+  }
+
+  // 硬性超时兜底
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`通义VL 超时(${TIMEOUT_MS}ms)`)), TIMEOUT_MS + 10000)
   );
 
   return Promise.race([doRequest(), timeoutPromise]);
@@ -918,6 +1024,8 @@ module.exports = {
   generatePersonalityScript,
   generatePersonalityInsight,
   callDeepSeek,
+  callQwenVL,  // ⭐ 通义千问VL视觉模型
+  parseJSON,    // JSON解析工具（从AI回复中提取JSON块）
   // 苏格拉底专用
   generateSocraticReply,
   detectQuestionTypeAI,

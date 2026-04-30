@@ -1,18 +1,21 @@
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
-# 复制package文件
-COPY package.json ./
+RUN apt-get update && apt-get install -y python3 make g++ --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# 安装依赖
+COPY package.json ./
 RUN npm install --production
 
-# 复制源代码
-COPY . .
+COPY src/ ./src/
 
-# 暴露端口（微信云托管要求80）
+RUN mkdir -p /app/data/uploads && chmod -R 777 /app/data
+
+COPY jinglaimei.db.migrate /app/data/jinglaimei.db.preseed
+RUN chmod 666 /app/data/jinglaimei.db.preseed
+
+ENV NODE_ENV=production
+ENV PORT=80
 EXPOSE 80
 
-# 启动命令
 CMD ["node", "src/app.js"]
