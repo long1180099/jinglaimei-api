@@ -63,9 +63,9 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
     const _ = (key, cnKey, fallback) => result[key] ?? result[cnKey] ?? fallback;
 
     const skinType = _('skin_type', '肤质类型', '未知');
-    const summary = _('summary', '综合建议', '');
-    const aiOverview = _('ai_overview', '综合分析', summary) || summary;
-    const causeAnalysis = _('cause_analysis', '成因分析', '');
+    const aiOverview = _('overview', '总评分析', _('ai_overview', '综合分析', _('summary', '综合建议', '')));
+    const causeAnalysis = _('cause_analysis', '成因分析', _('ai_cause_analysis', 'AI成因分析', ''));
+    const aiScript = _('script', '话术', _('ai_script', '专业话术', _('script_text', '专业建议', ''))));
 
     // 提取 issues：检查多个可能的位置
     let issues = [];
@@ -128,15 +128,24 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
         if (matched) issueId = matched.id;
       }
 
+      // 提取每个问题的完整信息（含成因、建议、置信度、区域）
+      const causeText = iss.形成原因 || iss.cause_text || iss.causeText || iss.形成原因分析 || '';
+      const adviceText = iss.专业建议 || iss.建议 || iss.advice_text || iss.adviceText || iss.recommendation || '';
+      const confidence = parseFloat(iss.置信度 || iss.confidence || 0) || 0;
+      const area = iss.区域 || iss.位置 || iss.area || iss.location || '';
+
       totalSeverity += severity;
 
-      // 如果没有匹配到有效的 skin_issues 记录，issue_id 设为 0
       formattedIssues.push({
         issue_id: issueId || 0,
         issue_name: name,
         category,
         severity,
+        confidence,
+        area,
         description,
+        cause_text: causeText,
+        advice_text: adviceText,
       });
     }
 
@@ -149,7 +158,7 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       _('skin_type_confidence', '肤质置信度', 0),
       aiOverview,
       causeAnalysis,
-      JSON.stringify(formattedIssues),
+      aiScript,
       JSON.stringify(result),
       formattedIssues.length,
       totalSeverity,
@@ -159,10 +168,21 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
 
     if (formattedIssues.length > 0) {
       const insertIssue = db.prepare(
-        'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
+        'INSERT INTO skin_report_issues (report_id, issue_id, issue_name, category, severity, confidence, area, description, cause_text, advice_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       );
       for (const issue of formattedIssues) {
-        insertIssue.run(reportId, issue.issue_id, issue.severity, issue.description || '');
+        insertIssue.run(
+          reportId,
+          issue.issue_id,
+          issue.issue_name,
+          issue.category,
+          issue.severity,
+          issue.confidence,
+          issue.area,
+          issue.description || '',
+          issue.cause_text || '',
+          issue.advice_text || ''
+        );
       }
     }
 
@@ -170,7 +190,9 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       reportId,
       skin_type: skinType,
       overall_score: totalSeverity,
-      summary,
+      ai_overview: aiOverview,
+      ai_cause_analysis: causeAnalysis,
+      ai_script: aiScript,
       issues: formattedIssues,
       ...result
     };
@@ -287,7 +309,7 @@ function getSkinReport(reportId) {
     const report = db.prepare('SELECT * FROM skin_reports WHERE id = ?').get(reportId);
     if (!report) return null;
     report.issues = db.prepare(
-      'SELECT sr.*, si.name as issue_name, si.category FROM skin_report_issues sr JOIN skin_issues si ON sr.issue_id = si.id WHERE sr.report_id = ?'
+      'SELECT sr.*, COALESCE(si.name, sr.issue_name) as issue_name, COALESCE(si.category, sr.category) as category FROM skin_report_issues sr LEFT JOIN skin_issues si ON sr.issue_id = si.id WHERE sr.report_id = ?'
     ).all(reportId) || [];
     return report;
   } finally {
