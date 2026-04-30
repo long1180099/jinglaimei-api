@@ -82,6 +82,16 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       }
     }
 
+    // 如果还没找到，检查 详细检测报告 中的分类对象（如 A_色素类/B_痘痘类 等）
+    if (issues.length === 0 && result.详细检测报告 && typeof result.详细检测报告 === 'object') {
+      for (const key of Object.keys(result.详细检测报告)) {
+        const val = result.详细检测报告[key];
+        if (Array.isArray(val) && val.length > 0) {
+          issues = issues.concat(val);
+        }
+      }
+    }
+
     // 计算总严重度
     let totalSeverity = 0;
     let issueCount = result.issue_count || result.总问题数 || issues.length || 0;
@@ -92,10 +102,10 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
 
     const formattedIssues = [];
     for (const iss of issues) {
-      const name = iss.问题 || iss.issue_name || iss.issueName || iss.name || '';
-      const category = iss.类别 || iss.category || '';
+      const name = iss.问题 || iss.问题描述 || iss.issue_name || iss.issueName || iss.name || '';
+      const category = iss.类别 || iss.category || (iss.位置 || '');
       const severity = parseInt(iss.等级 || iss.severity || iss.严重等级 || 3);
-      const description = iss.描述 || iss.description || '';
+      const description = iss.描述 || iss.问题描述 || iss.description || '';
 
       // 在 skin_issues 表中查找匹配的 issue_id
       let issueId = iss.issue_id || iss.issueId || iss.id || 0;
