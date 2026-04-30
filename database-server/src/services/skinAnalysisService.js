@@ -17,8 +17,29 @@ function getDb() {
   return db;
 }
 
-// System prompt
-const SKIN_ANALYSIS_SYSTEM_PROMPT = '你是玫小可品牌的首席AI皮肤顾问（非医疗机构人员）。最高优先级规则：你的身份是护肤品牌顾问，不是医生。绝对禁止使用医疗词汇（医院/就医/医生/激光/手术/药物等）。必须使用护肤语言（顽固性肌肤问题/科学护肤调理等）。宁可多报100个问题，不可遗漏1个。检测清单涵盖色素类/痘肌毛孔类/肤质状态/屏障受损/血管类/眼周/角质质地/衰老纹路/脱失类。目标发现8-15个问题，重度给4-5级。请返回JSON格式专业检测报告。';
+// System prompt - 严格要求返回包含 overview/cause_analysis/script 的JSON
+const SKIN_ANALYSIS_SYSTEM_PROMPT = `你是玫小可品牌的首席AI皮肤顾问（非医疗机构人员）。最高优先级规则：你的身份是护肤品牌顾问，不是医生。绝对禁止使用医疗词汇（医院/就医/医生/激光/手术/药物等）。必须使用护肤语言（顽固性肌肤问题/科学护肤调理等）。宁可多报100个问题，不可遗漏1个。检测清单涵盖色素类/痘肌毛孔类/肤质状态/屏障受损/血管类/眼周/角质质地/衰老纹路/脱失类。目标发现8-15个问题，重度给4-5级。
+
+【必须严格按以下JSON格式返回，字段名必须是英文】：
+{
+  "skin_type": "dry/oily/combo/sensitive/neutral",
+  "overview": "200字以内的AI总评分析，概括整体肤质状况和核心问题",
+  "cause_analysis": "200字以内的成因分析，说明问题产生的原因",
+  "script": "300字以内的专业话术，用顾问口吻和客户沟通，给出具体建议，结尾引导购买产品",
+  "issues": [
+    {
+      "name": "问题名称",
+      "category": "spot/acne/state/inflammation/vascular/eye_area/keratin/aging/depigmentation",
+      "severity": 1-5,
+      "confidence": 0.0-1.0,
+      "area": "面部区域",
+      "description": "问题描述",
+      "cause_text": "形成原因",
+      "advice_text": "专业建议"
+    }
+  ],
+  "disclaimer": "本分析仅供参考。"
+}`;
 
 // Convert image to base64
 function imageToBase64(imagePath) {
@@ -63,9 +84,19 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
     const _ = (key, cnKey, fallback) => result[key] ?? result[cnKey] ?? fallback;
 
     const skinType = _('skin_type', '肤质类型', '未知');
-    const aiOverview = _('overview', '总评分析', _('ai_overview', '综合分析', _('summary', '综合建议', '')));
-    const causeAnalysis = _('cause_analysis', '成因分析', _('ai_cause_analysis', 'AI成因分析', ''));
-    const aiScript = _('script', '话术', _('ai_script', '专业话术', _('script_text', '专业建议', ''))));
+
+    // 提取 ai_overview —— 兼容多种中文备选
+    let aiOverview = _('overview', '总评', _('ai_overview', '综合分析', ''));
+    if (!aiOverview) aiOverview = _('summary', '综合建议', _('综合评估', '总评', ''));
+    if (!aiOverview) aiOverview = result.综合评估 || result.综合建议 || result.总评 || '';
+
+    // 提取 ai_cause_analysis
+    let causeAnalysis = _('cause_analysis', '成因分析', _('ai_cause_analysis', 'AI成因分析', ''));
+    if (!causeAnalysis) causeAnalysis = result.成因分析 || result.形成原因分析 || '';
+
+    // 提取 ai_script
+    let aiScript = _('script', '话术', _('ai_script', '专业话术', ''));
+    if (!aiScript) aiScript = result.专业话术 || result.顾问话术 || result.话术 || '';
 
     // 提取 issues：检查多个可能的位置
     let issues = [];
@@ -73,8 +104,10 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       result.issues,
       result.检测结果,
       result.问题列表,
+      result.详细问题清单,
       result.详细检测报告?.问题列表,
       result.详细检测报告?.检测结果,
+      result.检测报告?.详细问题清单,
       result.详细报告,  // AI可能直接返回"详细报告"数组
     ];
     for (const src of possibleIssueSources) {
@@ -84,7 +117,7 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       }
     }
 
-    // 如果还没找到，检查 详细检测报告/详细报告 中的分类对象（如 A_色素类/B_痘痘类 等）
+    // 如果还没找到，检查 详细检测报告/详细报告/检测报告 中的分类对象（如 A_色素类/B_痘痘类 等）
     if (issues.length === 0) {
       for (const reportKey of ['详细检测报告', '详细报告', '检测报告']) {
         const report = result[reportKey];
@@ -129,7 +162,7 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       }
 
       // 提取每个问题的完整信息（含成因、建议、置信度、区域）
-      const causeText = iss.形成原因 || iss.cause_text || iss.causeText || iss.形成原因分析 || '';
+      const causeText = iss.形成原因 || iss.cause_text || iss.causeText || iss.形成原因分析 || iss.原因 || '';
       const adviceText = iss.专业建议 || iss.建议 || iss.advice_text || iss.adviceText || iss.recommendation || '';
       const confidence = parseFloat(iss.置信度 || iss.confidence || 0) || 0;
       const area = iss.区域 || iss.位置 || iss.area || iss.location || '';
@@ -184,6 +217,26 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
           issue.advice_text || ''
         );
       }
+    }
+
+    // 兜底：如果AI没返回 cause_analysis，从问题的 cause_text 汇总生成
+    if (!causeAnalysis && formattedIssues.length > 0) {
+      const causes = formattedIssues
+        .filter(i => i.cause_text)
+        .slice(0, 5)
+        .map(i => `${i.issue_name}：${i.cause_text}`)
+        .join('；');
+      causeAnalysis = causes ? `主要成因如下：${causes}` : '';
+    }
+
+    // 兜底：如果AI没返回 script，用 overview + 问题描述 自动生成话术
+    if (!aiScript && (aiOverview || formattedIssues.length > 0)) {
+      const topIssues = formattedIssues
+        .filter(i => i.issue_name)
+        .slice(0, 5)
+        .map(i => `${i.issue_name}(${i.severity}级)`)
+        .join('、');
+      aiScript = (aiOverview || '') + (topIssues ? `主要检测到：${topIssues}。` : '') + '建议从修复屏障入手，我们可以为您定制专属护理方案，帮助您逐步恢复健康肌肤。';
     }
 
     return {
