@@ -28,6 +28,53 @@ try {
       UNIQUE(user_id, book_id)
     );
   `);
+
+  // 电子书分类管理表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ebook_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      icon TEXT DEFAULT '',
+      sort_order INTEGER DEFAULT 0,
+      status INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+  `);
+
+  // 初始化默认分类
+  const catCount = db.prepare('SELECT COUNT(*) as c FROM ebook_categories').get().c;
+  if (catCount === 0) {
+    const defaultCats = [
+      ['代理商培训', '🎓', 1],
+      ['产品教程', '📦', 2],
+      ['护肤知识', '🧴', 3],
+      ['销售技巧', '💡', 4],
+      ['团队管理', '👥', 5],
+      ['品牌文化', '🏆', 6],
+    ];
+    db.prepare('INSERT INTO ebook_categories (name, icon, sort_order) VALUES (?, ?, ?)').run(
+      ...defaultCats.reduce((acc, c) => acc.concat(c), [])
+    );
+  }
+
+  // 用户收藏电子书表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_book_favorites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      book_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      UNIQUE(user_id, book_id)
+    );
+  `);
+
+  // 给learning_books添加权限和置顶字段（如果不存在）
+  try {
+    db.exec('ALTER TABLE learning_books ADD COLUMN access_level TEXT DEFAULT "all"');
+  } catch(e) {}
+  try {
+    db.exec('ALTER TABLE learning_books ADD COLUMN is_top INTEGER DEFAULT 0');
+  } catch(e) {}
 } catch(e) {}
 
 // JWT验证辅助
@@ -46,30 +93,65 @@ function verifyUser(req, res, callback) {
 
 /**
  * GET /api/mp/books
- * 小程序端电子书列表
+ * 小程序端电子书列表（支持分类Tab、搜索、权限过滤）
  */
 router.get('/books', (req, res) => {
-  const db = getDB();
-  const { page = 1, pageSize = 10, keyword, category } = req.query;
-  const offset = (parseInt(page) - 1) * parseInt(pageSize);
+  verifyUser(req, res, (decoded) => {
+    const db = getDB();
+    const { page = 1, pageSize = 10, keyword, category, tab = 'all' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const userLevel = decoded.agent_level || decoded.agentLevel || 1;
 
-  let where = ["(status = '1' OR status = 'active' OR status = 'available' OR status = 'recommended' OR status IS NULL)"];
-  let params = [];
-  if (keyword) { where.push('title LIKE ?'); params.push(`%${keyword}%`); }
-  if (category) { where.push('category = ?'); params.push(category); }
+    let where = ["(lb.status = '1' OR lb.status = 'active' OR lb.status = 'available' OR lb.status = 'recommended' OR lb.status IS NULL)"];
+    let params = [];
 
-  const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM learning_books ${whereClause}`).get(...params).cnt;
-  const books = db.prepare(`
-    SELECT id, title, author, category, file_format, cover_url, description,
-           views, downloads, created_at,
-           COALESCE(file_url, '') as file_url
-    FROM learning_books ${whereClause}
-    ORDER BY created_at DESC
-    LIMIT ? OFFSET ?
-  `).all(...params, parseInt(pageSize), offset);
+    // 关键词搜索
+    if (keyword) { where.push('(lb.title LIKE ? OR lb.author LIKE ? OR lb.description LIKE ?)'); params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`); }
 
-  return success(res, { list: books, total, page: parseInt(page), pageSize: parseInt(pageSize) });
+    // 分类过滤（使用ebook_categories的name匹配）
+    if (category) { where.push('lb.category = ?'); params.push(category); }
+
+    // 权限过滤：access_level为all或用户等级>=access_level的数值
+    where.push("(lb.access_level = 'all' OR lb.access_level IS NULL OR CAST(lb.access_level AS INTEGER) <= ?)");
+    params.push(userLevel);
+
+    const whereClause = 'WHERE ' + where.join(' AND ');
+
+    // 统计总数
+    const total = db.prepare(`SELECT COUNT(*) as cnt FROM learning_books lb ${whereClause}`).get(...params).cnt;
+
+    // 查询书籍列表
+    const books = db.prepare(`
+      SELECT lb.id, lb.title, lb.author, lb.category, lb.file_format, lb.cover_url, lb.description,
+             lb.views, lb.downloads, lb.created_at, lb.access_level, lb.is_top,
+             COALESCE(lb.file_url, '') as file_url,
+             EXISTS(SELECT 1 FROM user_book_favorites WHERE user_id = ? AND book_id = lb.id) as is_favorited
+      FROM learning_books lb
+      ${whereClause}
+      ORDER BY lb.is_top DESC, lb.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(decoded.id, ...params, parseInt(pageSize), offset);
+
+    // 如果是"收藏"tab，改为查询收藏列表
+    if (tab === 'favorites') {
+      const favTotal = db.prepare(`SELECT COUNT(*) as cnt FROM user_book_favorites WHERE user_id = ?`).get(decoded.id).cnt;
+      const favBooks = db.prepare(`
+        SELECT lb.id, lb.title, lb.author, lb.category, lb.file_format, lb.cover_url, lb.description,
+               lb.views, lb.downloads, lb.created_at, lb.access_level, lb.is_top,
+               COALESCE(lb.file_url, '') as file_url,
+               1 as is_favorited
+        FROM user_book_favorites f
+        JOIN learning_books lb ON f.book_id = lb.id
+        WHERE f.user_id = ?
+          AND (lb.status IN ('1','active','available','recommended') OR lb.status IS NULL)
+        ORDER BY f.created_at DESC
+        LIMIT ? OFFSET ?
+      `).all(decoded.id, parseInt(pageSize), offset);
+      return success(res, { list: favBooks, total: favTotal, page: parseInt(page), pageSize: parseInt(pageSize) });
+    }
+
+    return success(res, { list: books, total, page: parseInt(page), pageSize: parseInt(pageSize) });
+  });
 });
 
 /**
@@ -163,6 +245,78 @@ router.get('/books/my-progress', (req, res) => {
       ORDER BY rp.last_read_time DESC
     `).all(decoded.id);
     return success(res, records);
+  });
+});
+
+// ==================== 电子书收藏 ====================
+
+/**
+ * POST /api/mp/books/:id/favorite
+ * 收藏/取消收藏电子书
+ */
+router.post('/books/:id/favorite', (req, res) => {
+  verifyUser(req, res, (decoded) => {
+    const db = getDB();
+    const bookId = req.params.id;
+    const existing = db.prepare('SELECT id FROM user_book_favorites WHERE user_id = ? AND book_id = ?')
+      .get(decoded.id, bookId);
+    if (existing) {
+      db.prepare('DELETE FROM user_book_favorites WHERE id = ?').run(existing.id);
+      return success(res, { favorited: false }, '已取消收藏');
+    } else {
+      db.prepare('INSERT INTO user_book_favorites (user_id, book_id) VALUES (?, ?)').run(decoded.id, bookId);
+      return success(res, { favorited: true }, '收藏成功');
+    }
+  });
+});
+
+/**
+ * GET /api/mp/books/categories
+ * 获取电子书分类列表
+ */
+router.get('/books/categories', (req, res) => {
+  const db = getDB();
+  const categories = db.prepare('SELECT * FROM ebook_categories WHERE status = 1 ORDER BY sort_order ASC').all();
+  // 统计每个分类下的书籍数量
+  const catsWithCount = categories.map(cat => {
+    const count = db.prepare("SELECT COUNT(*) as c FROM learning_books WHERE category = ? AND status IN ('1','active','available','recommended')").get(cat.name);
+    return { ...cat, book_count: count ? count.c : 0 };
+  });
+  return success(res, catsWithCount);
+});
+
+/**
+ * GET /api/mp/books/stats
+ * 获取电子书阅读统计（总阅读数、总阅读人数、我的进度概览）
+ */
+router.get('/books/stats', (req, res) => {
+  verifyUser(req, res, (decoded) => {
+    const db = getDB();
+    // 总阅读次数
+    const totalReads = db.prepare("SELECT COALESCE(SUM(views), 0) as v FROM learning_books").get().v;
+    // 阅读人数（有阅读记录的用户数）
+    const readerCount = db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM user_read_progress WHERE progress > 0').get().c;
+    // 我的统计
+    const myStats = db.prepare(`
+      SELECT
+        COUNT(*) as total_read,
+        SUM(CASE WHEN progress >= 100 THEN 1 ELSE 0 END) as completed,
+        AVG(progress) as avg_progress
+      FROM user_read_progress WHERE user_id = ?
+    `).get(decoded.id);
+    // 我的收藏数
+    const favCount = db.prepare('SELECT COUNT(*) as c FROM user_book_favorites WHERE user_id = ?').get(decoded.id).c;
+
+    return success(res, {
+      totalReads,
+      readerCount,
+      myStats: {
+        totalRead: myStats.total_read || 0,
+        completed: myStats.completed || 0,
+        avgProgress: Math.round(myStats.avg_progress || 0),
+        favoriteCount: favCount || 0
+      }
+    });
   });
 });
 
