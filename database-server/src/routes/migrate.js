@@ -455,10 +455,54 @@ router.post('/upload-db', upload.single('dbfile'), (req, res) => {
     fs.copyFileSync(uploadedPath, DB_PATH);
     fs.unlinkSync(uploadedPath);
 
+    // 删除残余的 WAL/SHM 文件
+    try {
+      if (fs.existsSync(DB_PATH + '-wal')) fs.unlinkSync(DB_PATH + '-wal');
+      if (fs.existsSync(DB_PATH + '-shm')) fs.unlinkSync(DB_PATH + '-shm');
+      console.log('🗑️ WAL/SHM 文件已清理');
+    } catch (e) { /* 忽略 */ }
+
     // 重新加载数据库并验证
     const { getDB: reloadDB } = require('../utils/db');
     const newDb = reloadDB();
     const admins = newDb.prepare('SELECT COUNT(*) as cnt FROM admins').get();
+
+    // 删除预置数据库文件，防止启动后自动覆盖
+    const preseedPath = path.join(DATA_DIR, 'jinglaimei.db.preseed');
+    if (fs.existsSync(preseedPath)) {
+      try {
+        fs.unlinkSync(preseedPath);
+        console.log('🗑️ 预置数据库已删除，防止自动覆盖');
+      } catch (e) {
+        console.warn('⚠️ 删除预置数据库失败:', e.message);
+      }
+    }
+
+    // 清除所有引用了旧 getDB 的路由模块缓存，强制重新加载
+    try {
+      const routeDir = path.join(__dirname, '../routes');
+      const files = fs.readdirSync(routeDir).filter(f => f.endsWith('.js'));
+      for (const file of files) {
+        const fullPath = path.join(routeDir, file);
+        if (require.cache[fullPath]) {
+          delete require.cache[fullPath];
+        }
+      }
+      // 也清除 services 缓存
+      const svcDir = path.join(__dirname, '../services');
+      if (fs.existsSync(svcDir)) {
+        const svcFiles = fs.readdirSync(svcDir).filter(f => f.endsWith('.js'));
+        for (const file of svcFiles) {
+          const fullPath = path.join(svcDir, file);
+          if (require.cache[fullPath]) {
+            delete require.cache[fullPath];
+          }
+        }
+      }
+      console.log('🗑️ 已清除所有路由/服务模块缓存');
+    } catch (e) {
+      console.warn('⚠️ 清除模块缓存失败:', e.message);
+    }
 
     success(res, {
       message: '数据库替换成功',
