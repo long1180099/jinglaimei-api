@@ -1,0 +1,594 @@
+/**
+ * 数据迁移路由 - 用于将本地数据库和文件迁移到云托管
+ * 仅限 super_admin 使用
+ */
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+const router = express.Router();
+const { getDB } = require('../utils/db');
+const { success, error } = require('../utils/response');
+
+const DB_PATH = path.join(__dirname, '../../data/jinglaimei.db');
+const UPLOADS_DIR = path.join(__dirname, '../../data/uploads');
+const DATA_DIR = path.join(__dirname, '../../data');
+
+// multer 配置 - 临时目录
+const tmpDir = path.join(DATA_DIR, '_migration_tmp');
+if (!fs.existsSync(tmpDir)) {
+  fs.mkdirSync(tmpDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, tmpDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}_${Date.now()}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 500 * 1024 * 1024 } // 500MB
+});
+
+// ==================== 导出本地数据为 JSON ====================
+// GET /api/migrate/export-data
+// 将本地数据库中所有核心表数据导出为 JSON
+router.get('/export-data', (req, res) => {
+  try {
+    const db = getDB();
+
+    // 要导出的核心表
+    const tables = [
+      'admins', 'users', 'teams', 'product_categories', 'products',
+      'orders', 'order_items', 'commissions', 'withdrawals',
+      'school_courses', 'study_progress', 'system_configs',
+      'monthly_statistics', 'operation_logs', 'announcements',
+      'inventory_records', 'inventory_stock',
+      'videos', 'video_categories', 'video_series',
+      'learning_books', 'user_book_favorites', 'user_read_progress',
+      'video_orders', 'video_progress',
+      'skin_reports', 'skin_issues', 'skin_issue_causes', 'skin_products', 'skin_care_plans',
+      'ai_coach_sessions', 'ai_coach_messages', 'ai_coach_scenarios',
+      'ai_levels', 'ai_level_questions', 'ai_level_attempts', 'ai_level_progress', 'ai_rankings',
+      'ai_scripts',
+      'socratic_sessions', 'socratic_questions', 'socratic_messages', 'socratic_scenarios',
+      'balance_logs', 'system_settings',
+      'action_commitments', 'action_commitments_checkins', 'action_daily_items',
+      'action_daily_logs', 'action_goals', 'action_weekly_goals', 'action_weekly_summary',
+      'action_monthly_tracking',
+      'print_logs',
+    ];
+
+    const data = {};
+    for (const table of tables) {
+      try {
+        const rows = db.prepare(`SELECT * FROM ${table}`).all();
+        if (rows.length > 0) {
+          data[table] = rows;
+        }
+      } catch (err) {
+        // 表不存在则跳过
+        console.log(`  ⚠️ 表 ${table} 不存在，跳过`);
+      }
+    }
+
+    // 替换所有 localhost URL 为正式域名
+    const jsonStr = JSON.stringify(data);
+    const fixedStr = jsonStr
+      .replace(/http:\/\/localhost:\d+/g, 'https://api.jinglaimei.com')
+      .replace(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/g, 'https://api.jinglaimei.com');
+
+    const result = JSON.parse(fixedStr);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=jinglaimei_data.json');
+    res.send(JSON.stringify(result, null, 2));
+  } catch (err) {
+    console.error('导出数据失败:', err);
+    error(res, '导出数据失败: ' + err.message);
+  }
+});
+
+// ==================== 导入数据（从 JSON） ====================
+// POST /api/migrate/import-data
+// 接收 JSON 数据，逐表导入
+router.post('/import-data', (req, res) => {
+  try {
+    const db = getDB();
+    const data = req.body;
+    const results = { imported: 0, errors: [] };
+
+    for (const [table, rows] of Object.entries(data)) {
+      if (!Array.isArray(rows) || rows.length === 0) continue;
+
+      try {
+        for (const row of rows) {
+          // 获取列名
+          const columns = Object.keys(row);
+          const values = columns.map(c => row[c]);
+          const placeholders = columns.map(() => '?').join(', ');
+          const colStr = columns.join(', ');
+
+          // 尝试 INSERT OR REPLACE（兼容已有数据）
+          db.prepare(`INSERT OR REPLACE INTO ${table} (${colStr}) VALUES (${placeholders})`)
+            .run(...values);
+        }
+        results.imported += rows.length;
+        console.log(`  ✅ ${table}: ${rows.length} 条`);
+      } catch (err) {
+        console.error(`  ❌ ${table}: ${err.message}`);
+        results.errors.push({ table, error: err.message });
+      }
+    }
+
+    success(res, results);
+  } catch (err) {
+    console.error('导入数据失败:', err);
+    error(res, '导入数据失败: ' + err.message);
+  }
+});
+
+// ==================== 创建缺失表 ====================
+// POST /api/migrate/create-missing-tables
+// 自动创建所有缺失的表（从本地的迁移SQL中读取）
+router.post('/create-missing-tables', (req, res) => {
+  try {
+    const db = getDB();
+    const results = [];
+
+    const createTableSQLs = [
+      `CREATE TABLE IF NOT EXISTS inventory_stock (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_name TEXT NOT NULL, product_code TEXT, category TEXT DEFAULT '未分类',
+        unit TEXT DEFAULT '件', quantity INTEGER DEFAULT 0, total_in INTEGER DEFAULT 0,
+        total_out INTEGER DEFAULT 0, avg_cost REAL DEFAULT 0.00, total_cost REAL DEFAULT 0.00,
+        total_freight REAL DEFAULT 0.00, min_alert INTEGER DEFAULT 10, remark TEXT,
+        status INTEGER DEFAULT 1, product_id INTEGER REFERENCES products(id),
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS inventory_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, stock_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL, record_type TEXT NOT NULL, quantity INTEGER NOT NULL,
+        unit_cost REAL DEFAULT 0.00, cost_total REAL DEFAULT 0.00, freight REAL DEFAULT 0.00,
+        stock_before INTEGER DEFAULT 0, stock_after INTEGER DEFAULT 0,
+        operator TEXT DEFAULT '管理员', remark TEXT, batch_no TEXT, supplier TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS videos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT DEFAULT '',
+        cover_url TEXT DEFAULT '', video_url TEXT NOT NULL, video_source TEXT DEFAULT 'upload',
+        duration INTEGER DEFAULT 0, file_size INTEGER DEFAULT 0, category_id INTEGER DEFAULT 0,
+        category_name TEXT DEFAULT '', series_id INTEGER, series_episode INTEGER DEFAULT 0,
+        access_level TEXT DEFAULT 'all', price REAL DEFAULT 0, instructor TEXT DEFAULT '',
+        instructor_avatar TEXT DEFAULT '', view_count INTEGER DEFAULT 0, like_count INTEGER DEFAULT 0,
+        purchase_count INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', difficulty TEXT DEFAULT 'beginner',
+        status INTEGER DEFAULT 1, is_recommend INTEGER DEFAULT 0, is_top INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now','localtime')),
+        updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS video_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, icon TEXT DEFAULT '',
+        description TEXT DEFAULT '', sort_order INTEGER DEFAULT 0, status INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS video_series (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT DEFAULT '',
+        cover_url TEXT DEFAULT '', category_id INTEGER DEFAULT 0, category_name TEXT DEFAULT '',
+        price REAL DEFAULT 0, original_price REAL DEFAULT 0, access_level TEXT DEFAULT 'all',
+        instructor TEXT DEFAULT '', instructor_avatar TEXT DEFAULT '', total_episodes INTEGER DEFAULT 0,
+        total_duration INTEGER DEFAULT 0, difficulty TEXT DEFAULT 'beginner', tags TEXT DEFAULT '[]',
+        view_count INTEGER DEFAULT 0, purchase_count INTEGER DEFAULT 0, student_count INTEGER DEFAULT 0,
+        status INTEGER DEFAULT 1, is_recommend INTEGER DEFAULT 0, sort_order INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS video_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT NOT NULL UNIQUE, user_id INTEGER NOT NULL,
+        target_type TEXT NOT NULL, target_id INTEGER NOT NULL, target_title TEXT DEFAULT '',
+        amount REAL DEFAULT 0, payment_method TEXT DEFAULT 'balance', status TEXT DEFAULT 'pending',
+        paid_at TEXT, created_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS video_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, video_id INTEGER NOT NULL,
+        progress_seconds INTEGER DEFAULT 0, total_seconds INTEGER DEFAULT 0,
+        progress_percent INTEGER DEFAULT 0, is_completed INTEGER DEFAULT 0, completed_at TEXT,
+        last_watch_time TEXT DEFAULT (datetime('now','localtime')), watch_count INTEGER DEFAULT 0,
+        watch_duration INTEGER DEFAULT 0, notes TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(user_id, video_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS learning_books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, author TEXT DEFAULT '',
+        description TEXT DEFAULT '', category TEXT DEFAULT 'sales_psychology',
+        difficulty TEXT DEFAULT 'beginner', pages INTEGER DEFAULT 0, reading_time INTEGER DEFAULT 0,
+        tags TEXT DEFAULT '[]', summary TEXT DEFAULT '', key_points TEXT DEFAULT '[]',
+        status TEXT DEFAULT 'available', file_url TEXT DEFAULT '', file_name TEXT DEFAULT '',
+        file_format TEXT DEFAULT '', file_size INTEGER DEFAULT 0, cover_url TEXT DEFAULT '',
+        views INTEGER DEFAULT 0, downloads INTEGER DEFAULT 0, sort_order INTEGER DEFAULT 0,
+        access_level TEXT DEFAULT 'all', is_top INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS user_book_favorites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, book_id INTEGER NOT NULL,
+        created_at TEXT DEFAULT (datetime('now','localtime')), UNIQUE(user_id, book_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS skin_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, agent_id INTEGER DEFAULT 0,
+        image_url TEXT NOT NULL DEFAULT '', image_path TEXT DEFAULT '',
+        skin_type TEXT DEFAULT 'unknown', skin_type_confidence REAL DEFAULT 0,
+        ai_overview TEXT DEFAULT '', ai_cause_analysis TEXT DEFAULT '', ai_script TEXT DEFAULT '',
+        ai_raw_response TEXT DEFAULT '', issue_count INTEGER DEFAULT 0, total_severity INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'completed', error_msg TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS skin_issues (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL DEFAULT 'other',
+        name TEXT NOT NULL, icon TEXT DEFAULT '⚠', color TEXT DEFAULT '#e94560',
+        description TEXT DEFAULT '', severity_range TEXT DEFAULT '1-5',
+        sort_order INTEGER DEFAULT 0, status INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS skin_issue_causes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, issue_id INTEGER NOT NULL,
+        cause_text TEXT NOT NULL DEFAULT '', ai_analysis_template TEXT DEFAULT '',
+        advice_text TEXT DEFAULT '', is_ai_generated INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS skin_products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, issue_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
+        match_reason TEXT DEFAULT '', priority INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(issue_id, product_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS skin_care_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, issue_id INTEGER NOT NULL,
+        care_type TEXT NOT NULL DEFAULT 'moisture', title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '', steps TEXT DEFAULT '[]',
+        frequency TEXT DEFAULT '每日', duration TEXT DEFAULT '持续28天见效',
+        sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS socratic_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, scenario_id INTEGER NOT NULL,
+        personality_type TEXT DEFAULT '', status TEXT DEFAULT 'active', total_rounds INTEGER DEFAULT 0,
+        question_score INTEGER DEFAULT 0, listening_score INTEGER DEFAULT 0,
+        guiding_score INTEGER DEFAULT 0, timing_score INTEGER DEFAULT 0,
+        depth_score INTEGER DEFAULT 0, overall_score INTEGER DEFAULT 0, grade TEXT DEFAULT '',
+        feedback TEXT DEFAULT '', highlight_question TEXT DEFAULT '', duration INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP, ended_at DATETIME
+      )`,
+      `CREATE TABLE IF NOT EXISTS socratic_questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, scenario_id INTEGER, question_type TEXT NOT NULL,
+        question_text TEXT NOT NULL, purpose TEXT DEFAULT '', hint TEXT DEFAULT '',
+        example_answer TEXT DEFAULT '', sort_order INTEGER DEFAULT 0, status INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS socratic_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, round_num INTEGER DEFAULT 0,
+        role TEXT NOT NULL, content TEXT NOT NULL, question_type TEXT DEFAULT '', score INTEGER,
+        hint TEXT DEFAULT '', is_best_question INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS socratic_scenarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'general',
+        personality_type TEXT DEFAULT '', difficulty TEXT DEFAULT 'medium', description TEXT DEFAULT '',
+        customer_background TEXT DEFAULT '', initial_situation TEXT DEFAULT '', goal TEXT DEFAULT '',
+        tips TEXT DEFAULT '', status INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0,
+        usage_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS balance_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+        change_type TEXT NOT NULL DEFAULT 'manual', change_amount REAL NOT NULL,
+        balance_before REAL NOT NULL DEFAULT 0, balance_after REAL NOT NULL DEFAULT 0,
+        operator_id INTEGER, operator_name TEXT DEFAULT 'system', remark TEXT DEFAULT '',
+        order_id INTEGER, related_id INTEGER,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS system_settings (
+        id INTEGER PRIMARY KEY CHECK(id=1), default_shipper TEXT DEFAULT '',
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS print_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, order_no TEXT NOT NULL,
+        print_type TEXT DEFAULT 'shipping', shipper_name TEXT DEFAULT '', reviewer_name TEXT DEFAULT '',
+        receiver_name TEXT NOT NULL, operator_id INTEGER DEFAULT 0, operator_name TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_commitments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '', duration INTEGER DEFAULT 30, start_date TEXT, end_date TEXT,
+        status INTEGER DEFAULT 0, checkin_count INTEGER DEFAULT 0, total_days INTEGER DEFAULT 0,
+        supervisor TEXT DEFAULT '', pk_person TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_commitments_checkins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, commitment_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+        checkin_date TEXT NOT NULL, daily_completed INTEGER DEFAULT 0, a_class_done INTEGER DEFAULT 0,
+        mindset_score INTEGER DEFAULT 0, remark TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime')), UNIQUE(commitment_id, checkin_date)
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_daily_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, log_date TEXT NOT NULL,
+        priority TEXT NOT NULL DEFAULT 'A1', time_range TEXT DEFAULT '', task TEXT NOT NULL DEFAULT '',
+        is_completed INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_daily_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, log_date TEXT NOT NULL,
+        goal_type TEXT NOT NULL DEFAULT 'daily', content TEXT NOT NULL DEFAULT '', score INTEGER DEFAULT 0,
+        mood TEXT DEFAULT '', remark TEXT DEFAULT '', study_content TEXT DEFAULT '',
+        improvement TEXT DEFAULT '', mindset_serious INTEGER DEFAULT 0, mindset_optimistic INTEGER DEFAULT 0,
+        mindset_confident INTEGER DEFAULT 0, mindset_commitment INTEGER DEFAULT 0, mindset_love INTEGER DEFAULT 0,
+        mindset_no_excuse INTEGER DEFAULT 0, mindset_total INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime')), UNIQUE(user_id, log_date, goal_type)
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+        goal_type TEXT NOT NULL DEFAULT 'annual', category TEXT NOT NULL DEFAULT '',
+        title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', status INTEGER DEFAULT 0,
+        progress INTEGER DEFAULT 0, start_date TEXT, end_date TEXT, priority TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(user_id, goal_type, category, title)
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_weekly_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, week_start TEXT NOT NULL,
+        week_end TEXT NOT NULL, priority TEXT NOT NULL DEFAULT 'A1', title TEXT NOT NULL DEFAULT '',
+        deadline TEXT DEFAULT '', is_completed INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_weekly_summary (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, week_start TEXT NOT NULL,
+        week_end TEXT NOT NULL, completion TEXT DEFAULT '', uncompleted_reason TEXT DEFAULT '',
+        improvement TEXT DEFAULT '', harvest TEXT DEFAULT '', next_plan TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(user_id, week_start)
+      )`,
+      `CREATE TABLE IF NOT EXISTS action_monthly_tracking (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, month TEXT NOT NULL,
+        goal_title TEXT NOT NULL DEFAULT '', target_value TEXT DEFAULT '', actual_value TEXT DEFAULT '',
+        gap TEXT DEFAULT '', completion_rate REAL DEFAULT 0, reflection TEXT DEFAULT '', note TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+    ];
+
+    for (const sql of createTableSQLs) {
+      try {
+        const tableName = sql.match(/CREATE TABLE IF NOT EXISTS (\w+)/)[1];
+        const exists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
+        if (!exists) {
+          db.exec(sql);
+          results.push({ table: tableName, status: 'created' });
+        } else {
+          results.push({ table: tableName, status: 'already_exists' });
+        }
+      } catch (err) {
+        results.push({ table: 'unknown', status: 'error', error: err.message });
+      }
+    }
+
+    success(res, { created: results.filter(r => r.status === 'created').length, results });
+  } catch (err) {
+    error(res, '创建表失败: ' + err.message);
+  }
+});
+
+// ==================== 替换 URL ====================
+// POST /api/migrate/fix-urls
+// 将数据库中所有 localhost URL 替换为正式域名
+router.post('/fix-urls', (req, res) => {
+  try {
+    const db = getDB();
+    const { from = 'http://localhost', to = 'https://api.jinglaimei.com' } = req.body;
+
+    let totalFixed = 0;
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+
+    for (const t of tables) {
+      try {
+        const cols = db.prepare(`PRAGMA table_info("${t.name}")`).all();
+        for (const col of cols) {
+          if (col.type && col.type.toUpperCase().includes('TEXT')) {
+            const result = db.prepare(`UPDATE "${t.name}" SET "${col.name}" = REPLACE("${col.name}", ?, ?) WHERE "${col.name}" LIKE ?`)
+              .run(from, to, `%${from}%`);
+            if (result.changes > 0) {
+              totalFixed += result.changes;
+              console.log(`  🔧 ${t.name}.${col.name}: ${result.changes} 条已替换`);
+            }
+          }
+        }
+      } catch { /* skip */ }
+    }
+
+    success(res, { message: `URL替换完成`, totalFixed, from, to });
+  } catch (err) {
+    error(res, 'URL替换失败: ' + err.message);
+  }
+});
+
+// ==================== 上传 SQLite 数据库文件 ====================
+// POST /api/migrate/upload-db
+// 接收 SQLite 数据库文件，替换当前数据库
+router.post('/upload-db', upload.single('dbfile'), (req, res) => {
+  try {
+    if (!req.file) {
+      return error(res, '请上传数据库文件');
+    }
+
+    const uploadedPath = req.file.path;
+    const ext = path.extname(req.file.originalname).toLowerCase();
+
+    if (ext !== '.db' && ext !== '.sqlite' && ext !== '.sqlite3') {
+      fs.unlinkSync(uploadedPath);
+      return error(res, '仅支持 .db / .sqlite / .sqlite3 格式的数据库文件');
+    }
+
+    // 验证上传的文件是否为有效的 SQLite 数据库
+    try {
+      const Database = require('better-sqlite3');
+      const testDb = new Database(uploadedPath, { readonly: true });
+      const tables = testDb.prepare("SELECT COUNT(*) as cnt FROM sqlite_master WHERE type='table'").get();
+      testDb.close();
+
+      if (tables.cnt === 0) {
+        fs.unlinkSync(uploadedPath);
+        return error(res, '数据库文件中没有找到任何表');
+      }
+    } catch (err) {
+      fs.unlinkSync(uploadedPath);
+      return error(res, '无效的 SQLite 数据库文件: ' + err.message);
+    }
+
+    // 备份当前数据库
+    const backupPath = DB_PATH + '.backup_' + Date.now();
+    if (fs.existsSync(DB_PATH)) {
+      fs.copyFileSync(DB_PATH, backupPath);
+      console.log('📦 当前数据库已备份到:', backupPath);
+    }
+
+    // 关闭当前数据库连接（通过 db.js 模块暴露的 close 方法）
+    const dbModulePath = require.resolve('../utils/db');
+    delete require.cache[dbModulePath];
+
+    // 替换数据库文件
+    fs.copyFileSync(uploadedPath, DB_PATH);
+    fs.unlinkSync(uploadedPath);
+
+    // 重新加载数据库并验证
+    const { getDB: reloadDB } = require('../utils/db');
+    const newDb = reloadDB();
+    const admins = newDb.prepare('SELECT COUNT(*) as cnt FROM admins').get();
+
+    success(res, {
+      message: '数据库替换成功',
+      backupPath,
+      adminsCount: admins.cnt,
+      note: '备份文件保留在服务器上，如需回滚请联系技术人员'
+    });
+  } catch (err) {
+    console.error('数据库替换失败:', err);
+    error(res, '数据库替换失败: ' + err.message);
+  }
+});
+
+// ==================== 上传文件压缩包 ====================
+// POST /api/migrate/upload-files
+// 接收 zip 压缩包，解压到 uploads 目录
+router.post('/upload-files', upload.single('zipfile'), (req, res) => {
+  try {
+    if (!req.file) {
+      return error(res, '请上传文件压缩包');
+    }
+
+    const uploadedPath = req.file.path;
+    const ext = path.extname(req.file.originalname).toLowerCase();
+
+    if (ext !== '.zip') {
+      fs.unlinkSync(uploadedPath);
+      return error(res, '仅支持 .zip 格式的压缩包');
+    }
+
+    // 解压到 uploads 目录
+    const extractDir = UPLOADS_DIR;
+    if (!fs.existsSync(extractDir)) {
+      fs.mkdirSync(extractDir, { recursive: true });
+    }
+
+    // 使用 unzip 命令解压
+    try {
+      execSync(`unzip -o "${uploadedPath}" -d "${extractDir}"`, {
+        stdio: 'pipe',
+        timeout: 120000 // 2分钟超时
+      });
+    } catch (err) {
+      // 如果 unzip 不可用，尝试用 node 的方式
+      console.warn('unzip 命令不可用，尝试其他方式...');
+      // 回退: 使用 Python
+      try {
+        execSync(`python3 -c "
+import zipfile, os, sys
+with zipfile.ZipFile('${uploadedPath}', 'r') as z:
+    z.extractall('${extractDir}')
+    print(f'Extracted {len(z.namelist())} files')
+"`, { stdio: 'pipe', timeout: 120000 });
+      } catch (err2) {
+        fs.unlinkSync(uploadedPath);
+        return error(res, '解压失败: ' + err2.message);
+      }
+    }
+
+    // 清理临时文件
+    fs.unlinkSync(uploadedPath);
+
+    // 统计解压后的文件
+    const dirs = {};
+    const subdirs = fs.readdirSync(extractDir, { withFileTypes: true });
+    for (const d of subdirs) {
+      if (d.isDirectory()) {
+        const files = fs.readdirSync(path.join(extractDir, d.name));
+        dirs[d.name] = files.length;
+      }
+    }
+
+    success(res, {
+      message: '文件解压成功',
+      extractedDirs: dirs,
+      extractPath: extractDir
+    });
+  } catch (err) {
+    console.error('文件上传解压失败:', err);
+    error(res, '文件上传解压失败: ' + err.message);
+  }
+});
+
+// ==================== 获取当前状态 ====================
+// GET /api/migrate/status
+router.get('/status', (req, res) => {
+  try {
+    const db = getDB();
+
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+    const tableStats = {};
+
+    for (const t of tables) {
+      try {
+        const count = db.prepare(`SELECT COUNT(*) as cnt FROM "${t.name}"`).get();
+        tableStats[t.name] = count.cnt;
+      } catch {
+        tableStats[t.name] = -1; // 无法读取
+      }
+    }
+
+    // 上传目录大小
+    let uploadSize = 0;
+    let uploadFiles = 0;
+    if (fs.existsSync(UPLOADS_DIR)) {
+      const calcSize = (dir) => {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const e of entries) {
+          const fullPath = path.join(dir, e.name);
+          if (e.isDirectory()) calcSize(fullPath);
+          else {
+            uploadFiles++;
+            uploadSize += fs.statSync(fullPath).size;
+          }
+        }
+      };
+      calcSize(UPLOADS_DIR);
+    }
+
+    success(res, {
+      dbPath: DB_PATH,
+      dbSize: fs.existsSync(DB_PATH) ? fs.statSync(DB_PATH).size : 0,
+      tables: tableStats,
+      uploadsDir: UPLOADS_DIR,
+      uploadsSize: uploadSize,
+      uploadsFiles: uploadFiles,
+    });
+  } catch (err) {
+    error(res, '获取状态失败: ' + err.message);
+  }
+});
+
+module.exports = router;
