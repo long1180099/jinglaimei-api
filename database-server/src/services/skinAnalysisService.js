@@ -59,60 +59,98 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
   const db = getDb();
   try {
     // 兼容中英文 AI 返回字段
-    const _ = (key, cnKey, fallback) => {
-      return result[key] ?? result[cnKey] ?? fallback;
-    };
+    const _ = (key, cnKey, fallback) => result[key] ?? result[cnKey] ?? fallback;
 
-    const skinType = _('skin_type', '肤质类型', 'unknown');
-    const overallScore = _('overall_score', '综合评分', 0);
+    const skinType = _('skin_type', '肤质类型', '未知');
     const summary = _('summary', '综合建议', '');
-    const recommendations = _('recommendations', '产品推荐', []);
     const aiOverview = _('ai_overview', '综合分析', summary) || summary;
     const causeAnalysis = _('cause_analysis', '成因分析', '');
-    const detectionReport = _('detailed_report', '详细检测报告', {});
-    const issueCount = result.issue_count ?? detectionReport?.总问题数 ?? result.总问题数 ?? 0;
 
-    // 尝试提取 issues 列表（支持嵌套或平铺）
-    let issues = result.issues || result.问题列表 || detectionReport?.问题列表 || [];
-    if (!Array.isArray(issues)) issues = [];
-    // 如果 issues 是中文对象数组，转成英文格式
-    issues = issues.map((iss, idx) => ({
-      issue_id: iss.issue_id || iss.issueId || iss.id || idx + 1,
-      issue_name: iss.issue_name || iss.问题名称 || iss.name || '',
-      category: iss.category || iss.类别 || '',
-      severity: iss.severity || iss.严重等级 || 3,
-      description: iss.description || iss.描述 || '',
-    }));
+    // 提取 issues：检查多个可能的位置
+    let issues = [];
+    const possibleIssueSources = [
+      result.issues,
+      result.检测结果,
+      result.问题列表,
+      result.详细检测报告?.问题列表,
+      result.详细检测报告?.检测结果,
+    ];
+    for (const src of possibleIssueSources) {
+      if (Array.isArray(src) && src.length > 0) {
+        issues = src;
+        break;
+      }
+    }
+
+    // 计算总严重度
+    let totalSeverity = 0;
+    let issueCount = result.issue_count || result.总问题数 || issues.length || 0;
+    if (typeof issueCount === 'string') issueCount = parseInt(issueCount) || issues.length;
+
+    // 格式化 issues，映射中文字段名，并查找 issue_id
+    const allSkinIssues = db.prepare('SELECT id, name, category FROM skin_issues WHERE status = 1').all() || [];
+
+    const formattedIssues = [];
+    for (const iss of issues) {
+      const name = iss.问题 || iss.issue_name || iss.issueName || iss.name || '';
+      const category = iss.类别 || iss.category || '';
+      const severity = parseInt(iss.等级 || iss.severity || iss.严重等级 || 3);
+      const description = iss.描述 || iss.description || '';
+
+      // 在 skin_issues 表中查找匹配的 issue_id
+      let issueId = iss.issue_id || iss.issueId || iss.id || 0;
+      if (!issueId && name) {
+        const matched = allSkinIssues.find(si =>
+          si.name === name || si.name.includes(name) || name.includes(si.name)
+        );
+        if (matched) issueId = matched.id;
+      }
+
+      totalSeverity += severity;
+
+      formattedIssues.push({
+        issue_id: issueId || formattedIssues.length + 1,
+        issue_name: name,
+        category,
+        severity,
+        description,
+      });
+    }
 
     const insertReport = db.prepare(
       `INSERT INTO skin_reports (user_id, agent_id, image_url, skin_type, skin_type_confidence, ai_overview, ai_cause_analysis, ai_script, ai_raw_response, issue_count, total_severity, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
-    const insertIssue = db.prepare(
-      'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
-    );
+
     const stmtResult = insertReport.run(
       userId, agentId, imageUrl || '', skinType,
       _('skin_type_confidence', '肤质置信度', 0),
       aiOverview,
       causeAnalysis,
-      JSON.stringify(Array.isArray(recommendations) ? recommendations : []),
+      JSON.stringify(formattedIssues),
       JSON.stringify(result),
-      issues.length,
-      typeof overallScore === 'number' ? overallScore : 0,
+      formattedIssues.length,
+      totalSeverity,
       'completed'
     );
     const reportId = stmtResult.lastInsertRowid;
 
-    if (issues.length > 0) {
+    if (formattedIssues.length > 0) {
       const insertIssue = db.prepare(
         'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
       );
-      for (const issue of issues) {
+      for (const issue of formattedIssues) {
         insertIssue.run(reportId, issue.issue_id, issue.severity, issue.description || '');
       }
     }
 
-    return { reportId, skin_type: skinType, overall_score: overallScore, summary, issues, ...result };
+    return {
+      reportId,
+      skin_type: skinType,
+      overall_score: totalSeverity,
+      summary,
+      issues: formattedIssues,
+      ...result
+    };
   } finally {
     db.close();
   }
@@ -226,7 +264,7 @@ function getSkinReport(reportId) {
     const report = db.prepare('SELECT * FROM skin_reports WHERE id = ?').get(reportId);
     if (!report) return null;
     report.issues = db.prepare(
-      'SELECT sr.*, si.issue_name, si.category FROM skin_report_issues sr JOIN skin_issues si ON sr.issue_id = si.id WHERE sr.report_id = ?'
+      'SELECT sr.*, si.name as issue_name, si.category FROM skin_report_issues sr JOIN skin_issues si ON sr.issue_id = si.id WHERE sr.report_id = ?'
     ).all(reportId) || [];
     return report;
   } finally {
