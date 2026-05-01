@@ -1,0 +1,151 @@
+<!-- 苏格拉底式提问训练 - 历史记录（AI学院增强版） -->
+<view class="history-page">
+
+  <!-- ====== 1. 概览卡片（增强版）====== -->
+  <view class="overview-card" wx:if="{{overview}}">
+    <view class="ov-header">📊 训练总览</view>
+    <view class="ov-stats">
+      <view class="ov-stat">
+        <text class="ov-num">{{overview.totalSessions || 0}}</text>
+        <text class="ov-label">总训练次数</text>
+      </view>
+      <view class="ov-divider"></view>
+      <view class="ov-stat">
+        <text class="ov-num">{{overview.avgScore || 0}}</text>
+        <text class="ov-label">平均分</text>
+      </view>
+      <view class="ov-divider"></view>
+      <view class="ov-stat">
+        <text class="ov-num">{{overview.bestScore || 0}}</text>
+        <text class="ov-label">最高分</text>
+      </view>
+      <view class="ov-divider"></view>
+      <view class="ov-stat">
+        <text class="ov-num" style="color:{{overview.excellentCount > 0 ? '#52c41a' : 'rgba(255,255,255,0.4)'}}">{{overview.excellentCount || 0}}</text>
+        <text class="ov-label">优秀(S/A)</text>
+      </view>
+    </view>
+
+    <!-- 本周训练热力 -->
+    <view class="week-heatmap" wx:if="{{weekCalendar.length > 0}}">
+      <text class="wh-title">本周训练</text>
+      <view class="wh-days">
+        <view class="wh-day {{item > 0 ? 'trained' : ''}}" wx:for="{{weekCalendar}}" wx:key="index"
+              style="--heat-color:{{item >= 80 ? '#52c41a' : item >= 60 ? '#1890ff' : item > 0 ? '#faad14' : 'transparent'}}; background:{{item > 0 ? (item >= 80 ? 'rgba(82,196,26,0.2)' : item >= 60 ? 'rgba(24,144,255,0.15)' : 'rgba(250,173,20,0.1)') : 'rgba(255,255,255,0.03)'}}">
+          <text class="wh-score" wx:if="{{item > 0}}">{{item}}</text>
+          <text wx:else class="wh-dash">-</text>
+          <text class="wh-name">{{weekDayNames[index] || ''}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 趋势折线图（简化版） -->
+    <view class="trend-mini" wx:if="{{recentTrendPoints.length >= 3}}">
+      <text class="tm-title">📈 近期趋势</text>
+      <view class="tm-chart">
+        <!-- 简化的柱状趋势 -->
+        <view class="tm-bars">
+          <view class="tm-bar-wrap" wx:for="{{recentTrendPoints}}" wx:key="date">
+            <view class="tm-bar" style="height:{{item.score * 1.6}}rpx; background:{{_getScoreColor(item.score)}}"></view>
+            <text class="tm-bar-label">{{item.grade}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ====== 2. 筛选栏（AI学院新增）====== -->
+  <view class="filter-bar" wx:if="{{loaded && list.length > 0}}">
+    <scroll-view scroll-x class="filter-scroll" enable-flex>
+      <view class="filter-chip {{!filterGrade ? 'active' : ''}}" bindtap="switchFilter" data-type="grade" data-val="">
+        全部
+      </view>
+      <view class="filter-chip {{filterGrade == item.value ? 'active' : ''}}" 
+            wx:for="{{gradeOptions}}" wx:key="value"
+            wx:if="{{index > 0}}"
+            bindtap="switchFilter" data-type="grade" data-val="{{item.value}}"
+            style="--chip-color:{{item.value == 'S' ? '#ffd700' : item.value == 'A' ? '#667eea' : item.value == 'B' ? '#52c41a' : '#999'}}">
+        {{item.label}}
+      </view>
+    </scroll-view>
+    <view class="clear-filter" wx:if="{{filterGrade || filterCategory}}" bindtap="clearFilters">
+      ✕ 清除筛选
+    </view>
+  </view>
+
+  <!-- 记录列表 -->
+  <view class="section-header-row">
+    <text class="section-title">📋 训练记录</text>
+    <text wx:if="{{list.length == 0 && loaded}}" class="empty-hint">暂无记录，快去练习吧！</text>
+  </view>
+
+  <view class="record-list" wx:if="{{list.length > 0}}">
+    <view class="record-card" wx:for="{{list}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+      <!-- 卡片头部 -->
+      <view class="rc-header">
+        <view class="rc-scenario-name">{{item.scenario_name || '未知场景'}}</view>
+        <view class="rc-grade {{item.grade}}" style="{{_getGradeStyle(item.grade)}}">
+          {{item.grade}}
+        </view>
+      </view>
+
+      <!-- 分数条 -->
+      <view class="rc-score-bar">
+        <view class="rc-score-fill" style="width:{{(item.overall_score || 0)}}%; background:{{_getScoreColor(item.overall_score)}}"></view>
+        <text class="rc-score-text">{{item.overall_score}}分</text>
+      </view>
+
+      <!-- 五维分数（迷你） -->
+      <view class="rc-dims">
+        <view class="rc-dim">
+          <text class="rd-val" style="color:#1890ff">{{item.question_score || '-'}}</text>
+          <text class="rd-key">提问</text>
+        </view>
+        <view class="rc-dim">
+          <text class="rd-val" style="color:#722ed1">{{item.listening_score || '-'}}</text>
+          <text class="rd-key">倾听</text>
+        </view>
+        <view class="rc-dim">
+          <text class="rd-val" style="color:#52c41a">{{item.guiding_score || '-'}}</text>
+          <text class="rd-key">引导</text>
+        </view>
+        <view class="rc-dim">
+          <text class="rd-val" style="color:#faad14">{{item.timing_score || '-'}}</text>
+          <text class="rd-key">时机</text>
+        </view>
+        <view class="rc-dim">
+          <text class="rd-val" style="color:#e94560">{{item.depth_score || '-'}}</text>
+          <text class="rd-key">深度</text>
+        </view>
+      </view>
+
+      <!-- 底部信息 -->
+      <view class="rc-footer">
+        <text class="rc-time">{{_formatTime(item.created_at)}}</text>
+        <text class="rc-duration">⏱️ {{_formatDuration(item.duration)}}</text>
+        <text class="rc-rounds">💬 {{item.total_rounds || 0}}轮</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{loaded && list.length == 0 && !filterGrade && !filterCategory}}">
+    <text class="empty-icon">📝</text>
+    <text class="empty-text">还没有训练记录</text>
+    <text class="empty-sub">完成一次对话训练后会在这里看到记录</text>
+    <view class="empty-btn" bindtap="goTrain">开始第一次训练</view>
+  </view>
+
+  <view class="empty-state" wx:if="{{loaded && list.length == 0 && (filterGrade || filterCategory)}}" style="padding: 60rpx 40rpx;">
+    <text class="empty-text">没有符合条件的记录</text>
+    <view class="empty-btn" style="margin-top: 20rpx;" bindtap="clearFilters">清除筛选条件</view>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="load-more" wx:if="{{hasMore && list.length > 0 && !filterGrade && !filterCategory}}" bindtap="loadMore">
+    加载更多...
+  </view>
+
+  <!-- 底部安全区 -->
+  <view class="safe-bottom"></view>
+</view>

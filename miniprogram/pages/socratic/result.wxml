@@ -1,0 +1,138 @@
+<!-- 苏格拉底式提问训练 - 评分结果 -->
+<view class="result-page">
+  <!-- 总分卡片 -->
+  <view class="score-hero" style="background: linear-gradient(135deg, {{gradeColor}}1a, {{gradeColor}}08)">
+    <view class="grade-badge {{grade}}" style="background:{{gradeBg}}; color:{{gradeTextColor}}">
+      {{grade}}
+    </view>
+    <text class="score-number">{{scores.overall}}</text>
+    <text class="score-label">总分</text>
+    <text class="score-result">{{resultText}}</text>
+    <text class="score-duration">⏱️ 对话时长 {{durationText}}</text>
+
+    <!-- ====== AI学院新增：XP奖励 + 等级提升 ====== -->
+    <!-- XP奖励 -->
+    <view class="xp-reward-bar" wx:if="{{xpEarned > 0}}">
+      <text class="xp-icon">⚡</text>
+      <text class="xp-text">获得 {{xpEarned}} 经验值</text>
+    </view>
+    
+    <!-- 升级提示（带动画） -->
+    <view class="level-up-banner" wx:if="{{levelUp && newLevel}}">
+      <view class="levelup-glow"></view>
+      <view class="levelup-content">
+        <text class="levelup-icon">🎊</text>
+        <text class="levelup-text">升级！Lv.{{newLevel}} {{newTitle}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 雷达图 -->
+  <view class="radar-section">
+    <view class="section-title">📊 能力雷达图</view>
+    <canvas canvas-id="radarCanvas" id="radarCanvas" 
+            class="radar-canvas"
+            style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"
+            bindtouchstart=""></canvas>
+    
+    <!-- 五维分数列表 -->
+    <view class="dimension-list">
+      <view class="dim-item" wx:for="{{dimensionData}}" wx:key="key">
+        <view class="dim-header">
+          <view class="dim-icon-wrap" style="background:{{item.color}}15">
+            <text>{{item.icon}}</text>
+          </view>
+          <text class="dim-name">{{item.name}}</text>
+          <text class="dim-score" style="color:{{item.color}}">{{item.value}}分</text>
+        </view>
+        <view class="dim-bar">
+          <view class="dim-fill" style="width:{{item.percent}}%; background:{{item.color}}"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 对话统计 -->
+  <view class="stats-section">
+    <view class="section-title">📈 本次对话统计</view>
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-num">{{stats.total_rounds || 0}}</text>
+        <text class="stat-label">对话轮次</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{typeCount}}</text>
+        <text class="stat-label">提问类型数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{questionDensity >= 50 ? '✅' : '⚠️'}}</text>
+        <text class="stat-label">提问密度{{questionDensity}}%</text>
+      </view>
+    </view>
+
+    <!-- 提问类型分布 -->
+    <view wx:if="{{stats.type_distribution}}" class="type-dist-section">
+      <text class="dist-title">提问类型分布</text>
+      <view class="dist-tags">
+        <view class="dist-tag" wx:for="{{stats.type_distribution}}" wx:key="*this" wx:for-item="count" wx:for-index="key"
+              style="background:{{typeColors[key].color}}15; border-color:{{typeColors[key].color}}40">
+          <text style="color:{{typeColors[key].color}}">{{typeColors[key].icon}} {{typeNames[key]}} ×{{count}}</text>
+        </view>
+        <view wx:if="{{typeCount == 0}}" class="dist-empty">暂无提问记录</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 最佳提问 -->
+  <view wx:if="{{highlight_question}}" class="best-question-section">
+    <view class="section-title">⭐ 最佳提问</view>
+    <view class="bq-card">
+      <text class="bq-text">"{{highlight_question}}"</text>
+      <text class="bq-label">AI认为这是你本次最出色的提问！</text>
+    </view>
+  </view>
+
+  <!-- AI反馈评语 -->
+  <view class="feedback-section">
+    <view class="section-title">📝 AI教练点评</view>
+    <view class="feedback-card">
+      <text class="feedback-text">{{feedback}}</text>
+    </view>
+  </view>
+
+  <!-- ====== AI学院新增：成就解锁弹窗 ====== -->
+  <view class="achievement-popup-mask" wx:if="{{showAchievementPopup && achievementsUnlocked.length > 0}}" bindtap="closeAchievementPopup">
+    <view class="achievement-popup" catchtap="">
+      <view class="ap-header">
+        <text class="ap-title">🏆 成就解锁！</text>
+        <text class="ap-count">{{achievementsUnlocked.length}}个新成就</text>
+      </view>
+      <scroll-view scroll-y class="ap-list">
+        <view class="ap-item" wx:for="{{achievementsUnlocked}}" wx:key="id"
+              style="--ac-color:{{item.badge_color || '#e94560'}}">
+          <view class="ap-icon-wrap" style="border-color:{{item.badge_color || '#e94560'}}; background:{{(item.badge_color || '#e94560')}}15">
+            <text class="ap-icon">{{item.icon}}</text>
+          </view>
+          <view class="ap-info">
+            <text class="ap-name">{{item.name}}</text>
+            <text class="ap-desc">{{item.description}}</text>
+          </view>
+          <view class="ap-xp">+{{item.xp_reward}}XP</view>
+        </view>
+      </scroll-view>
+      <view class="ap-close-btn" bindtap="closeAchievementPopup">
+        <text>太棒了！</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons">
+    <view class="btn-secondary" bindtap="retrain">🔄 重新训练</view>
+    <view class="btn-primary" bindtap="goHistory">📋 查看记录</view>
+    <view class="btn-back" bindtap="goBackList">🏠 返回场景</view>
+  </view>
+
+  <!-- 安全底部 -->
+  <view class="safe-bottom"></view>
+</view>

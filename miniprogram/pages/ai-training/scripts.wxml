@@ -1,0 +1,42 @@
+<!-- pages/ai-training/scripts.wxml -->
+<view class="container">
+  <!-- 分类Tab -->
+  <scroll-view class="category-scroll" scroll-x>
+    <view class="categories">
+      <view wx:for="{{categories}}" wx:key="name"
+            class="cat-item {{activeCategory == item.name ? 'active' : ''}}"
+            bindtap="switchCategory" data-name="{{item.name}}">
+        <text>{{item.icon}} {{item.name}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 性格筛选 -->
+  <view class="personality-filter">
+    <view class="pf-item {{activePersonality == '' ? 'active' : ''}}" bindtap="filterPersonality" data-type="">全部</view>
+    <view class="pf-item red {{activePersonality == 'red' ? 'active' : ''}}" bindtap="filterPersonality" data-type="red">🔴红色</view>
+    <view class="pf-item yellow {{activePersonality == 'yellow' ? 'active' : ''}}" bindtap="filterPersonality" data-type="yellow">🟡黄色</view>
+    <view class="pf-item blue {{activePersonality == 'blue' ? 'active' : ''}}" bindtap="filterPersonality" data-type="blue">🔵蓝色</view>
+    <view class="pf-item green {{activePersonality == 'green' ? 'active' : ''}}" bindtap="filterPersonality" data-type="green">🟢绿色</view>
+  </view>
+
+  <!-- 话术列表 -->
+  <view class="script-list">
+    <view wx:for="{{filteredScripts}}" wx:key="id" class="script-card">
+      <view class="script-header" bindtap="toggleScript" data-id="{{item.id}}">
+        <view class="script-scenario">{{item.scenario}}</view>
+        <view wx:if="{{item.personality_type}}" class="script-personality {{item.personality_type}}">
+          {{item.personality_type == 'red' ? '红色' : item.personality_type == 'yellow' ? '黄色' : item.personality_type == 'blue' ? '蓝色' : '绿色'}}
+        </view>
+      </view>
+      <view class="script-body {{expandedId == item.id ? 'expanded' : ''}}">
+        <view class="script-content">{{item.script_content}}</view>
+        <view wx:if="{{item.tips}}" class="script-tips">💡 {{item.tips}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{filteredScripts.length == 0}}" class="empty">
+      <text>暂无话术内容</text>
+    </view>
+  </view>
+</view>

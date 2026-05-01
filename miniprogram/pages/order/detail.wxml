@@ -1,0 +1,88 @@
+<!-- 订单详情 -->
+<view class="page">
+  <view wx:if="{{order}}">
+    <!-- 状态 -->
+    <view class="status-header" style="background: {{order.statusColor}}">
+      <text class="status-text">{{order.statusText}}</text>
+      <text class="status-desc">{{statusDesc}}</text>
+    </view>
+
+    <!-- 收货地址 -->
+    <view class="address-card" wx:if="{{order.shipping_address}}">
+      <view class="address-info">
+        <text class="address-name">{{order.shipping_name || '收货人'}} {{order.shipping_phone || ''}}</text>
+        <text class="address-detail">{{order.shipping_address}}</text>
+      </view>
+    </view>
+
+    <!-- 商品列表 -->
+    <view class="section-card">
+      <view class="card-title">商品信息</view>
+      <view class="goods-item" wx:for="{{order.items}}" wx:key="id">
+        <image class="goods-img" src="{{item.main_image || item.product_image || '/images/default-product.png'}}" mode="aspectFill"></image>
+        <view class="goods-info">
+          <text class="goods-name line-2">{{item.product_name}}</text>
+          <text class="goods-spec" wx:if="{{item.specs}}">{{item.specs}}</text>
+          <view class="goods-bottom">
+            <text class="goods-price">¥{{item.price}}</text>
+            <text class="goods-qty">×{{item.quantity}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 订单信息 -->
+    <view class="section-card">
+      <view class="card-title">订单信息</view>
+      <view class="info-row">
+        <text class="info-label">订单编号</text>
+        <text class="info-value copyable" bindtap="copyText" data-text="{{order.order_no}}">{{order.order_no}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">下单时间</text>
+        <text class="info-value">{{order.created_at}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">支付时间</text>
+        <text class="info-value">{{order.paid_at || '—'}}</text>
+      </view>
+      <view class="info-row" wx:if="{{order.tracking_no}}">
+        <text class="info-label">快递单号</text>
+        <text class="info-value copyable" bindtap="copyText" data-text="{{order.tracking_no}}">{{order.tracking_no}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">商品总额</text>
+        <text class="info-value">¥{{order.total_amount}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">运费</text>
+        <text class="info-value">免运费</text>
+      </view>
+      <view class="info-row total">
+        <text class="info-label">实付金额</text>
+        <text class="info-value total-amount">¥{{order.total_amount}}</text>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-bar">
+      <view class="action-btn cancel" wx:if="{{order.status == 0 || order.status == 1}}" bindtap="cancelOrder">取消订单</view>
+      <view class="action-btn confirm" wx:if="{{order.status == 2}}" bindtap="confirmOrder">确认收货</view>
+    </view>
+  </view>
+
+  <view class="loading-state" wx:if="{{!order && loading}}">
+    <view class="loading-dots">
+      <view class="dot"></view>
+      <view class="dot"></view>
+      <view class="dot"></view>
+    </view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <view class="empty-state" wx:if="{{!order && !loading && loaded}}">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">订单不存在</text>
+    <text class="empty-hint">请检查订单链接是否正确</text>
+  </view>
+</view>

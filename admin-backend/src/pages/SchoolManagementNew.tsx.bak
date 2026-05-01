@@ -1,0 +1,2199 @@
+// 商学院管理页面 - 现代化重新设计 (API集成版)
+import React, { useState, useEffect } from 'react';
+import {
+  Card,
+  Table,
+  Button,
+  Tag,
+  Space,
+  Input,
+  DatePicker,
+  Select,
+  Form,
+  Row,
+  Col,
+  Statistic,
+  Progress,
+  Badge,
+  Modal,
+  message,
+  Dropdown,
+  Menu,
+  Avatar,
+  Descriptions,
+  Divider,
+  Timeline,
+  Steps,
+  Tooltip,
+  Tabs,
+  Typography,
+  Alert,
+  Empty,
+  List,
+  Rate,
+  Switch,
+  Upload,
+  Image,
+  Spin,
+  Skeleton
+} from 'antd';
+import {
+  BookOutlined,
+  VideoCameraOutlined,
+  FileTextOutlined,
+  TrophyOutlined,
+  EyeOutlined,
+  LikeOutlined,
+  CommentOutlined,
+  TeamOutlined,
+  ClockCircleOutlined,
+  CrownOutlined,
+  FireOutlined,
+  StarOutlined,
+  BarChartOutlined,
+  DownloadOutlined,
+  ShareAltOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  FilterOutlined,
+  PlayCircleOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  UserOutlined,
+  CalendarOutlined,
+  SortAscendingOutlined,
+  MoreOutlined,
+  SettingOutlined,
+  ThunderboltOutlined,
+  GiftOutlined,
+  BulbOutlined,
+  FlagOutlined,
+  CompassOutlined,
+  RobotOutlined,
+  MessageOutlined,
+  AudioOutlined,
+  CodeOutlined,
+  CloudDownloadOutlined,
+  HistoryOutlined,
+  ExperimentOutlined,
+  FundOutlined,
+  SafetyOutlined,
+  SolutionOutlined,
+  SyncOutlined,
+  LoadingOutlined
+} from '@ant-design/icons';
+import './SchoolManagement.css';
+
+// 导入API服务
+import {
+  VideoDataService,
+  BookDataService,
+  ScriptDataService,
+  SchoolStatisticsService,
+  GlobalDataService,
+  apiClient
+} from '../services/dataService';
+
+const { Title, Text, Paragraph } = Typography;
+const { TabPane } = Tabs;
+const { RangePicker } = DatePicker;
+const { Option } = Select;
+const { Search } = Input;
+
+// 学习内容类型枚举
+enum ContentType {
+  VIDEO = 'video',
+  BOOK = 'book',
+  SCRIPT = 'script',
+  COURSE = 'course',
+  QUIZ = 'quiz'
+}
+
+// 难度级别枚举
+enum DifficultyLevel {
+  BEGINNER = 'beginner',
+  INTERMEDIATE = 'intermediate',
+  ADVANCED = 'advanced'
+}
+
+// 内容状态枚举
+enum ContentStatus {
+  PUBLISHED = 'published',
+  DRAFT = 'draft',
+  DISABLED = 'disabled'
+}
+
+// 学习内容分类
+enum ContentCategory {
+  PRODUCT_KNOWLEDGE = 'product_knowledge',
+  SALES_SKILLS = 'sales_skills',
+  TEAM_MANAGEMENT = 'team_management',
+  CUSTOMER_SERVICE = 'customer_service',
+  BRAND_CULTURE = 'brand_culture',
+  MARKETING = 'marketing',
+  SELF_DEVELOPMENT = 'self_development'
+}
+
+// 分类配置
+const categoryConfig = {
+  [ContentCategory.PRODUCT_KNOWLEDGE]: { name: '产品知识', color: '#1890ff', icon: <BulbOutlined /> },
+  [ContentCategory.SALES_SKILLS]: { name: '销售技巧', color: '#52c41a', icon: <ThunderboltOutlined /> },
+  [ContentCategory.TEAM_MANAGEMENT]: { name: '团队管理', color: '#fa8c16', icon: <TeamOutlined /> },
+  [ContentCategory.CUSTOMER_SERVICE]: { name: '客户服务', color: '#722ed1', icon: <MessageOutlined /> },
+  [ContentCategory.BRAND_CULTURE]: { name: '品牌文化', color: '#13c2c2', icon: <FlagOutlined /> },
+  [ContentCategory.MARKETING]: { name: '营销推广', color: '#eb2f96', icon: <FundOutlined /> },
+  [ContentCategory.SELF_DEVELOPMENT]: { name: '自我提升', color: '#fa541c', icon: <UserOutlined /> },
+};
+
+// 难度配置
+const difficultyConfig = {
+  [DifficultyLevel.BEGINNER]: { name: '初级', color: 'green', icon: <SafetyOutlined /> },
+  [DifficultyLevel.INTERMEDIATE]: { name: '中级', color: 'orange', icon: <CompassOutlined /> },
+  [DifficultyLevel.ADVANCED]: { name: '高级', color: 'red', icon: <ExperimentOutlined /> },
+};
+
+// 状态配置
+const statusConfig = {
+  [ContentStatus.PUBLISHED]: { name: '已发布', color: 'success' },
+  [ContentStatus.DRAFT]: { name: '草稿', color: 'warning' },
+  [ContentStatus.DISABLED]: { name: '禁用', color: 'error' },
+};
+
+// 模拟商学院统计数据
+const mockSchoolStats = {
+  // 内容统计
+  contentStats: {
+    totalVideos: 45,
+    totalBooks: 28,
+    totalScripts: 120,
+    totalCourses: 15,
+    totalQuizzes: 36,
+  },
+  // 用户统计
+  userStats: {
+    totalUsers: 856,
+    learningUsers: 432,
+    practiceUsers: 189,
+    activeUsers: 254,
+    completionRate: 68.5,
+  },
+  // 学习统计
+  learningStats: {
+    totalLearningTime: 28450, // 小时
+    averageLearningTime: 2.8, // 小时/人
+    averageCompletionRate: 72.3, // 百分比
+    totalPointsAwarded: 125800,
+    averageUserPoints: 486,
+  },
+  // 热门内容
+  popularContent: [
+    { id: '1', title: '静莱美产品深度解析', type: ContentType.VIDEO, category: ContentCategory.PRODUCT_KNOWLEDGE, views: 1234, likes: 89, rating: 4.8 },
+    { id: '2', title: '销售心理学实战技巧', type: ContentType.BOOK, category: ContentCategory.SALES_SKILLS, views: 980, likes: 76, rating: 4.7 },
+    { id: '3', title: '产品介绍开场白', type: ContentType.SCRIPT, category: ContentCategory.SALES_SKILLS, views: 2450, likes: 152, rating: 4.9 },
+    { id: '4', title: '高效销售沟通技巧', type: ContentType.VIDEO, category: ContentCategory.SALES_SKILLS, views: 1567, likes: 94, rating: 4.6 },
+    { id: '5', title: '团队管理与激励', type: ContentType.COURSE, category: ContentCategory.TEAM_MANAGEMENT, views: 879, likes: 68, rating: 4.5 },
+  ],
+  // 学习进度
+  learningProgress: [
+    { category: ContentCategory.PRODUCT_KNOWLEDGE, progress: 85, color: '#1890ff', completed: 28, total: 33 },
+    { category: ContentCategory.SALES_SKILLS, progress: 67, color: '#52c41a', completed: 19, total: 28 },
+    { category: ContentCategory.TEAM_MANAGEMENT, progress: 42, color: '#fa8c16', completed: 8, total: 19 },
+    { category: ContentCategory.CUSTOMER_SERVICE, progress: 38, color: '#722ed1', completed: 6, total: 16 },
+    { category: ContentCategory.BRAND_CULTURE, progress: 92, color: '#13c2c2', completed: 12, total: 13 },
+    { category: ContentCategory.MARKETING, progress: 56, color: '#eb2f96', completed: 9, total: 16 },
+  ],
+  // 积分排行榜
+  pointsRanking: [
+    { rank: 1, name: '张三', avatar: '张', points: 1250, level: '钻石代理', growth: 12.5 },
+    { rank: 2, name: '李四', avatar: '李', points: 980, level: '黄金代理', growth: 8.3 },
+    { rank: 3, name: '王五', avatar: '王', points: 850, level: '黄金代理', growth: -2.1 },
+    { rank: 4, name: '赵六', avatar: '赵', points: 720, level: '白银代理', growth: 15.8 },
+    { rank: 5, name: '钱七', avatar: '钱', points: 650, level: '白银代理', growth: 6.4 },
+  ],
+  // 话术统计数据
+  scriptStats: {
+    totalScripts: 120,
+    practicedScripts: 89,
+    averageSuccessRate: 68.5,
+    hotScripts: [
+      { title: '价格异议处理话术', usage: 345, success: 78, difficulty: DifficultyLevel.INTERMEDIATE },
+      { title: '团队招募邀约话术', usage: 189, success: 65, difficulty: DifficultyLevel.ADVANCED },
+      { title: '产品推荐开场白', usage: 521, success: 82, difficulty: DifficultyLevel.BEGINNER },
+    ],
+  },
+};
+
+// 模拟学习视频数据
+const mockVideoData = [
+  {
+    id: 'VID20260325001',
+    title: '静莱美产品深度解析',
+    description: '详细介绍静莱美全系列产品特点、成分功效和使用方法',
+    category: ContentCategory.PRODUCT_KNOWLEDGE,
+    difficulty: DifficultyLevel.BEGINNER,
+    duration: 1200, // 秒
+    views: 1234,
+    likes: 89,
+    comments: 23,
+    rating: 4.8,
+    status: ContentStatus.PUBLISHED,
+    thumbnail: '/images/video-thumbnail-1.jpg',
+    createdAt: '2026-03-20 10:30:00',
+    instructor: '王老师',
+    tags: ['产品知识', '入门必看', '热门']
+  },
+  {
+    id: 'VID20260325002',
+    title: '高效销售沟通技巧',
+    description: '学习如何与客户建立信任关系，提升销售转化率',
+    category: ContentCategory.SALES_SKILLS,
+    difficulty: DifficultyLevel.INTERMEDIATE,
+    duration: 1800,
+    views: 1567,
+    likes: 94,
+    comments: 18,
+    rating: 4.6,
+    status: ContentStatus.PUBLISHED,
+    thumbnail: '/images/video-thumbnail-2.jpg',
+    createdAt: '2026-03-18 14:20:00',
+    instructor: '李教授',
+    tags: ['销售技巧', '沟通训练', '实战演练']
+  },
+  {
+    id: 'VID20260325003',
+    title: '团队管理与激励',
+    description: '学习如何有效管理团队，提升团队凝聚力和执行力',
+    category: ContentCategory.TEAM_MANAGEMENT,
+    difficulty: DifficultyLevel.ADVANCED,
+    duration: 2400,
+    views: 879,
+    likes: 68,
+    comments: 12,
+    rating: 4.5,
+    status: ContentStatus.PUBLISHED,
+    thumbnail: '/images/video-thumbnail-3.jpg',
+    createdAt: '2026-03-15 09:15:00',
+    instructor: '张总监',
+    tags: ['团队管理', '领导力', '高级课程']
+  },
+  {
+    id: 'VID20260325004',
+    title: '新媒体营销策略',
+    description: '学习利用社交媒体和短视频平台推广产品',
+    category: ContentCategory.MARKETING,
+    difficulty: DifficultyLevel.ADVANCED,
+    duration: 2100,
+    views: 0,
+    likes: 0,
+    comments: 0,
+    rating: 0,
+    status: ContentStatus.DRAFT,
+    thumbnail: '/images/video-thumbnail-4.jpg',
+    createdAt: '2026-03-25 11:45:00',
+    instructor: '陈老师',
+    tags: ['营销推广', '新媒体', '抖音运营']
+  },
+];
+
+// 模拟话术数据
+const mockScriptData = [
+  {
+    id: 'SCRIPT001',
+    title: '产品介绍开场白',
+    description: '简洁有力的产品介绍开场话术，快速吸引客户注意力',
+    category: ContentCategory.SALES_SKILLS,
+    difficulty: DifficultyLevel.BEGINNER,
+    usageCount: 521,
+    successRate: 82,
+    practiceCount: 345,
+    status: ContentStatus.PUBLISHED,
+    tags: ['开场白', '产品介绍', '基础话术'],
+    content: `您好，我是静莱美的代理商，我们的产品专注于美容护肤领域，采用天然植物精华，帮助改善皮肤问题。请问您平时有什么护肤方面的困扰吗？`
+  },
+  {
+    id: 'SCRIPT002',
+    title: '价格异议处理话术',
+    description: '应对客户价格异议的专业话术，帮助完成销售',
+    category: ContentCategory.SALES_SKILLS,
+    difficulty: DifficultyLevel.INTERMEDIATE,
+    usageCount: 345,
+    successRate: 78,
+    practiceCount: 189,
+    status: ContentStatus.PUBLISHED,
+    tags: ['异议处理', '价格谈判', '成交技巧'],
+    content: `我理解您对价格的关注。我们的产品虽然价格稍高，但采用的都是高品质原材料，效果明显且安全。相比效果和安全性，这个价格是非常合理的。`
+  },
+  {
+    id: 'SCRIPT003',
+    title: '团队招募邀约话术',
+    description: '吸引优秀人才加入团队的邀约话术',
+    category: ContentCategory.TEAM_MANAGEMENT,
+    difficulty: DifficultyLevel.ADVANCED,
+    usageCount: 189,
+    successRate: 65,
+    practiceCount: 89,
+    status: ContentStatus.PUBLISHED,
+    tags: ['团队招募', '邀约技巧', '人才发展'],
+    content: `我发现您在销售方面很有潜力，我们团队正在寻找像您这样的优秀人才。加入我们不仅可以获得稳定的收入，还能获得系统的培训和成长机会。`
+  },
+];
+
+// 模拟电子书数据
+const mockBookData = [
+  {
+    id: 'BOOK001',
+    title: '销售心理学实战技巧',
+    author: '张伟',
+    description: '深入解析销售心理学原理，帮助销售人员更好理解客户需求',
+    category: ContentCategory.SALES_SKILLS,
+    difficulty: DifficultyLevel.INTERMEDIATE,
+    pages: 320,
+    fileSize: 12.5, // MB
+    fileFormat: 'PDF',
+    downloadCount: 456,
+    rating: 4.7,
+    status: ContentStatus.PUBLISHED,
+    coverUrl: '/images/book-cover-1.jpg',
+    fileUrl: '/ebooks/sales-psychology.pdf',
+    uploadedAt: '2026-03-20 14:30:00',
+    tags: ['销售心理学', '实战技巧', '必读书籍'],
+    isbn: '978-7-123-45678-9',
+    publisher: '商业出版社',
+    publishedYear: 2025
+  },
+  {
+    id: 'BOOK002',
+    title: '高效团队管理',
+    author: '李明',
+    description: '从零开始建立高效团队的管理方法与实践案例',
+    category: ContentCategory.TEAM_MANAGEMENT,
+    difficulty: DifficultyLevel.ADVANCED,
+    pages: 280,
+    fileSize: 8.2,
+    fileFormat: 'EPUB',
+    downloadCount: 289,
+    rating: 4.5,
+    status: ContentStatus.PUBLISHED,
+    coverUrl: '/images/book-cover-2.jpg',
+    fileUrl: '/ebooks/team-management.epub',
+    uploadedAt: '2026-03-18 10:15:00',
+    tags: ['团队管理', '领导力', '管理工具'],
+    isbn: '978-7-234-56789-0',
+    publisher: '管理出版社',
+    publishedYear: 2024
+  },
+  {
+    id: 'BOOK003',
+    title: '产品营销策略',
+    author: '王芳',
+    description: '现代产品营销策略分析与实战案例研究',
+    category: ContentCategory.MARKETING,
+    difficulty: DifficultyLevel.INTERMEDIATE,
+    pages: 350,
+    fileSize: 15.3,
+    fileFormat: 'PDF',
+    downloadCount: 321,
+    rating: 4.6,
+    status: ContentStatus.PUBLISHED,
+    coverUrl: '/images/book-cover-3.jpg',
+    fileUrl: '/ebooks/marketing-strategy.pdf',
+    uploadedAt: '2026-03-15 16:45:00',
+    tags: ['营销策略', '市场分析', '品牌建设'],
+    isbn: '978-7-345-67890-1',
+    publisher: '营销出版社',
+    publishedYear: 2025
+  },
+  {
+    id: 'BOOK004',
+    title: '个人成长与自我管理',
+    author: '赵刚',
+    description: '提升个人效率与自我管理的实用方法',
+    category: ContentCategory.SELF_DEVELOPMENT,
+    difficulty: DifficultyLevel.BEGINNER,
+    pages: 220,
+    fileSize: 6.8,
+    fileFormat: 'MOBI',
+    downloadCount: 178,
+    rating: 4.4,
+    status: ContentStatus.DRAFT,
+    coverUrl: '/images/book-cover-4.jpg',
+    fileUrl: '/ebooks/personal-growth.mobi',
+    uploadedAt: '2026-03-25 09:20:00',
+    tags: ['个人成长', '时间管理', '效率提升'],
+    isbn: '978-7-456-78901-2',
+    publisher: '个人发展出版社',
+    publishedYear: 2023
+  },
+  {
+    id: 'BOOK005',
+    title: '客户服务卓越实践',
+    author: '刘洋',
+    description: '提升客户满意度与服务质量的专业指南',
+    category: ContentCategory.CUSTOMER_SERVICE,
+    difficulty: DifficultyLevel.INTERMEDIATE,
+    pages: 300,
+    fileSize: 11.2,
+    fileFormat: 'PDF',
+    downloadCount: 234,
+    rating: 4.8,
+    status: ContentStatus.PUBLISHED,
+    coverUrl: '/images/book-cover-5.jpg',
+    fileUrl: '/ebooks/customer-service.pdf',
+    uploadedAt: '2026-03-22 11:30:00',
+    tags: ['客户服务', '满意度提升', '服务标准'],
+    isbn: '978-7-567-89012-3',
+    publisher: '服务出版社',
+    publishedYear: 2024
+  }
+];
+
+const SchoolManagementNew: React.FC = () => {
+  const [form] = Form.useForm();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [showDetail, setShowDetail] = useState(false);
+  const [showAddContent, setShowAddContent] = useState(false);
+  const [showScriptPractice, setShowScriptPractice] = useState(false);
+  const [currentContent, setCurrentContent] = useState<any>(null);
+  const [currentScript, setCurrentScript] = useState<any>(null);
+  const [searchParams, setSearchParams] = useState<any>({});
+  
+  // API数据状态
+  const [loading, setLoading] = useState({
+    overall: false,
+    videos: false,
+    books: false,
+    scripts: false,
+    upload: false,
+    statistics: false
+  });
+  
+  const [schoolStats, setSchoolStats] = useState(mockSchoolStats);
+  const [videoList, setVideoList] = useState<any[]>([]);
+  const [scriptList, setScriptList] = useState<any[]>([]);
+  const [bookList, setBookList] = useState<any[]>([]);
+  const [aiPracticeMode, setAiPracticeMode] = useState(false);
+  const [showEbookUpload, setShowEbookUpload] = useState(false);
+  
+  // 数据统计
+  const [overallStats, setOverallStats] = useState<any>(null);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [popularContent, setPopularContent] = useState<any[]>([]);
+
+  // 数据获取函数
+  const fetchInitialData = async () => {
+    try {
+      setLoading(prev => ({ ...prev, overall: true, statistics: true }));
+      
+      // 获取总览数据
+      const initialData = await GlobalDataService.getInitialSchoolData();
+      setOverallStats(initialData.overallStats);
+      setRecentActivities(initialData.recentActivities);
+      setPopularContent(initialData.popularContent);
+      
+      // 获取各模块数据
+      const [videos, books, scripts] = await Promise.all([
+        VideoDataService.getVideos({ pageSize: 10 }),
+        BookDataService.getBooks({ pageSize: 10 }),
+        ScriptDataService.getScripts({ pageSize: 10 }),
+      ]);
+      
+      setVideoList(videos?.list || videos || []);
+      setBookList(books?.list || books || []);
+      setScriptList(scripts?.list || scripts || []);
+      
+      // 缓存数据
+      GlobalDataService.setCachedData('school_initial_data', {
+        overallStats: initialData.overallStats,
+        recentActivities: initialData.recentActivities,
+        popularContent: initialData.popularContent,
+        videos: videos?.list || videos || [],
+        books: books?.list || books || [],
+        scripts: scripts?.list || scripts || [],
+      });
+      
+    } catch (error) {
+      console.error('获取初始数据失败:', error);
+      message.error('数据加载失败，请重试');
+      
+      // 使用模拟数据作为后备
+      setVideoList(mockVideoData);
+      setBookList(mockBookData);
+      setScriptList(mockScriptData);
+    } finally {
+      setLoading(prev => ({ ...prev, overall: false, statistics: false }));
+    }
+  };
+
+  // 刷新视频数据
+  const refreshVideos = async () => {
+    try {
+      setLoading(prev => ({ ...prev, videos: true }));
+      const videos = await VideoDataService.getVideos(searchParams);
+      setVideoList(videos?.list || videos || []);
+      GlobalDataService.setCachedData('video_list', videos?.list || videos || []);
+      message.success('视频数据刷新成功');
+    } catch (error) {
+      console.error('刷新视频数据失败:', error);
+      setVideoList(mockVideoData);
+    } finally {
+      setLoading(prev => ({ ...prev, videos: false }));
+    }
+  };
+
+  // 刷新书籍数据
+  const refreshBooks = async () => {
+    try {
+      setLoading(prev => ({ ...prev, books: true }));
+      const books = await BookDataService.getBooks(searchParams);
+      setBookList(books?.list || books || []);
+      GlobalDataService.setCachedData('book_list', books?.list || books || []);
+      message.success('书籍数据刷新成功');
+    } catch (error) {
+      console.error('刷新书籍数据失败:', error);
+      setBookList(mockBookData);
+    } finally {
+      setLoading(prev => ({ ...prev, books: false }));
+    }
+  };
+
+  // 刷新话术数据
+  const refreshScripts = async () => {
+    try {
+      setLoading(prev => ({ ...prev, scripts: true }));
+      const scripts = await ScriptDataService.getScripts(searchParams);
+      setScriptList(scripts?.list || scripts || []);
+      GlobalDataService.setCachedData('script_list', scripts?.list || scripts || []);
+      message.success('话术数据刷新成功');
+    } catch (error) {
+      console.error('刷新话术数据失败:', error);
+      setScriptList(mockScriptData);
+    } finally {
+      setLoading(prev => ({ ...prev, scripts: false }));
+    }
+  };
+
+  // 处理电子书上传
+  const handleEbookUpload = async (file: File, metadata: any) => {
+    try {
+      setLoading(prev => ({ ...prev, upload: true }));
+      await BookDataService.uploadEbook(file, metadata);
+      await refreshBooks(); // 上传成功后刷新书籍列表
+      setShowEbookUpload(false);
+      return true;
+    } catch (error) {
+      console.error('电子书上传失败:', error);
+      return false;
+    } finally {
+      setLoading(prev => ({ ...prev, upload: false }));
+    }
+  };
+
+  // 处理删除电子书
+  const handleDeleteBook = async (id: string) => {
+    try {
+      await BookDataService.deleteBook(id);
+      setBookList(prev => prev.filter(book => book.id !== id));
+      message.success('电子书删除成功');
+    } catch (error) {
+      console.error('删除电子书失败:', error);
+      message.error('删除失败，请重试');
+    }
+  };
+
+  // 处理下载电子书
+  const handleDownloadBook = async (record: any) => {
+    try {
+      await BookDataService.downloadEbook(record.id);
+    } catch (error) {
+      console.error('下载电子书失败:', error);
+    }
+  };
+
+  // 组件挂载时获取数据
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  // 根据活动标签切换数据加载
+  useEffect(() => {
+    if (activeTab === 'videos' && videoList.length === 0) {
+      refreshVideos();
+    } else if (activeTab === 'books' && bookList.length === 0) {
+      refreshBooks();
+    } else if (activeTab === 'scripts' && scriptList.length === 0) {
+      refreshScripts();
+    }
+  }, [activeTab]);
+
+  // 搜索参数变化时刷新数据
+  useEffect(() => {
+    if (activeTab === 'videos') {
+      refreshVideos();
+    } else if (activeTab === 'books') {
+      refreshBooks();
+    } else if (activeTab === 'scripts') {
+      refreshScripts();
+    }
+  }, [searchParams]);
+
+  // 获取分类标签
+    const config = categoryConfig[category];
+    return (
+      <Tag color={config.color} icon={config.icon} style={{ borderRadius: '4px', border: 'none' }}>
+        {config.name}
+      </Tag>
+    );
+  };
+
+  // 获取难度标签
+  const getDifficultyTag = (difficulty: DifficultyLevel) => {
+    const config = difficultyConfig[difficulty];
+    return (
+      <Tag color={config.color} icon={config.icon} style={{ borderRadius: '4px', border: 'none' }}>
+        {config.name}
+      </Tag>
+    );
+  };
+
+  // 获取状态标签
+  const getStatusTag = (status: ContentStatus) => {
+    const config = statusConfig[status];
+    return (
+      <Tag color={config.color} style={{ borderRadius: '4px', border: 'none' }}>
+        {config.name}
+      </Tag>
+    );
+  };
+
+  // 格式化时长
+  const formatDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // 视频操作菜单
+  const videoActionMenu = (record: any) => (
+    <Menu
+      items={[
+        {
+          key: 'view',
+          label: '查看详情',
+          icon: <EyeOutlined />,
+          onClick: () => handleViewVideoDetail(record)
+        },
+        {
+          key: 'edit',
+          label: '编辑内容',
+          icon: <EditOutlined />,
+          onClick: () => handleEditVideo(record)
+        },
+        {
+          key: 'publish',
+          label: record.status === ContentStatus.PUBLISHED ? '取消发布' : '发布',
+          icon: record.status === ContentStatus.PUBLISHED ? <CloseCircleOutlined /> : <CheckCircleOutlined />,
+          onClick: () => handleTogglePublish(record)
+        },
+        {
+          type: 'divider'
+        },
+        {
+          key: 'delete',
+          label: '删除视频',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => handleDeleteVideo(record)
+        }
+      ]}
+    />
+  );
+
+  // 话术操作菜单
+  const scriptActionMenu = (record: any) => (
+    <Menu
+      items={[
+        {
+          key: 'practice',
+          label: 'AI话术练习',
+          icon: <RobotOutlined />,
+          onClick: () => handlePracticeScript(record)
+        },
+        {
+          key: 'view',
+          label: '查看详情',
+          icon: <EyeOutlined />,
+          onClick: () => handleViewScriptDetail(record)
+        },
+        {
+          key: 'edit',
+          label: '编辑话术',
+          icon: <EditOutlined />,
+          onClick: () => handleEditScript(record)
+        },
+        {
+          key: 'export',
+          label: '导出话术',
+          icon: <DownloadOutlined />,
+          onClick: () => handleExportScript(record)
+        },
+        {
+          type: 'divider'
+        },
+        {
+          key: 'delete',
+          label: '删除话术',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => handleDeleteScript(record)
+        }
+      ]}
+    />
+  );
+
+  // 电子书操作菜单
+  const bookActionMenu = (record: any) => (
+    <Menu
+      items={[
+        {
+          key: 'preview',
+          label: '预览电子书',
+          icon: <EyeOutlined />,
+          onClick: () => handlePreviewBook(record)
+        },
+        {
+          key: 'download',
+          label: '下载电子书',
+          icon: <DownloadOutlined />,
+          onClick: () => handleDownloadBook(record)
+        },
+        {
+          key: 'edit',
+          label: '编辑电子书',
+          icon: <EditOutlined />,
+          onClick: () => handleEditBook(record)
+        },
+        {
+          key: 'publish',
+          label: record.status === ContentStatus.PUBLISHED ? '取消发布' : '发布',
+          icon: record.status === ContentStatus.PUBLISHED ? <CloseCircleOutlined /> : <CheckCircleOutlined />,
+          onClick: () => handleTogglePublish(record)
+        },
+        {
+          type: 'divider'
+        },
+        {
+          key: 'delete',
+          label: '删除电子书',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => handleDeleteBook(record)
+        }
+      ]}
+    />
+  );
+
+  // 处理查看视频详情
+  const handleViewVideoDetail = (record: any) => {
+    setCurrentContent(record);
+    setShowDetail(true);
+  };
+
+  // 处理编辑视频
+  const handleEditVideo = (record: any) => {
+    message.info(`编辑视频 ${record.title}`);
+  };
+
+  // 处理切换发布状态
+  const handleTogglePublish = (record: any) => {
+    const newStatus = record.status === ContentStatus.PUBLISHED ? ContentStatus.DRAFT : ContentStatus.PUBLISHED;
+    message.success(`视频 ${record.title} 已${newStatus === ContentStatus.PUBLISHED ? '发布' : '取消发布'}`);
+  };
+
+  // 处理删除视频
+  const handleDeleteVideo = (record: any) => {
+    Modal.confirm({
+      title: '删除视频',
+      content: `确定要删除视频 "${record.title}" 吗？此操作不可恢复。`,
+      okType: 'danger',
+      onOk: () => {
+        message.success(`视频 "${record.title}" 已删除`);
+      }
+    });
+  };
+
+  // 处理AI话术练习
+  const handlePracticeScript = (record: any) => {
+    setCurrentScript(record);
+    setShowScriptPractice(true);
+    setAiPracticeMode(true);
+  };
+
+  // 处理下载电子书
+  const handleDownloadBook = (record: any) => {
+    message.success(`开始下载电子书: ${record.title}`);
+    // 模拟下载操作
+    setTimeout(() => {
+      message.success(`电子书 "${record.title}" 下载完成`);
+    }, 1000);
+  };
+
+  // 处理预览电子书
+  const handlePreviewBook = (record: any) => {
+    message.info(`预览电子书: ${record.title}`);
+  };
+
+  // 处理删除电子书
+  const handleDeleteBook = (record: any) => {
+    Modal.confirm({
+      title: '删除电子书',
+      content: `确定要删除电子书 "${record.title}" 吗？此操作不可恢复。`,
+      okType: 'danger',
+      onOk: () => {
+        // 从列表中移除电子书
+        const newBookList = bookList.filter(book => book.id !== record.id);
+        setBookList(newBookList);
+        message.success(`电子书 "${record.title}" 已删除`);
+      }
+    });
+  };
+
+  // 处理编辑电子书
+  const handleEditBook = (record: any) => {
+    message.info(`编辑电子书 ${record.title}`);
+  };
+
+  // 处理上传电子书
+  const handleUploadBook = () => {
+    message.info('打开电子书上传界面');
+    // 这里可以打开上传模态框
+  };
+
+  // 处理查看话术详情
+  const handleViewScriptDetail = (record: any) => {
+    setCurrentScript(record);
+    setShowDetail(true);
+  };
+
+  // 处理编辑话术
+  const handleEditScript = (record: any) => {
+    message.info(`编辑话术 ${record.title}`);
+  };
+
+  // 处理导出话术
+  const handleExportScript = (record: any) => {
+    message.info(`导出话术 ${record.title}`);
+  };
+
+  // 处理删除话术
+  const handleDeleteScript = (record: any) => {
+    Modal.confirm({
+      title: '删除话术',
+      content: `确定要删除话术 "${record.title}" 吗？此操作不可恢复。`,
+      okType: 'danger',
+      onOk: () => {
+        message.success(`话术 "${record.title}" 已删除`);
+      }
+    });
+  };
+
+  // 处理批量操作
+  const handleBatchAction = (action: string) => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要操作的内容');
+      return;
+    }
+
+    switch (action) {
+      case 'publish':
+        message.success(`已批量发布 ${selectedRowKeys.length} 个内容`);
+        setSelectedRowKeys([]);
+        break;
+      case 'delete':
+        Modal.confirm({
+          title: '批量删除',
+          content: `确定要批量删除 ${selectedRowKeys.length} 个内容吗？此操作不可恢复。`,
+          okType: 'danger',
+          onOk: () => {
+            message.success(`已批量删除 ${selectedRowKeys.length} 个内容`);
+            setSelectedRowKeys([]);
+          }
+        });
+        break;
+      case 'export':
+        message.success(`已批量导出 ${selectedRowKeys.length} 个内容`);
+        setSelectedRowKeys([]);
+        break;
+    }
+  };
+
+  // 处理搜索
+  const handleSearch = (values: any) => {
+    setSearchParams(values);
+    message.info('正在搜索学习内容...');
+  };
+
+  // 处理重置搜索
+  const handleReset = () => {
+    form.resetFields();
+    setSearchParams({});
+  };
+
+  // 处理添加内容
+  const handleAddContent = () => {
+    setShowAddContent(true);
+  };
+
+  // 视频表格列定义
+  const videoColumns = [
+    {
+      title: '视频标题',
+      key: 'title',
+      width: 250,
+      render: (record: any) => (
+        <div className="video-info-cell">
+          <div className="video-thumbnail">
+            <PlayCircleOutlined />
+          </div>
+          <div className="video-details">
+            <div className="video-title">{record.title}</div>
+            <div className="video-description">{record.description}</div>
+            <div className="video-tags">
+              {record.tags.map((tag: string, index: number) => (
+                <Tag key={index} size="small" color="blue">{tag}</Tag>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '分类',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      render: (category: ContentCategory) => getCategoryTag(category)
+    },
+    {
+      title: '难度',
+      dataIndex: 'difficulty',
+      key: 'difficulty',
+      width: 100,
+      render: (difficulty: DifficultyLevel) => getDifficultyTag(difficulty)
+    },
+    {
+      title: '时长',
+      dataIndex: 'duration',
+      key: 'duration',
+      width: 80,
+      render: (duration: number) => formatDuration(duration)
+    },
+    {
+      title: '数据',
+      key: 'stats',
+      width: 140,
+      render: (record: any) => (
+        <div className="video-stats">
+          <div className="stat-item">
+            <EyeOutlined /> {record.views}
+          </div>
+          <div className="stat-item">
+            <LikeOutlined /> {record.likes}
+          </div>
+          <div className="stat-item">
+            <Rate disabled defaultValue={record.rating} size="small" />
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 90,
+      render: (status: ContentStatus) => getStatusTag(status)
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      fixed: 'right' as const,
+      render: (record: any) => (
+        <Space>
+          <Tooltip title="观看视频">
+            <Button
+              type="text"
+              icon={<PlayCircleOutlined />}
+              style={{ color: 'var(--primary-color)' }}
+            />
+          </Tooltip>
+          <Dropdown overlay={videoActionMenu(record)} trigger={['click']}>
+            <Button type="text" icon={<MoreOutlined />} />
+          </Dropdown>
+        </Space>
+      )
+    }
+  ];
+
+  // 话术表格列定义
+  const scriptColumns = [
+    {
+      title: '话术标题',
+      key: 'title',
+      width: 220,
+      render: (record: any) => (
+        <div className="script-info-cell">
+          <div className="script-icon">
+            <MessageOutlined />
+          </div>
+          <div className="script-details">
+            <div className="script-title">{record.title}</div>
+            <div className="script-description">{record.description}</div>
+            <div className="script-tags">
+              {record.tags.map((tag: string, index: number) => (
+                <Tag key={index} size="small" color="green">{tag}</Tag>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '分类',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      render: (category: ContentCategory) => getCategoryTag(category)
+    },
+    {
+      title: '难度',
+      dataIndex: 'difficulty',
+      key: 'difficulty',
+      width: 100,
+      render: (difficulty: DifficultyLevel) => getDifficultyTag(difficulty)
+    },
+    {
+      title: '使用数据',
+      key: 'usage',
+      width: 140,
+      render: (record: any) => (
+        <div className="script-usage">
+          <div className="usage-item">
+            <Text strong>{record.usageCount}</Text> 次使用
+          </div>
+          <div className="usage-item">
+            <Progress percent={record.successRate} size="small" showInfo={false} />
+            <Text type="success">{record.successRate}% 成功率</Text>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '练习次数',
+      dataIndex: 'practiceCount',
+      key: 'practiceCount',
+      width: 100,
+      render: (count: number) => (
+        <Badge count={count} style={{ backgroundColor: 'var(--primary-color)' }} />
+      )
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 100,
+      fixed: 'right' as const,
+      render: (record: any) => (
+        <Space>
+          <Tooltip title="AI话术练习">
+            <Button
+              type="primary"
+              icon={<RobotOutlined />}
+              size="small"
+              onClick={() => handlePracticeScript(record)}
+            >
+              练习
+            </Button>
+          </Tooltip>
+          <Dropdown overlay={scriptActionMenu(record)} trigger={['click']}>
+            <Button type="text" icon={<MoreOutlined />} />
+          </Dropdown>
+        </Space>
+      )
+    }
+  ];
+
+  // 电子书表格列定义
+  const bookColumns = [
+    {
+      title: '书籍信息',
+      key: 'bookInfo',
+      width: 280,
+      render: (record: any) => (
+        <div className="book-info-cell">
+          <div className="book-cover">
+            <FileTextOutlined />
+          </div>
+          <div className="book-details">
+            <div className="book-title">{record.title}</div>
+            <div className="book-meta">
+              <Text type="secondary">作者: {record.author}</Text>
+              <Text type="secondary">出版社: {record.publisher}</Text>
+            </div>
+            <div className="book-description">{record.description}</div>
+            <div className="book-tags">
+              {record.tags.map((tag: string, index: number) => (
+                <Tag key={index} size="small" color="purple">{tag}</Tag>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '分类',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      render: (category: ContentCategory) => getCategoryTag(category)
+    },
+    {
+      title: '难度',
+      dataIndex: 'difficulty',
+      key: 'difficulty',
+      width: 100,
+      render: (difficulty: DifficultyLevel) => getDifficultyTag(difficulty)
+    },
+    {
+      title: '文件信息',
+      key: 'fileInfo',
+      width: 150,
+      render: (record: any) => (
+        <div className="file-info">
+          <div className="file-format">
+            <Tag color="blue" style={{ marginBottom: 4 }}>{record.fileFormat}</Tag>
+          </div>
+          <div className="file-size">
+            <Text type="secondary">{record.fileSize} MB</Text>
+          </div>
+          <div className="file-pages">
+            <Text type="secondary">{record.pages} 页</Text>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '下载数据',
+      key: 'downloadStats',
+      width: 140,
+      render: (record: any) => (
+        <div className="download-stats">
+          <div className="download-count">
+            <Text strong>{record.downloadCount}</Text> 次下载
+          </div>
+          <div className="book-rating">
+            <Rate disabled defaultValue={record.rating} size="small" />
+            <Text type="secondary">({record.rating})</Text>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 90,
+      render: (status: ContentStatus) => getStatusTag(status)
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 120,
+      fixed: 'right' as const,
+      render: (record: any) => (
+        <Space>
+          <Tooltip title="下载电子书">
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              size="small"
+              onClick={() => handleDownloadBook(record)}
+            >
+              下载
+            </Button>
+          </Tooltip>
+          <Dropdown overlay={bookActionMenu(record)} trigger={['click']}>
+            <Button type="text" icon={<MoreOutlined />} />
+          </Dropdown>
+        </Space>
+      )
+    }
+  ];
+
+  // 行选择配置
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (keys: React.Key[]) => {
+      setSelectedRowKeys(keys);
+    }
+  };
+
+  // 内容详情模态框
+  const renderContentDetail = () => {
+    if (!currentContent && !currentScript) return null;
+
+    const content = currentContent || currentScript;
+    const isVideo = !!currentContent;
+
+    return (
+      <Modal
+        title={
+          <Space>
+            {isVideo ? <VideoCameraOutlined /> : <MessageOutlined />}
+            <span>{isVideo ? '视频详情' : '话术详情'} - {content.title}</span>
+          </Space>
+        }
+        open={showDetail}
+        onCancel={() => {
+          setShowDetail(false);
+          setCurrentContent(null);
+          setCurrentScript(null);
+        }}
+        width={700}
+        footer={[
+          <Button key="close" onClick={() => setShowDetail(false)}>
+            关闭
+          </Button>,
+          <Button key="practice" type="primary" icon={isVideo ? <PlayCircleOutlined /> : <RobotOutlined />}>
+            {isVideo ? '观看视频' : 'AI话术练习'}
+          </Button>
+        ]}
+      >
+        <div className="content-detail-container">
+          {/* 基本信息 */}
+          <Card title="基本信息" size="small">
+            <Row gutter={16}>
+              <Col span={8}>
+                <Descriptions.Item label="标题">{content.title}</Descriptions.Item>
+              </Col>
+              <Col span={8}>
+                <Descriptions.Item label="分类">
+                  {getCategoryTag(content.category)}
+                </Descriptions.Item>
+              </Col>
+              <Col span={8}>
+                <Descriptions.Item label="难度">
+                  {getDifficultyTag(content.difficulty)}
+                </Descriptions.Item>
+              </Col>
+            </Row>
+            {isVideo && (
+              <Row gutter={16} style={{ marginTop: 8 }}>
+                <Col span={8}>
+                  <Descriptions.Item label="讲师">{content.instructor}</Descriptions.Item>
+                </Col>
+                <Col span={8}>
+                  <Descriptions.Item label="时长">{formatDuration(content.duration)}</Descriptions.Item>
+                </Col>
+                <Col span={8}>
+                  <Descriptions.Item label="评分">
+                    <Rate disabled defaultValue={content.rating} />
+                  </Descriptions.Item>
+                </Col>
+              </Row>
+            )}
+          </Card>
+
+          {/* 内容描述 */}
+          <Card title="内容描述" size="small" style={{ marginTop: 16 }}>
+            <Paragraph>{content.description}</Paragraph>
+            <div className="tags-container">
+              {content.tags.map((tag: string, index: number) => (
+                <Tag key={index} color="blue">{tag}</Tag>
+              ))}
+            </div>
+          </Card>
+
+          {/* 统计数据 */}
+          <Card title="统计数据" size="small" style={{ marginTop: 16 }}>
+            <Row gutter={16}>
+              {isVideo ? (
+                <>
+                  <Col span={6}>
+                    <Statistic title="观看次数" value={content.views} />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic title="点赞数" value={content.likes} />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic title="评论数" value={content.comments} />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic title="评分" value={content.rating} suffix="/5" />
+                  </Col>
+                </>
+              ) : (
+                <>
+                  <Col span={6}>
+                    <Statistic title="使用次数" value={content.usageCount} />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic title="成功率" value={content.successRate} suffix="%" />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic title="练习次数" value={content.practiceCount} />
+                  </Col>
+                  <Col span={6}>
+                    <div className="status-container">
+                      {getStatusTag(content.status)}
+                    </div>
+                  </Col>
+                </>
+              )}
+            </Row>
+          </Card>
+
+          {/* 话术内容预览 */}
+          {!isVideo && (
+            <Card title="话术内容预览" size="small" style={{ marginTop: 16 }}>
+              <div className="script-preview">
+                <Paragraph>{content.content}</Paragraph>
+              </div>
+            </Card>
+          )}
+        </div>
+      </Modal>
+    );
+  };
+
+  // AI话术练习模态框
+  const renderScriptPractice = () => {
+    if (!currentScript) return null;
+
+    return (
+      <Modal
+        title={
+          <Space>
+            <RobotOutlined />
+            <span>AI话术练习 - {currentScript.title}</span>
+          </Space>
+        }
+        open={showScriptPractice}
+        onCancel={() => {
+          setShowScriptPractice(false);
+          setCurrentScript(null);
+          setAiPracticeMode(false);
+        }}
+        width={800}
+        footer={null}
+      >
+        <div className="ai-practice-container">
+          <Alert
+            message="AI话术练习系统"
+            description="系统将模拟真实客户场景，帮助您练习话术表达和应对能力。支持语音输入和智能评分。"
+            type="info"
+            showIcon
+            style={{ marginBottom: 20 }}
+          />
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Card title="练习设置" size="small">
+                <Form layout="vertical">
+                  <Form.Item label="练习模式">
+                    <Select defaultValue="scenario" style={{ width: '100%' }}>
+                      <Option value="scenario">场景模拟</Option>
+                      <Option value="qa">问答练习</Option>
+                      <Option value="roleplay">角色扮演</Option>
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label="难度级别">
+                    <Select defaultValue={currentScript.difficulty} style={{ width: '100%' }}>
+                      <Option value="beginner">初级</Option>
+                      <Option value="intermediate">中级</Option>
+                      <Option value="advanced">高级</Option>
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label="语音输入">
+                    <Switch checked={aiPracticeMode} onChange={setAiPracticeMode} />
+                  </Form.Item>
+                  <Form.Item>
+                    <Button type="primary" block icon={<PlayCircleOutlined />}>
+                      开始练习
+                    </Button>
+                  </Form.Item>
+                </Form>
+              </Card>
+            </Col>
+            <Col span={12}>
+              <Card title="当前话术" size="small">
+                <div className="current-script">
+                  <div className="script-content">{currentScript.content}</div>
+                  <div className="script-stats">
+                    <Space>
+                      <Tag color="green">成功率: {currentScript.successRate}%</Tag>
+                      <Tag color="blue">使用: {currentScript.usageCount}次</Tag>
+                      <Tag color="orange">练习: {currentScript.practiceCount}次</Tag>
+                    </Space>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          </Row>
+
+          <Card title="练习场景示例" size="small" style={{ marginTop: 16 }}>
+            <List
+              dataSource={[
+                '客户提出价格异议时',
+                '客户对产品效果有疑问时',
+                '客户需要产品推荐时',
+                '客户犹豫不决时',
+                '客户想要更多优惠时'
+              ]}
+              renderItem={(item, index) => (
+                <List.Item>
+                  <Text>{item}</Text>
+                  <Button size="small" type="link" onClick={() => message.info(`开始练习场景: ${item}`)}>
+                    开始练习
+                  </Button>
+                </List.Item>
+              )}
+            />
+          </Card>
+        </div>
+      </Modal>
+    );
+  };
+
+  // 添加内容模态框 - 简化版本
+  const renderAddContent = () => {
+    return (
+      <Modal
+        title="添加学习内容"
+        open={showAddContent}
+        onCancel={() => setShowAddContent(false)}
+        width={600}
+        footer={null}
+      >
+        <div style={{ padding: '20px 0', textAlign: 'center' }}>
+          <p>添加内容功能已就绪</p>
+          <p>待编译问题解决后恢复完整功能</p>
+        </div>
+      </Modal>
+    );
+  };
+
+  return (
+    <div className="school-management-page">
+      {/* 页面头部 */}
+      <div className="page-header">
+        <div className="header-left">
+          <BookOutlined className="header-icon" />
+          <Title level={2} className="page-title">静莱美商学院</Title>
+          <Text type="secondary" className="page-subtitle">
+            代理商学习和培训平台，提升销售能力和业务水平
+          </Text>
+        </div>
+        <div className="header-actions">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAddContent}
+            className="primary-action-btn"
+          >
+            添加内容
+          </Button>
+          <Button icon={<DownloadOutlined />}>
+            导出数据
+          </Button>
+          <Button icon={<ShareAltOutlined />}>
+            分享
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI统计卡片 */}
+      <div className="kpi-cards-container">
+        <Row gutter={16}>
+          <Col xs={24} sm={12} md={6}>
+            <Card className="kpi-card">
+              <Statistic
+                title="学习内容总数"
+                value={schoolStats.contentStats.totalVideos + schoolStats.contentStats.totalBooks + schoolStats.contentStats.totalScripts}
+                prefix={<BookOutlined />}
+                valueStyle={{ color: 'var(--primary-color)' }}
+              />
+              <div className="kpi-trend">
+                <Text type="secondary">
+                  视频: {schoolStats.contentStats.totalVideos} | 书籍: {schoolStats.contentStats.totalBooks} | 话术: {schoolStats.contentStats.totalScripts}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className="kpi-card">
+              <Statistic
+                title="学习用户数"
+                value={schoolStats.userStats.learningUsers}
+                suffix={`/${schoolStats.userStats.totalUsers}`}
+                prefix={<TeamOutlined />}
+                valueStyle={{ color: 'var(--success-color)' }}
+              />
+              <div className="kpi-trend">
+                <Text type="secondary">
+                  活跃用户: {schoolStats.userStats.activeUsers} | 练习用户: {schoolStats.userStats.practiceUsers}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className="kpi-card">
+              <Statistic
+                title="总学习时长"
+                value={schoolStats.learningStats.totalLearningTime}
+                suffix="小时"
+                prefix={<ClockCircleOutlined />}
+                valueStyle={{ color: 'var(--warning-color)' }}
+              />
+              <div className="kpi-trend">
+                <Text type="secondary">
+                  平均: {schoolStats.learningStats.averageLearningTime}小时/人
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className="kpi-card">
+              <Statistic
+                title="总积分奖励"
+                value={schoolStats.learningStats.totalPointsAwarded}
+                prefix={<TrophyOutlined />}
+                valueStyle={{ color: 'var(--processing-color)' }}
+              />
+              <div className="kpi-trend">
+                <Text type="secondary">
+                  平均积分: {schoolStats.learningStats.averageUserPoints}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+
+      {/* 主内容标签页 */}
+      <Card className="main-content-card">
+        <Tabs activeKey={activeTab} onChange={setActiveTab} className="school-tabs">
+          {/* 总览标签页 */}
+          <TabPane tab="总览" key="overview" icon={<BarChartOutlined />}>
+            <div className="overview-content">
+              <Row gutter={16}>
+                {/* 学习进度 */}
+                <Col xs={24} lg={12}>
+                  <Card className="overview-card" title="分类学习进度">
+                    {schoolStats.learningProgress.map((item) => (
+                      <div key={item.category} className="progress-item">
+                        <div className="progress-header">
+                          <Space>
+                            {getCategoryTag(item.category)}
+                            <Text strong>{item.progress}%</Text>
+                          </Space>
+                          <Text type="secondary">
+                            {item.completed}/{item.total} 完成
+                          </Text>
+                        </div>
+                        <Progress 
+                          percent={item.progress} 
+                          strokeColor={item.color}
+                          className="progress-bar"
+                        />
+                      </div>
+                    ))}
+                  </Card>
+                </Col>
+
+                {/* 热门内容 */}
+                <Col xs={24} lg={12}>
+                  <Card className="overview-card" title="热门学习内容" extra={<Button type="link">更多</Button>}>
+                    <List
+                      dataSource={schoolStats.popularContent}
+                      renderItem={(item, index) => (
+                        <List.Item className="popular-content-item">
+                          <div className="popular-content-rank">
+                            {index <= 2 ? (
+                              <CrownOutlined style={{ 
+                                fontSize: 18, 
+                                color: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : '#cd7f32' 
+                              }} />
+                            ) : (
+                              <Text strong>{index + 1}</Text>
+                            )}
+                          </div>
+                          <div className="popular-content-info">
+                            <div className="content-title">
+                              <Text strong>{item.title}</Text>
+                            </div>
+                            <div className="content-meta">
+                              {getCategoryTag(item.category)}
+                              <Space>
+                                <span><EyeOutlined /> {item.views}</span>
+                                <span><LikeOutlined /> {item.likes}</span>
+                              </Space>
+                            </div>
+                          </div>
+                          <div className="popular-content-rating">
+                            <Rate disabled defaultValue={item.rating} size="small" />
+                          </div>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+
+              <Row gutter={16} style={{ marginTop: 16 }}>
+                {/* 积分排行榜 */}
+                <Col xs={24} lg={12}>
+                  <Card className="overview-card" title="积分排行榜" extra={<Button type="link">查看全部</Button>}>
+                    <List
+                      dataSource={schoolStats.pointsRanking}
+                      renderItem={(item) => (
+                        <List.Item className="ranking-item">
+                          <div className="ranking-rank">
+                            {item.rank <= 3 ? (
+                              <Badge 
+                                count={item.rank}
+                                style={{ 
+                                  backgroundColor: item.rank === 1 ? '#ffd700' : item.rank === 2 ? '#c0c0c0' : '#cd7f32',
+                                  fontSize: '12px'
+                                }}
+                              />
+                            ) : (
+                              <Text strong>{item.rank}</Text>
+                            )}
+                          </div>
+                          <div className="ranking-user">
+                            <Avatar size="small" style={{ backgroundColor: 'var(--primary-color)' }}>
+                              {item.avatar}
+                            </Avatar>
+                            <div className="user-info">
+                              <div className="user-name">{item.name}</div>
+                              <div className="user-level">{item.level}</div>
+                            </div>
+                          </div>
+                          <div className="ranking-points">
+                            <Text strong style={{ fontSize: 16 }}>
+                              {item.points.toLocaleString()}
+                            </Text>
+                            <div className={`growth ${item.growth > 0 ? 'growth-up' : 'growth-down'}`}>
+                              {item.growth > 0 ? '+' : ''}{item.growth}%
+                            </div>
+                          </div>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                </Col>
+
+                {/* 话术统计 */}
+                <Col xs={24} lg={12}>
+                  <Card className="overview-card" title="话术统计概览">
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Statistic
+                          title="总话术数"
+                          value={schoolStats.scriptStats.totalScripts}
+                          valueStyle={{ color: 'var(--primary-color)' }}
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <Statistic
+                          title="练习次数"
+                          value={schoolStats.scriptStats.practicedScripts}
+                          valueStyle={{ color: 'var(--success-color)' }}
+                        />
+                      </Col>
+                      <Col span={24}>
+                        <div className="script-success-rate">
+                          <div className="rate-header">
+                            <Text>平均成功率</Text>
+                            <Text strong style={{ color: 'var(--success-color)' }}>
+                              {schoolStats.scriptStats.averageSuccessRate}%
+                            </Text>
+                          </div>
+                          <Progress 
+                            percent={schoolStats.scriptStats.averageSuccessRate} 
+                            strokeColor="#52c41a"
+                            size="small"
+                          />
+                        </div>
+                      </Col>
+                    </Row>
+                    <Divider />
+                    <div className="hot-scripts">
+                      <Text strong>热门话术</Text>
+                      {schoolStats.scriptStats.hotScripts.map((script, index) => (
+                        <div key={index} className="hot-script-item">
+                          <Text>{script.title}</Text>
+                          <Space>
+                            <Text type="secondary">{script.usage}次</Text>
+                            <Tag color="success">{script.success}% 成功率</Tag>
+                          </Space>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </Col>
+              </Row>
+            </div>
+          </TabPane>
+
+          {/* 学习视频标签页 */}
+          <TabPane tab="学习视频" key="videos" icon={<VideoCameraOutlined />}>
+            <div className="videos-content">
+              {/* 筛选和搜索区域 */}
+              <Card className="filter-card">
+                <Row gutter={16} align="middle">
+                  <Col flex="auto">
+                    <Search
+                      placeholder="搜索视频标题、讲师、描述..."
+                      allowClear
+                      enterButton={<SearchOutlined />}
+                      size="large"
+                      style={{ maxWidth: 400 }}
+                    />
+                  </Col>
+                  <Col>
+                    <Space>
+                      <Select defaultValue="all" style={{ width: 120 }}>
+                        <Option value="all">全部分类</Option>
+                        {Object.values(ContentCategory).map(category => (
+                          <Option key={category} value={category}>
+                            {categoryConfig[category].name}
+                          </Option>
+                        ))}
+                      </Select>
+                      <Select defaultValue="published" style={{ width: 120 }}>
+                        <Option value="published">已发布</Option>
+                        <Option value="draft">草稿</Option>
+                        <Option value="all">全部状态</Option>
+                      </Select>
+                      <Button icon={<FilterOutlined />}>
+                        高级筛选
+                      </Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Card>
+
+              {/* 批量操作栏 */}
+              {selectedRowKeys.length > 0 && (
+                <div className="batch-action-bar">
+                  <Space>
+                    <Text>已选择 {selectedRowKeys.length} 个视频</Text>
+                    <Button size="small" onClick={() => setSelectedRowKeys([])}>
+                      取消选择
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => handleBatchAction('publish')}
+                    >
+                      批量发布
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() => handleBatchAction('export')}
+                    >
+                      批量导出
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      danger
+                      onClick={() => handleBatchAction('delete')}
+                    >
+                      批量删除
+                    </Button>
+                  </Space>
+                </div>
+              )}
+
+              {/* 视频列表表格 */}
+              <Card className="videos-table-card">
+                <div className="table-header">
+                  <Title level={4}>学习视频管理</Title>
+                  <Space>
+                    <Text type="secondary">共 {videoList.length} 个视频</Text>
+                    <Button icon={<SyncOutlined />} onClick={() => setVideoList([...mockVideoData])}>
+                      刷新
+                    </Button>
+                  </Space>
+                </div>
+                <Table
+                  columns={videoColumns}
+                  dataSource={videoList}
+                  rowKey="id"
+                  rowSelection={rowSelection}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total) => `共 ${total} 个视频`
+                  }}
+                  scroll={{ x: 1000 }}
+                  size="middle"
+                />
+              </Card>
+            </div>
+          </TabPane>
+
+          {/* 话术通关标签页 */}
+          <TabPane tab="话术通关" key="scripts" icon={<MessageOutlined />}>
+            <div className="scripts-content">
+              <Alert
+                message="AI话术通关系统"
+                description="包含场景模拟训练、性格色彩成交话术和常见问题话术。支持语音练习和智能评分。"
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+
+              {/* 话术分类导航 */}
+              <Card className="scripts-nav-card">
+                <div className="scripts-nav">
+                  {Object.values(ContentCategory).map(category => (
+                    <div key={category} className="nav-item">
+                      {getCategoryTag(category)}
+                      <Badge count={5} style={{ backgroundColor: 'var(--primary-color)', marginLeft: 8 }} />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* 话术列表 */}
+              <Card className="scripts-table-card">
+                <div className="table-header">
+                  <Title level={4}>话术内容管理</Title>
+                  <Space>
+                    <Text type="secondary">共 {scriptList.length} 条话术</Text>
+                    <Button icon={<PlusOutlined />} type="primary">
+                      添加话术
+                    </Button>
+                  </Space>
+                </div>
+                <Table
+                  columns={scriptColumns}
+                  dataSource={scriptList}
+                  rowKey="id"
+                  rowSelection={rowSelection}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total) => `共 ${total} 条话术`
+                  }}
+                  scroll={{ x: 1000 }}
+                  size="middle"
+                />
+              </Card>
+
+              {/* 话术练习推荐 */}
+              <Card className="scripts-recommend-card" title="推荐练习">
+                <Row gutter={16}>
+                  {scriptList.slice(0, 3).map((script, index) => (
+                    <Col xs={24} md={8} key={index}>
+                      <Card
+                        className="script-practice-card"
+                        actions={[
+                          <Button 
+                            key="practice" 
+                            type="primary" 
+                            icon={<RobotOutlined />}
+                            onClick={() => handlePracticeScript(script)}
+                          >
+                            AI练习
+                          </Button>,
+                          <Button key="view" icon={<EyeOutlined />}>
+                            查看详情
+                          </Button>
+                        ]}
+                      >
+                        <div className="script-practice-header">
+                          <MessageOutlined className="script-icon" />
+                          <div className="script-practice-title">
+                            <Text strong>{script.title}</Text>
+                            <Text type="secondary">{script.description}</Text>
+                          </div>
+                        </div>
+                        <div className="script-practice-stats">
+                          <Row gutter={8}>
+                            <Col span={12}>
+                              <Statistic title="使用次数" value={script.usageCount} />
+                            </Col>
+                            <Col span={12}>
+                              <Statistic title="成功率" value={script.successRate} suffix="%" />
+                            </Col>
+                          </Row>
+                        </div>
+                        <div className="script-practice-tags">
+                          {script.tags.map((tag, idx) => (
+                            <Tag key={idx} size="small">{tag}</Tag>
+                          ))}
+                        </div>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </Card>
+            </div>
+          </TabPane>
+
+          {/* 学习书籍标签页 */}
+          <TabPane tab="学习书籍" key="books" icon={<FileTextOutlined />}>
+            <div className="books-content">
+              <Alert
+                message="电子书学习资源"
+                description="代理商推荐阅读的电子书资源，支持在线阅读和下载学习。"
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+
+              {/* 筛选和搜索区域 */}
+              <Card className="filter-card">
+                <Row gutter={16} align="middle">
+                  <Col flex="auto">
+                    <Search
+                      placeholder="搜索书籍标题、作者、描述..."
+                      allowClear
+                      enterButton={<SearchOutlined />}
+                      size="large"
+                      style={{ maxWidth: 400 }}
+                    />
+                  </Col>
+                  <Col>
+                    <Space>
+                      <Select defaultValue="all" style={{ width: 120 }}>
+                        <Option value="all">全部分类</Option>
+                        {Object.values(ContentCategory).map(category => (
+                          <Option key={category} value={category}>
+                            {categoryConfig[category].name}
+                          </Option>
+                        ))}
+                      </Select>
+                      <Select defaultValue="published" style={{ width: 120 }}>
+                        <Option value="published">已发布</Option>
+                        <Option value="draft">草稿</Option>
+                        <Option value="all">全部状态</Option>
+                      </Select>
+                      <Button 
+                        type="primary" 
+                        icon={<CloudDownloadOutlined />}
+                        onClick={() => setShowEbookUpload(true)}
+                      >
+                        上传电子书
+                      </Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Card>
+
+              {/* 批量操作栏 */}
+              {selectedRowKeys.length > 0 && (
+                <div className="batch-action-bar">
+                  <Space>
+                    <Text>已选择 {selectedRowKeys.length} 本电子书</Text>
+                    <Button size="small" onClick={() => setSelectedRowKeys([])}>
+                      取消选择
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => handleBatchAction('publish')}
+                    >
+                      批量发布
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() => handleBatchAction('export')}
+                    >
+                      批量导出
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      danger
+                      onClick={() => handleBatchAction('delete')}
+                    >
+                      批量删除
+                    </Button>
+                  </Space>
+                </div>
+              )}
+
+              {/* 电子书列表表格 */}
+              <Card className="books-table-card">
+                <div className="table-header">
+                  <Title level={4}>电子书资源管理</Title>
+                  <Space>
+                    <Text type="secondary">共 {bookList.length} 本电子书</Text>
+                    <Button 
+                      icon={<SyncOutlined />} 
+                      onClick={() => setBookList([...mockBookData])}
+                    >
+                      刷新
+                    </Button>
+                  </Space>
+                </div>
+                <Table
+                  columns={bookColumns}
+                  dataSource={bookList}
+                  rowKey="id"
+                  rowSelection={rowSelection}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total) => `共 ${total} 本电子书`
+                  }}
+                  scroll={{ x: 1200 }}
+                  size="middle"
+                />
+              </Card>
+
+              {/* 电子书统计 */}
+              <Card className="books-stats-card" title="电子书统计">
+                <Row gutter={16}>
+                  <Col span={6}>
+                    <Statistic
+                      title="总电子书数"
+                      value={bookList.length}
+                      valueStyle={{ color: 'var(--primary-color)' }}
+                    />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic
+                      title="总下载量"
+                      value={bookList.reduce((sum, book) => sum + book.downloadCount, 0)}
+                      valueStyle={{ color: 'var(--success-color)' }}
+                    />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic
+                      title="平均评分"
+                      value={bookList.length > 0 ? (bookList.reduce((sum, book) => sum + book.rating, 0) / bookList.length).toFixed(1) : 0}
+                      suffix="/5"
+                      valueStyle={{ color: 'var(--warning-color)' }}
+                    />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic
+                      title="总文件大小"
+                      value={bookList.reduce((sum, book) => sum + book.fileSize, 0).toFixed(1)}
+                      suffix="MB"
+                      valueStyle={{ color: 'var(--processing-color)' }}
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            </div>
+          </TabPane>
+
+          {/* 行动日志标签页 */}
+          <TabPane tab="行动日志" key="actionLogs" icon={<HistoryOutlined />}>
+            <div className="action-logs-content">
+              <Alert
+                message="行动日志系统"
+                description="记录代理商的行动轨迹，追踪目标进度，提供个性化的成长建议。"
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+              
+              <Row gutter={16}>
+                <Col xs={24}>
+                  <Card className="action-logs-card" title="目标进度追踪">
+                    {[
+                      { title: '本月销售目标', target: 50000, current: 32000, unit: '元', progress: 64 },
+                      { title: '团队发展目标', target: 2, current: 1, unit: '人', progress: 50 },
+                      { title: '学习目标', target: 3, current: 2, unit: '个', progress: 67 },
+                      { title: '话术练习目标', target: 10, current: 8, unit: '个', progress: 80 },
+                    ].map((goal, index) => (
+                      <div key={index} className="goal-item">
+                        <div className="goal-header">
+                          <div>
+                            <Text strong>{goal.title}</Text>
+                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                              目标: {goal.target.toLocaleString()} {goal.unit} | 当前: {goal.current.toLocaleString()} {goal.unit}
+                            </div>
+                          </div>
+                          <Text strong style={{ color: goal.progress >= 80 ? 'var(--success-color)' : goal.progress >= 50 ? 'var(--warning-color)' : 'var(--error-color)' }}>
+                            {goal.progress}%
+                          </Text>
+                        </div>
+                        <Progress 
+                          percent={goal.progress} 
+                          strokeColor={goal.progress >= 80 ? '#52c41a' : goal.progress >= 50 ? '#faad14' : '#ff4d4f'}
+                        />
+                      </div>
+                    ))}
+                  </Card>
+                </Col>
+              </Row>
+
+              <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col xs={24} md={12}>
+                  <Card className="action-logs-card" title="近期学习记录">
+                    <Timeline>
+                      <Timeline.Item color="green">完成了"销售心理学"学习 (2026-03-25)</Timeline.Item>
+                      <Timeline.Item color="green">练习了"价格异议处理话术" (2026-03-24)</Timeline.Item>
+                      <Timeline.Item color="blue">观看了"高效沟通技巧"视频 (2026-03-23)</Timeline.Item>
+                      <Timeline.Item color="blue">通过了"产品知识"测试 (2026-03-22)</Timeline.Item>
+                      <Timeline.Item color="gray">加入了"团队管理"课程 (2026-03-21)</Timeline.Item>
+                    </Timeline>
+                  </Card>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Card className="action-logs-card" title="学习建议">
+                    <List
+                      dataSource={[
+                        '建议加强"客户服务"相关内容的学习',
+                        '尝试挑战更高级别的话术练习',
+                        '观看"新媒体营销策略"视频提升推广能力',
+                        '参与团队管理课程，提升领导力',
+                        '完成"自我提升"类书籍阅读'
+                      ]}
+                      renderItem={(item) => (
+                        <List.Item>
+                          <BulbOutlined style={{ color: 'var(--warning-color)', marginRight: 8 }} />
+                          <Text>{item}</Text>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+            </div>
+          </TabPane>
+        </Tabs>
+      </Card>
+
+      {/* 内容详情模态框 */}
+      {renderContentDetail()}
+
+      {/* AI话术练习模态框 */}
+      {renderScriptPractice()}
+
+      {/* 添加内容模态框 */}
+      {renderAddContent()}
+
+      {/* 电子书上传模态框 - 暂时禁用 */}
+      {/* {renderEbookUploadModal()} */}
+    </div>
+  );
+};
+
+export default SchoolManagementNew;

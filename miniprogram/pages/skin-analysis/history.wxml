@@ -1,0 +1,54 @@
+<!-- 皮肤分析历史记录 -->
+<view class="page">
+  <view class="disclaimer-bar">
+    <text class="icon">⚠️</text>
+    <text>本功能仅作护肤参考，不涉及医疗诊断</text>
+  </view>
+
+  <!-- 列表 -->
+  <view class="report-list" wx:if="{{!empty}}">
+    <view class="report-card" wx:for="{{reports}}" wx:key="id" bindtap="viewDetail" data-id="{{item.id}}">
+      <image class="rc-thumb" src="{{item.image_url}}" mode="aspectFill"></image>
+      <view class="rc-body">
+        <view class="rc-top">
+          <text class="rc-type">{{skinTypeName[item.skin_type] || '待定'}}</text>
+          <text class="rc-count">检测到 {{item.issue_count || 0}} 个问题</text>
+        </view>
+        <text class="rc-time">{{item.created_at}}</text>
+        <view class="rc-severity" wx:if="{{item.total_severity > 0}}">
+          <text class="sev-label">严重度</text>
+          <view class="sev-bar-bg"><view class="sev-bar-fill" style="width:{{Math.min(100, item.total_severity * 10)}}%"></view></view>
+          <text class="sev-val">{{item.total_severity}}</text>
+        </view>
+      </view>
+      <text class="rc-arrow">›</text>
+    </view>
+
+    <view class="load-more" wx:if="{{hasMore}}">上拉加载更多</view>
+    <view class="no-more" wx:if="{{!hasMore && reports.length > 0}}">— 已显示全部记录 —</view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{empty && !loading}}">
+    <text class="empty-icon">🔬</text>
+    <text class="empty-text">暂无检测记录</text>
+    <text class="empty-hint">快去拍一张照片体验AI皮肤分析吧！</text>
+    <button class="btn-go" size="mini" bindtap="goAnalyze">开始检测 →</button>
+  </view>
+
+  <!-- 电子书快捷入口 -->
+  <view class="ebook-entry" wx:if="{{reports.length > 0 || !empty}}">
+    <view class="entry-card" bindtap="goEbooks">
+      <view class="entry-left">
+        <text class="entry-icon">📚</text>
+        <view class="entry-info">
+          <text class="entry-title">护肤知识电子书</text>
+          <text class="entry-desc">学习专业护肤知识，科学呵护肌肤</text>
+        </view>
+      </view>
+      <text class="entry-arrow">查看全部 ›</text>
+    </view>
+  </view>
+
+  <safe-bottom></safe-bottom>
+</view>

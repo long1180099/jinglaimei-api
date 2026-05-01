@@ -1,0 +1,81 @@
+<view class="page">
+  <!-- 顶部Banner -->
+  <view class="ebook-banner">
+    <text class="banner-title">精选电子书</text>
+    <text class="banner-desc">随时随地，开启学习之旅</text>
+    <view class="banner-notice">内部学习资料，仅限授权查看</view>
+  </view>
+
+  <!-- 搜索栏 -->
+  <view class="search-bar" wx:if="{{showSearch}}">
+    <view class="search-input-wrap">
+      <input class="search-input" placeholder="搜索书名、作者..." value="{{keyword}}" bindinput="onSearchInput" bindconfirm="doSearch" confirm-type="search" />
+      <view class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">
+        <text>x</text>
+      </view>
+    </view>
+    <view class="search-btn" bindtap="doSearch">搜索</view>
+    <view class="search-cancel" bindtap="toggleSearch">取消</view>
+  </view>
+
+  <!-- Tab切换（横向滚动） -->
+  <scroll-view class="tab-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="tab-bar">
+      <view class="tab-item {{activeTab == item.key ? 'active' : ''}}"
+            wx:for="{{tabs}}" wx:key="key"
+            bindtap="switchTab" data-key="{{item.key}}" data-catname="{{item.catName}}">
+        {{item.label}}
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 操作栏（搜索按钮） -->
+  <view class="action-bar" wx:if="{{!showSearch}}">
+    <view class="search-toggle" bindtap="toggleSearch">
+      <text class="search-icon">🔍</text>
+      <text class="search-hint">搜索书名、作者</text>
+    </view>
+  </view>
+
+  <!-- 电子书列表 -->
+  <scroll-view class="book-list" scroll-y>
+    <view wx:for="{{books}}" wx:key="id">
+      <view class="top-badge" wx:if="{{item.is_top}}">置顶</view>
+      <view class="book-card" bindtap="goRead" data-id="{{item.id}}" data-index="{{index}}">
+        <image class="book-cover" src="{{item.cover_url || '/images/default-book.png'}}" mode="aspectFill"></image>
+        <view class="book-info">
+          <text class="book-title line-2">{{item.title}}</text>
+          <text class="book-author">{{item.author || '未知作者'}}</text>
+          <view class="book-meta">
+            <text class="book-format tag tag-primary">{{item.file_format || 'PDF'}}</text>
+            <text class="book-views">{{item.views || 0}} 阅读</text>
+          </view>
+          <view class="book-progress" wx:if="{{item.progress > 0}}">
+            <view class="progress-bar">
+              <view class="progress-fill" style="width:{{item.progress}}%"></view>
+            </view>
+            <text class="progress-text">{{item.progress}}%</text>
+          </view>
+        </view>
+        <view class="book-actions" catchtap="toggleFavorite" data-id="{{item.id}}" data-index="{{index}}">
+          <text class="fav-icon {{item.is_favorited ? 'faved' : ''}}">{{item.is_favorited ? '❤' : '♡'}}</text>
+        </view>
+        <view class="book-arrow">›</view>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:if="{{!isLoggedIn && loaded}}">
+      <text class="empty-icon">🔒</text>
+      <text class="empty-text">请先登录后查看电子书</text>
+      <view class="empty-btn" bindtap="goLogin">去登录</view>
+    </view>
+
+    <view class="empty-state" wx:elif="{{books.length == 0 && !loading && loaded}}">
+      <text class="empty-icon">📚</text>
+      <text class="empty-text">暂无电子书</text>
+    </view>
+
+    <view class="load-more" wx:if="{{loading}}">加载中...</view>
+    <view class="load-more" wx:if="{{!hasMore && books.length > 0 && !loading}}">- 没有更多了 -</view>
+  </scroll-view>
+</view>

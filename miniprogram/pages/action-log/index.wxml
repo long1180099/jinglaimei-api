@@ -1,0 +1,715 @@
+<!-- 行动日志 v2.0 — 日历驱动 -->
+<view class="page">
+  <!-- ========== 顶部 Banner ========== -->
+  <view class="action-banner">
+    <view class="banner-top">
+      <text class="banner-title">📋 行动日志</text>
+      <view class="today-btn" bindtap="goToday">今天</view>
+    </view>
+    <view class="streak-row">
+      <text class="streak-icon">🔥</text>
+      <text class="streak-text">连续 {{streakCount}} 天</text>
+      <text class="max-stroke" wx:if="{{maxStreak > 0}}"> | 最高 {{maxStreak}} 天</text>
+    </view>
+    <text class="motivation-text" style="color:{{motivationColor}}">{{motivationText}}</text>
+  </view>
+
+  <!-- ========== 视图模式切换 ========== -->
+  <view class="mode-switch">
+    <view class="mode-btn {{viewMode == 'month' ? 'active' : ''}}" bindtap="switchViewMode" data-mode="month">📅 月历</view>
+    <view class="mode-btn {{viewMode == 'week' ? 'active' : ''}}" bindtap="switchViewMode" data-mode="week">📆 周历</view>
+    <view class="mode-btn {{viewMode == 'day' ? 'active' : ''}}" bindtap="switchViewMode" data-mode="day">📝 详情</view>
+  </view>
+
+  <!-- ========== 月历视图 ========== -->
+  <scroll-view class="main-content" scroll-y wx:if="{{viewMode != 'day'}}">
+    <!-- 月份导航 -->
+    <view class="month-nav" wx:if="{{viewMode == 'month'}}">
+      <text class="nav-arrow" bindtap="prevMonth">◀</text>
+      <text class="month-label">{{currentYear}}年{{currentMonth}}月</text>
+      <text class="nav-arrow" bindtap="nextMonth">▶</text>
+    </view>
+
+    <!-- 周历导航 -->
+    <view class="month-nav" wx:if="{{viewMode == 'week'}}">
+      <text class="nav-arrow" bindtap="prevWeek">◀</text>
+      <text class="month-label">{{weekDays[0].dateStr}} ~ {{weekDays[6].dateStr}}</text>
+      <text class="nav-arrow" bindtap="nextWeek">▶</text>
+    </view>
+
+    <!-- 统计概览卡片 -->
+    <view class="stats-overview">
+      <view class="so-item">
+        <text class="so-val">{{thisMonthCheckins}}</text>
+        <text class="so-label">本月打卡</text>
+      </view>
+      <view class="so-divider"></view>
+      <view class="so-item">
+        <text class="so-val">{{thisMonthAvgScore}}</text>
+        <text class="so-label">平均分</text>
+      </view>
+      <view class="so-divider"></view>
+      <view class="so-item">
+        <text class="so-val streak-color">{{streakCount}}</text>
+        <text class="so-label">连续天数</text>
+      </view>
+    </view>
+
+    <!-- 星期头（月历+周历共用） -->
+    <view class="weekday-header" wx:if="{{viewMode == 'month'}}">
+      <text class="wd-item" wx:for="{{weekdaysCN}}" wx:key="*this">{{item}}</text>
+    </view>
+
+    <!-- 月历网格 6x7 -->
+    <view class="calendar-grid" wx:if="{{viewMode == 'month'}}">
+      <view class="cal-day {{item.type}} {{item.isToday ? 'today' : ''}} {{item.isSelected ? 'selected' : ''}}"
+            wx:for="{{calendarDays}}" wx:key="dateStr"
+            bindtap="selectDate" data-date="{{item.dateStr}}" data-type="{{item.type}}">
+        <text class="cal-num">{{item.day}}</text>
+        <!-- 打卡标记圆点 -->
+        <view class="check-dot level-{{item.scoreLevel}}" wx:if="{{item.hasLog && item.type == 'current'}}"></view>
+        <view class="today-ring" wx:if="{{item.isToday && item.type == 'current'}}"></view>
+      </view>
+    </view>
+
+    <!-- 周历网格 1x7 -->
+    <view class="calendar-grid week-grid" wx:if="{{viewMode == 'week'}}">
+      <view class="cal-day current {{item.isToday ? 'today' : ''}} {{item.isSelected ? 'selected' : ''}}"
+            wx:for="{{weekDays}}" wx:key="dateStr"
+            bindtap="selectDate" data-date="{{item.dateStr}}">
+        <text class="cal-wd">{{item.weekday}}</text>
+        <text class="cal-num">{{item.day}}</text>
+        <view class="check-dot level-{{item.hasLog ? (item.score >= 70 ? 2 : 1) : 0}}" wx:if="{{item.hasLog}}"></view>
+        <view class="today-ring" wx:if="{{item.isToday}}"></view>
+        <view class="score-badge" wx:if="{{item.hasLog}}">{{item.score}}</view>
+      </view>
+    </view>
+
+    <!-- 图例 -->
+    <view class="legend" wx:if="{{viewMode == 'month'}}">
+      <view class="legend-item"><view class="legend-dot level-3"></view><text>≥90优秀</text></view>
+      <view class="legend-item"><view class="legend-dot level-2"></view><text>≥70良好</text></view>
+      <view class="legend-item"><view class="legend-dot level-1"></view><text>≥40一般</text></view>
+      <view class="legend-item"><view class="legend-dot level-0"></view><text>待提升</text></view>
+    </view>
+
+    <!-- 选中日期的每日详情面板 -->
+    <view class="daily-detail-card" wx:if="{{showDailyDetail}}">
+      <view class="dd-header">
+        <text class="dd-date">{{selectedDate}}</text>
+        <text class="dd-weekday" wx:if="{{dailyDetail}}">
+          完成率 {{dailyCompleteRate}}% | 心态 {{mindsetTotal}}分
+          <text wx:if="{{showEnergyBar}}"> 能量 {{energyTotal}}/30</text>
+        </text>
+        <text class="dd-close" bindtap="closeDailyDetail">✕</text>
+      </view>
+
+      <!-- 子Tab切换 -->
+      <view class="subtab-row">
+        <view class="subtab {{activeSubTab=='tasks'?'active':''}}" bindtap="switchSubTab" data-key="tasks">📋 任务</view>
+        <view class="subtab {{activeSubTab=='mindset'?'active':''}}" bindtap="switchSubTab" data-key="mindset">🧠 心态</view>
+        <view class="subtab {{activeSubTab=='reflect'?'active':''}}" bindtap="switchSubTab" data-key="reflect">💭 反思</view>
+      </view>
+
+      <!-- ===== 任务Tab ===== -->
+      <scroll-view scroll-y class="subtab-content" wx:if="{{activeSubTab == 'tasks'}}">
+        <!-- 今日三件事聚焦区 -->
+        <view class="top-three-section">
+          <text class="tt-title">⭐ 今日三件事（聚焦最重要）</text>
+          <view class="tt-list" wx:if="{{topThreeItems.length > 0}}">
+            <view class="tt-item {{item.done ? 'done' : ''}}" wx:for="{{topThreeItems}}" wx:key="id">
+              <view class="tt-check {{item.done ? 'checked' : ''}}" bindtap="toggleTopThree" data-index="{{index}}">
+                <text wx:if="{{item.done}}">✓</text>
+              </view>
+              <text class="tt-task {{item.done ? 'done-txt' : ''}}">{{item.task}}</text>
+              <text class="tt-del" catchtap="removeTopThree" data-index="{{index}}">✕</text>
+            </view>
+          </view>
+          <view class="tt-add" wx:if="{{topThreeItems.length < 3}}">
+            <input class="tt-input" placeholder="添加一件最重要的事..." value="{{newTaskText}}" bindinput="onNewTaskInput" bindconfirm="addTopThree"/>
+            <text class="tt-add-btn" bindtap="addTopThree">+</text>
+          </view>
+        </view>
+
+        <!-- ABC分类任务 -->
+        <view class="abc-section">
+          <text class="abc-title">📌 全部事项</text>
+          <!-- A类 -->
+          <view class="abc-group">
+            <text class="abc-label" style="color:#e94560">🔴 A类 — 必须完成</text>
+            <view class="daily-item" wx:for="{{dailyItems}}" wx:key="id" wx:if="{{item.priority[0] == 'A'}}">
+              <view class="di-pri" style="background:#e94560">{{item.priority}}</view>
+              <text class="di-time" wx:if="{{item.time_range}}">{{item.time_range}}</text>
+              <text class="di-task {{item.is_completed ? 'completed' : ''}}">{{item.task}}</text>
+              <view class="di-check {{item.is_completed ? 'checked' : ''}}" bindtap="toggleDailyItem" data-id="{{item.id}}">
+                <text wx:if="{{item.is_completed}}">✓</text>
+              </view>
+            </view>
+          </view>
+          <!-- B类 -->
+          <view class="abc-group">
+            <text class="abc-label" style="color:#faad14">🟡 B类 — 应该完成</text>
+            <view class="daily-item" wx:for="{{dailyItems}}" wx:key="id" wx:if="{{item.priority[0] == 'B'}}">
+              <view class="di-pri" style="background:#faad14">{{item.priority}}</view>
+              <text class="di-time" wx:if="{{item.time_range}}">{{item.time_range}}</text>
+              <text class="di-task {{item.is_completed ? 'completed' : ''}}">{{item.task}}</text>
+              <view class="di-check {{item.is_completed ? 'checked' : ''}}" bindtap="toggleDailyItem" data-id="{{item.id}}">
+                <text wx:if="{{item.is_completed}}">✓</text>
+              </view>
+            </view>
+          </view>
+          <!-- C类 -->
+          <view class="abc-group">
+            <text class="abc-label" style="color:#52c41a">🟢 C类 — 尽量完成</text>
+            <view class="daily-item" wx:for="{{dailyItems}}" wx:key="id" wx:if="{{item.priority[0] == 'C'}}">
+              <view class="di-pri" style="background:#52c41a">{{item.priority}}</view>
+              <text class="di-time" wx:if="{{item.time_range}}">{{item.time_range}}</text>
+              <text class="di-task {{item.is_completed ? 'completed' : ''}}">{{item.task}}</text>
+              <view class="di-check {{item.is_completed ? 'checked' : ''}}" bindtap="toggleDailyItem" data-id="{{item.id}}">
+                <text wx:if="{{item.is_completed}}">✓</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 添加新事项 -->
+          <view class="add-item-row">
+            <picker mode="selector" range="{{priorities}}" value="{{newPriorityIdx}}" bindchange="onNewPriorityChange">
+              <view class="add-pri">{{priorities[newPriorityIdx]}}</view>
+            </picker>
+            <input class="add-time" placeholder="14:00-17:00" value="{{newTaskTime}}" bindinput="onNewTimeInput"/>
+            <input class="add-task-input" placeholder="输入事项..." value="{{newTaskText}}" bindinput="onNewTaskInput" bindconfirm="addDailyItem"/>
+            <view class="add-item-btn" bindtap="addDailyItem">+</view>
+          </view>
+        </view>
+
+        <!-- 保存按钮 -->
+        <view class="daily-save-row"><view class="daily-save-btn" bindtap="saveDailyLog">💾 保存日志</view></view>
+      </scroll-view>
+
+      <!-- ===== 心态Tab ===== -->
+      <scroll-view scroll-y class="subtab-content" wx:if="{{activeSubTab == 'mindset'}}">
+        <!-- 6维心态 -->
+        <view class="mindset-section">
+          <text class="ms-title">🧠 六维心态管理（每项10分）</text>
+          <view class="ms-grid">
+            <view class="ms-item">
+              <text class="ms-name">认真</text>
+              <slider class="ms-slider" min="0" max="10" value="{{mindset.serious}}" activeColor="#e94560" bindchange="onMindsetChange" data-key="serious"/>
+              <text class="ms-val">{{mindset.serious}}</text>
+            </view>
+            <view class="ms-item">
+              <text class="ms-name">乐观</text>
+              <slider class="ms-slider" min="0" max="10" value="{{mindset.optimistic}}" activeColor="#fa8c16" bindchange="onMindsetChange" data-key="optimistic"/>
+              <text class="ms-val">{{mindset.optimistic}}</text>
+            </view>
+            <view class="ms-item">
+              <text class="ms-name">自信</text>
+              <slider class="ms-slider" min="0" max="10" value="{{mindset.confident}}" activeColor="#1890ff" bindchange="onMindsetChange" data-key="confident"/>
+              <text class="ms-val">{{mindset.confident}}</text>
+            </view>
+            <view class="ms-item">
+              <text class="ms-name">坚守承诺</text>
+              <slider class="ms-slider" min="0" max="10" value="{{mindset.commitment}}" activeColor="#722ed1" bindchange="onMindsetChange" data-key="commitment"/>
+              <text class="ms-val">{{mindset.commitment}}</text>
+            </view>
+            <view class="ms-item">
+              <text class="ms-name">爱与奉献</text>
+              <slider class="ms-slider" min="0" max="10" value="{{mindset.love}}" activeColor="#eb2f96" bindchange="onMindsetChange" data-key="love"/>
+              <text class="ms-val">{{mindset.love}}</text>
+            </view>
+            <view class="ms-item">
+              <text class="ms-name">决不找借口</text>
+              <slider class="ms-slider" min="0" max="10" value="{{mindset.no_excuse}}" activeColor="#13c2c2" bindchange="onMindsetChange" data-key="no_excuse"/>
+              <text class="ms-val">{{mindset.no_excuse}}</text>
+            </view>
+          </view>
+          <view class="ms-total-bar">
+            <text class="ms-total-text">心态合计：{{mindsetTotal}} / 60 分</text>
+          </view>
+        </view>
+
+        <!-- 能量追踪 -->
+        <view class="energy-section">
+          <text class="en-title">⚡ 每日能量追踪（早/午/晚 各10分）</text>
+          <view class="en-grid">
+            <view class="en-item">
+              <text class="en-name">🌅 早晨精力</text>
+              <slider class="en-slider" min="0" max="10" value="{{energyLevels[0]}}" activeColor="#fa8c16" bindchange="onEnergyChange" data-idx="0"/>
+              <text class="en-val">{{energyLevels[0]}}</text>
+            </view>
+            <view class="en-item">
+              <text class="en-name">🌤️ 下午状态</text>
+              <slider class="en-slider" min="0" max="10" value="{{energyLevels[1]}}" activeColor="#1890ff" bindchange="onEnergyChange" data-idx="1"/>
+              <text class="en-val">{{energyLevels[1]}}</text>
+            </view>
+            <view class="en-item">
+              <text class="en-name">🌙 晚上活力</text>
+              <slider class="en-slider" min="0" max="10" value="{{energyLevels[2]}}" activeColor="#722ed1" bindchange="onEnergyChange" data-idx="2"/>
+              <text class="en-val">{{energyLevels[2]}}</text>
+            </view>
+          </view>
+          <view class="en-total-bar">
+            <text class="en-total-text">能量合计：{{energyTotal}} / 30 分</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- ===== 反思Tab ===== -->
+      <scroll-view scroll-y class="subtab-content" wx:if="{{activeSubTab == 'reflect'}}">
+        <!-- 学习记录 -->
+        <view class="daily-section">
+          <text class="ds-title">📚 今日学习</text>
+          <textarea class="ds-textarea" placeholder="今天学了什么...读了哪本书？听了哪门课？获得了什么新知识？" value="{{studyContent}}" bindinput="onStudyInput"/>
+        </view>
+
+        <!-- 改进方法 -->
+        <view class="daily-section">
+          <text class="ds-title">🔧 今日改进</text>
+          <textarea class="ds-textarea" placeholder="明天怎么做得更好...哪里可以提高效率？怎样避免重复错误？" value="{{improvementContent}}" bindinput="onImprovementInput"/>
+        </view>
+
+        <!-- 每日感恩（新增） -->
+        <view class="daily-section gratitude-section">
+          <text class="ds-title">🌟 今日感恩</text>
+          <textarea class="ds-textarea" placeholder="今天值得感谢的三件事...谁帮助了你？什么小事让你开心？" value="{{gratitudeContent}}" bindinput="onGratitudeInput"/>
+        </view>
+
+        <!-- 保存按钮 -->
+        <view class="daily-save-row"><view class="daily-save-btn" bindtap="saveDailyLog">💾 保存日志</view></view>
+      </scroll-view>
+    </view>
+
+    <!-- 无选中时的提示 -->
+    <view class="empty-state" wx:if="{{!showDailyDetail && viewMode != 'day'}}">
+      <text class="empty-icon">📅</text>
+      <text class="empty-text">点击日历查看/编辑当天的行动日志</text>
+    </view>
+
+    <view class="safe-bottom"></view>
+  </scroll-view>
+
+  <!-- ========== 详情视图(全屏) ========== -->
+  <scroll-view class="main-content full-detail" scroll-y wx:if="{{viewMode == 'day'}}">
+    <view class="full-header">
+      <text class="full-date">{{selectedDate}}</text>
+      <text class="full-score" wx:if="{{dailyCompleteRate > 0}}">完成率 {{dailyCompleteRate}}%</text>
+    </view>
+
+    <!-- 三件事聚焦 -->
+    <view class="top-three-section">
+      <text class="tt-title">⭐ 今日三件事（聚焦）</text>
+      <view class="tt-list" wx:if="{{topThreeItems.length > 0}}">
+        <view class="tt-item {{item.done ? 'done' : ''}}" wx:for="{{topThreeItems}}" wx:key="id">
+          <view class="tt-check {{item.done ? 'checked' : ''}}" bindtap="toggleTopThree" data-index="{{index}}">
+            <text wx:if="{{item.done}}">✓</text>
+          </view>
+          <text class="tt-task {{item.done ? 'done-txt' : ''}}">{{item.task}}</text>
+          <text class="tt-del" catchtap="removeTopThree" data-index="{{index}}">✕</text>
+        </view>
+      </view>
+      <view class="tt-add" wx:if="{{topThreeItems.length < 3}}">
+        <input class="tt-input" placeholder="添加最重要的..." value="{{newTaskText}}" bindinput="onNewTaskInput" bindconfirm="addTopThree"/>
+        <text class="tt-add-btn" bindtap="addTopThree">+</text>
+      </view>
+    </view>
+
+    <!-- ABC任务列表 -->
+    <view class="abc-section">
+      <text class="abc-title">📌 今日目标</text>
+      <view class="abc-group">
+        <text class="abc-label" style="color:#e94560">🔴 A类</text>
+        <view class="daily-item" wx:for="{{dailyItems}}" wx:key="id" wx:if="{{item.priority[0] == 'A'}}">
+          <view class="di-pri" style="background:#e94560">{{item.priority}}</view>
+          <text class="di-time" wx:if="{{item.time_range}}">{{item.time_range}}</text>
+          <text class="di-task {{item.is_completed ? 'completed' : ''}}">{{item.task}}</text>
+          <view class="di-check {{item.is_completed ? 'checked' : ''}}" bindtap="toggleDailyItem" data-id="{{item.id}}"><text wx:if="{{item.is_completed}}">✓</text></view>
+        </view>
+      </view>
+      <view class="abc-group">
+        <text class="abc-label" style="color:#faad14">🟡 B类</text>
+        <view class="daily-item" wx:for="{{dailyItems}}" wx:key="id" wx:if="{{item.priority[0] == 'B'}}">
+          <view class="di-pri" style="background:#faad14">{{item.priority}}</view>
+          <text class="di-time" wx:if="{{item.time_range}}">{{item.time_range}}</text>
+          <text class="di-task {{item.is_completed ? 'completed' : ''}}">{{item.task}}</text>
+          <view class="di-check {{item.is_completed ? 'checked' : ''}}" bindtap="toggleDailyItem" data-id="{{item.id}}"><text wx:if="{{item.is_completed}}">✓</text></view>
+        </view>
+      </view>
+      <view class="abc-group">
+        <text class="abc-label" style="color:#52c41a">🟢 C类</text>
+        <view class="daily-item" wx:for="{{dailyItems}}" wx:key="id" wx:if="{{item.priority[0] == 'C'}}">
+          <view class="di-pri" style="background:#52c41a">{{item.priority}}</view>
+          <text class="di-time" wx:if="{{item.time_range}}">{{item.time_range}}</text>
+          <text class="di-task {{item.is_completed ? 'completed' : ''}}">{{item.task}}</text>
+          <view class="di-check {{item.is_completed ? 'checked' : ''}}" bindtap="toggleDailyItem" data-id="{{item.id}}"><text wx:if="{{item.is_completed}}">✓</text></view>
+        </view>
+      </view>
+      <view class="add-item-row">
+        <picker mode="selector" range="{{priorities}}" value="{{newPriorityIdx}}" bindchange="onNewPriorityChange"><view class="add-pri">{{priorities[newPriorityIdx]}}</view></picker>
+        <input class="add-time" placeholder="时间" value="{{newTaskTime}}" bindinput="onNewTimeInput"/>
+        <input class="add-task-input" placeholder="输入事项..." value="{{newTaskText}}" bindinput="onNewTaskInput" bindconfirm="addDailyItem"/>
+        <view class="add-item-btn" bindtap="addDailyItem">+</view>
+      </view>
+    </view>
+
+    <!-- 心态 -->
+    <view class="mindset-section">
+      <text class="ms-title">🧠 心态 ({{mindsetTotal}}/60)</text>
+      <view class="ms-grid">
+        <view class="ms-item"><text class="ms-name">认真</text><slider class="ms-slider" min="0" max="10" value="{{mindset.serious}}" activeColor="#e94560" bindchange="onMindsetChange" data-key="serious"/><text class="ms-val">{{mindset.serious}}</text></view>
+        <view class="ms-item"><text class="ms-name">乐观</text><slider class="ms-slider" min="0" max="10" value="{{mindset.optimistic}}" activeColor="#fa8c16" bindchange="onMindsetChange" data-key="optimistic"/><text class="ms-val">{{mindset.optimistic}}</text></view>
+        <view class="ms-item"><text class="ms-name">自信</text><slider class="ms-slider" min="0" max="10" value="{{mindset.confident}}" activeColor="#1890ff" bindchange="onMindsetChange" data-key="confident"/><text class="ms-val">{{mindset.confident}}</text></view>
+        <view class="ms-item"><text class="ms-name">承诺</text><slider class="ms-slider" min="0" max="10" value="{{mindset.commitment}}" activeColor="#722ed1" bindchange="onMindsetChange" data-key="commitment"/><text class="ms-val">{{mindset.commitment}}</text></view>
+        <view class="ms-item"><text class="ms-name">爱与奉献</text><slider class="ms-slider" min="0" max="10" value="{{mindset.love}}" activeColor="#eb2f96" bindchange="onMindsetChange" data-key="love"/><text class="ms-val">{{mindset.love}}</text></view>
+        <view class="ms-item"><text class="ms-name">不找借口</text><slider class="ms-slider" min="0" max="10" value="{{mindset.no_excuse}}" activeColor="#13c2c2" bindchange="onMindsetChange" data-key="no_excuse"/><text class="ms-val">{{mindset.no_excuse}}</text></view>
+      </view>
+    </view>
+
+    <!-- 反思区 -->
+    <view class="daily-section"><text class="ds-title">📚 学习</text><textarea class="ds-textarea" placeholder="今天学了什么..." value="{{studyContent}}" bindinput="onStudyInput"/></view>
+    <view class="daily-section"><text class="ds-title">🔧 改进</text><textarea class="ds-textarea" placeholder="明天怎么做得更好..." value="{{improvementContent}}" bindinput="onImprovementInput"/></view>
+    <view class="daily-section gratitude-section"><text class="ds-title">🌟 感恩</text><textarea class="ds-textarea" placeholder="今天值得感谢的..." value="{{gratitudeContent}}" bindinput="onGratitudeInput"/></view>
+
+    <view class="daily-save-row"><view class="daily-save-btn" bindtap="saveDailyLog">💾 保存今日日志</view></view>
+    <view class="safe-bottom"></view>
+  </scroll-view>
+
+  <!-- ========== 底部扩展Tab（年度/月度/周/追踪/承诺书） ========== -->
+  <view class="bottom-tabs-bar">
+    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="bt-scroll">
+      <view class="bt-row">
+        <view class="bt-tab {{activeMainTab=='annual'?'bt-active':''}}" bindtap="switchMainTab" data-tab="annual">🎯 年度</view>
+        <view class="bt-tab {{activeMainTab=='monthly'?'bt-active':''}}" bindtap="switchMainTab" data-tab="monthly">📅 月度</view>
+        <view class="bt-tab {{activeMainTab=='weekly'?'bt-active':''}}" bindtap="switchMainTab" data-tab="weekly">📋 周目标</view>
+        <view class="bt-tab {{activeMainTab=='tracking'?'bt-active':''}}" bindtap="switchMainTab" data-tab="tracking">📊 追踪</view>
+        <view class="bt-tab {{activeMainTab=='commitment'?'bt-active':''}}" bindtap="switchMainTab" data-tab="commitment">🤝 承诺</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- ========== 底部Tab内容面板 ========== -->
+  <scroll-view scroll-y class="tab-content-panel" wx:if="{{activeMainTab}}">
+
+    <!-- ===== 年度目标面板 ===== -->
+    <block wx:if="{{activeMainTab == 'annual'}}">
+      <view class="tab-panel-header">
+        <text class="tab-panel-title">🎯 年度目标</text>
+        <text class="tab-panel-sub">{{annualGoals.length}} 个目标 · {{currentYear}}年</text>
+      </view>
+
+      <!-- 总进度 -->
+      <view class="annual-summary" wx:if="{{annualGoals.length > 0}}">
+        <view class="annual-ring">
+          <view class="ring-text-big">{{annualAvgProgress || 0}}%</view>
+          <view class="ring-text-small">平均进度</view>
+        </view>
+        <view class="annual-stats-row">
+          <view class="as-item">
+            <text class="as-val">{{annualCompletedCount || 0}}</text>
+            <text class="as-lbl">已完成</text>
+          </view>
+          <view class="as-item">
+            <text class="as-val">{{annualGoals.length}}</text>
+            <text class="as-lbl">总目标</text>
+          </view>
+          <view class="as-item">
+            <text class="as-val">{{annualInProgressCount || 0}}</text>
+            <text class="as-lbl">进行中</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 目标列表（按类别分组） -->
+      <block wx:for="{{annualGrouped}}" wx:key="cat">
+        <view class="ag-group">
+          <view class="ag-group-header" style="border-left:4rpx solid {{item.color}}">
+            <text class="ag-group-icon">{{item.icon}}</text>
+            <text class="ag-group-name">{{item.cat}}</text>
+            <text class="ag-count">{{item.goals.length}}个</text>
+          </view>
+          <view class="ag-card" wx:for="{{item.goals}}" wx:for-item="goal" wx:key="id">
+            <view class="ag-card-top">
+              <text class="ag-cat-tag" style="background:{{item.color}}20;color:{{item.color}}">{{goal.category}}</text>
+              <text class="ag-progress-pct" style="color:{{goal.progress >= 80 ? '#52c41a' : goal.progress >= 50 ? '#faad14' : '#e94560'}}">{{goal.progress || 0}}%</text>
+            </view>
+            <text class="ag-title">{{goal.title}}</text>
+            <text class="ag-content" wx:if="{{goal.content}}">{{goal.content}}</text>
+            <view class="ag-progress-bar">
+              <view class="ag-progress-fill" style="width:{{goal.progress || 0}}%;background:{{goal.progress >= 80 ? '#52c41a' : goal.progress >= 50 ? '#faad14' : '#e94560'}}"></view>
+            </view>
+            <view class="ag-actions">
+              <slider min="0" max="100" value="{{goal.progress}}" activeColor="#e94560" backgroundColor="#f0f0f0" block-size="12"
+                bindchanging="onProgressChange" data-id="{{goal.id}}"
+                style="flex:1;margin:0 16rpx"/>
+              <text class="ag-delete-btn" catchtap="deleteGoal" data-id="{{goal.id}}">✕</text>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 空状态 -->
+      <view class="tab-empty" wx:if="{{loading && annualGoals.length == 0}}">
+        <text class="tab-empty-icon">⏳</text>
+        <text class="tab-empty-text">加载中...</text>
+      </view>
+      <view class="tab-empty" wx:if="{{!loading && annualGoals.length == 0}}">
+        <text class="tab-empty-icon">🎯</text>
+        <text class="tab-empty-text">还没有年度目标</text>
+        <view class="tab-empty-btn" bindtap="showAddGoal">+ 新增年度目标</view>
+      </view>
+    </block>
+
+    <!-- ===== 月度目标面板 ===== -->
+    <block wx:if="{{activeMainTab == 'monthly'}}">
+      <view class="tab-panel-header">
+        <text class="tab-panel-title">📅 月度目标</text>
+        <picker mode="date" fields="month" value="{{currentMonth}}" bindchange="changeMonth">
+          <view class="month-picker">{{currentMonth}} ▼</view>
+        </picker>
+      </view>
+
+      <view class="monthly-summary" wx:if="{{monthlyGoals.length > 0}}">
+        <view class="ms-stat">
+          <text class="ms-num">{{monthlyGoals.length}}</text>
+          <text class="ms-lbl">总目标</text>
+        </view>
+        <view class="ms-stat">
+          <text class="ms-num" style="color:#52c41a">{{monthlyCompletedCount || 0}}</text>
+          <text class="ms-lbl">已完成</text>
+        </view>
+        <view class="ms-stat">
+          <text class="ms-num" style="color:#e94560">{{monthlyGoals.length - (monthlyCompletedCount || 0)}}</text>
+          <text class="ms-lbl">待完成</text>
+        </view>
+      </view>
+
+      <!-- 按优先级分组显示 -->
+      <block wx:for="{{monthlyGrouped}}" wx:key="group" wx:if="{{monthlyGrouped.length > 0}}">
+        <view class="mg-group-title" style="color:{{item.color}}">
+          <text>{{item.label}}</text>
+          <text style="font-weight:400;font-size:22rpx;opacity:0.6">({{item.items.length}})</text>
+        </view>
+        <view class="mg-card" wx:for="{{item.items}}" wx:for-item="goal" wx:key="id" style="border-left:4rpx solid {{item.color}}">
+          <view class="mg-pri-tag" style="background:{{item.color}}">{{goal.priority}}</view>
+          <view class="mg-body">
+            <text class="mg-title">{{goal.title}}</text>
+            <text class="mg-content" wx:if="{{goal.content}}">{{goal.content}}</text>
+          </view>
+        </view>
+      </block>
+
+      <view class="tab-empty" wx:if="{{loading}}">
+        <text class="tab-empty-icon">⏳</text>
+        <text class="tab-empty-text">加载中...</text>
+      </view>
+      <view class="tab-empty" wx:if="{{!loading && monthlyGoals.length == 0}}">
+        <text class="tab-empty-icon">📅</text>
+        <text class="tab-empty-text">本月暂无目标</text>
+        <view class="tab-empty-btn" bindtap="showMonthlyForm">+ 新增月度目标</view>
+      </view>
+    </block>
+
+    <!-- ===== 周目标面板 ===== -->
+    <block wx:if="{{activeMainTab == 'weekly'}}">
+      <view class="tab-panel-header">
+        <text class="tab-panel-title">📋 本周目标</text>
+        <view class="week-nav-row">
+          <text class="week-nav-btn" bindtap="prevWeekNav">◀</text>
+          <text class="week-date-range">{{weekStart}} ~ {{weekEnd}}</text>
+          <text class="week-nav-btn" bindtap="nextWeekNav">▶</text>
+        </view>
+      </view>
+
+      <!-- 完成率概览 -->
+      <view class="weekly-overview" wx:if="{{weeklyGoals.length > 0}}">
+        <view class="wo-ring">
+          <text class="wo-pct">{{weeklyCompleteRate}}%</text>
+          <text class="wo-lbl">完成率</text>
+        </view>
+        <view class="wo-info">
+          <text>已完成 {{weeklyCompletedCount}} / {{weeklyGoals.length}} 项目标</text>
+        </view>
+      </view>
+
+      <!-- 周目标列表 -->
+      <view class="wg-list" wx:if="{{weeklyGoals.length > 0}}">
+        <view class="wg-card {{item.is_completed ? 'wg-done' : ''}}" wx:for="{{weeklyGoals}}" wx:key="id"
+              bindtap="toggleWeeklyComplete" data-id="{{item.id}}">
+          <view class="wg-check {{item.is_completed ? 'checked' : ''}}">
+            <text wx:if="{{item.is_completed}}">✓</text>
+          </view>
+          <view class="wg-body">
+            <text class="wg-task {{item.is_completed ? 'done-txt' : ''}}">{{item.title}}</text>
+            <view class="wg-meta">
+              <text class="wg-pri" style="color:{{item.priorityColor || '#e94560'}};font-size:18rpx">{{item.priority}}</text>
+              <text wx:if="{{item.deadline}}" class="wg-deadline">截止: {{item.deadline}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="add-wg-row">
+          <input class="add-wg-input" placeholder="添加本周新目标..." value="{{newWeeklyTask}}" bindinput="onNewWeeklyInput" bindconfirm="addWeeklyGoal"/>
+          <text class="add-wg-btn" bindtap="addWeeklyGoal">+</text>
+        </view>
+      </view>
+
+      <!-- 周总结区域 -->
+      <view class="ws-section" wx:if="{{weeklySummary.harvest || weeklySummary.next_plan}}">
+        <text class="ws-title">📝 本周总结</text>
+        <view class="ws-field" wx:if="{{weeklySummary.completion}}">
+          <text class="ws-label">完成情况</text>
+          <text class="ws-value">{{weeklySummary.completion}}</text>
+        </view>
+        <view class="ws-field" wx:if="{{weeklySummary.improvement}}">
+          <text class="ws-label">改进方向</text>
+          <text class="ws-value">{{weeklySummary.improvement}}</text>
+        </view>
+        <view class="ws-save-btn" bindtap="saveWeeklySummary">保存周总结</view>
+      </view>
+
+      <view class="tab-empty" wx:if="{{loading}}">
+        <text class="tab-empty-icon">⏳</text><text class="tab-empty-text">加载中...</text>
+      </view>
+      <view class="tab-empty" wx:if="{{!loading && weeklyGoals.length == 0}}">
+        <text class="tab-empty-icon">📋</text><text class="tab-empty-text">本周暂无目标</text>
+      </view>
+    </block>
+
+    <!-- ===== 追踪面板 ===== -->
+    <block wx:if="{{activeMainTab == 'tracking'}}">
+      <view class="tab-panel-header">
+        <text class="tab-panel-title">📊 月度达成追踪</text>
+        <picker mode="date" fields="month" value="{{trackingMonth}}" bindchange="changeTrackingMonth">
+          <view class="month-picker">{{trackingMonth}} ▼</view>
+        </picker>
+      </view>
+
+      <!-- 追踪卡片列表 -->
+      <view class="track-list" wx:if="{{trackingData.length > 0}}">
+        <view class="track-card" wx:for="{{trackingData}}" wx:key="id">
+          <view class="track-header">
+            <text class="track-title">{{item.goal_title}}</text>
+            <text class="track-rate" style="color:{{item.completion_rate >= 90 ? '#52c41a' : item.completion_rate >= 70 ? '#faad14' : '#ff4d4f'}}">{{item.completion_rate || 0}}%</text>
+          </view>
+          <view class="track-nums">
+            <text>目标: {{item.target_value || '-'}}</text>
+            <text>实际: {{item.actual_value || '-'}}</text>
+            <text wx:if="{{item.gap}}">差距: {{item.gap}}</text>
+          </view>
+          <view class="track-bar">
+            <view class="track-fill" style="width:{{item.completion_rate || 0}}%;background:{{item.completion_rate >= 90 ? '#52c41a' : item.completion_rate >= 70 ? '#faad14' : '#ff4d4f'}}"></view>
+          </view>
+          <text class="track-note" wx:if="{{item.note}}">📌 {{item.note}}</text>
+        </view>
+      </view>
+
+      <!-- 统计概览 -->
+      <view class="track-stats" wx:if="{{trackingStats.totalTarget || trackingStats.avgRate}}">
+        <view class="ts-item">
+          <text class="ts-val">{{trackingStats.totalTarget || 0}}</text>
+          <text class="ts-lbl">目标总额</text>
+        </view>
+        <view class="ts-item">
+          <text class="ts-val" style="color:#52c41a">{{trackingStats.totalActual || 0}}</text>
+          <text class="ts-lbl">实际完成</text>
+        </view>
+        <view class="ts-item">
+          <text class="ts-val" style="color:#1890ff">{{trackingStats.avgRate || 0}}%</text>
+          <text class="ts-lbl">平均完成率</text>
+        </view>
+      </view>
+
+      <view class="tab-empty" wx:if="{{loading}}">
+        <text class="tab-empty-icon">⏳</text><text class="tab-empty-text">加载中...</text>
+      </view>
+      <view class="tab-empty" wx:if="{{!loading && trackingData.length == 0}}">
+        <text class="tab-empty-icon">📊</text>
+        <text class="tab-empty-text">本月暂无追踪数据</text>
+      </view>
+    </block>
+
+    <!-- ===== 承诺书面板 ===== -->
+    <block wx:if="{{activeMainTab == 'commitment'}}">
+      <view class="tab-panel-header">
+        <text class="tab-panel-title">🤝 我的承诺书</text>
+        <text class="tab-panel-sub">{{commitments.length}} 个承诺</text>
+      </view>
+
+      <!-- 承诺书卡片 -->
+      <view class="cm-list" wx:if="{{commitments.length > 0}}">
+        <view class="cm-card" wx:for="{{commitments}}" wx:key="id">
+          <view class="cm-header">
+            <view class="cm-crown">👑</view>
+            <view class="cm-title-area">
+              <text class="cm-title">{{item.title}}</text>
+              <text class="cm-duration">为期 {{item.duration || 30}} 天</text>
+            </view>
+            <text class="cm-status {{item.status == 1 ? 'active' : ''}}">{{item.status == 1 ? '进行中' : '已结束'}}</text>
+          </view>
+          <text class="cm-content" wx:if="{{item.content}}">{{item.content}}</text>
+          
+          <view class="cm-meta-row" wx:if="{{item.supervisor || item.pk_person}}">
+            <text wx:if="{{item.supervisor}}">监督人: {{item.supervisor}}</text>
+            <text wx:if="{{item.pk_person}}">PK: {{item.pk_person}}</text>
+          </view>
+
+          <view class="cm-checkin-row">
+            <view class="cm-streak">
+              <text class="cm-fire">🔥</text>
+              <text>已打卡 {{item.checkin_count || 0}} 天</text>
+            </view>
+            <view class="cm-checkin-btn" bindtap="checkinCommitment" data-id="{{item.id}}">
+              今日打卡 ✓
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="tab-empty" wx:if="{{loading}}">
+        <text class="tab-empty-icon">⏳</text><text class="tab-empty-text">加载中...</text>
+      </view>
+      <view class="tab-empty" wx:if="{{!loading && commitments.length == 0}}">
+        <text class="tab-empty-icon">🤝</text>
+        <text class="tab-empty-text">还没有承诺书</text>
+        <view class="tab-empty-btn" bindtap="showAddCommitment">+ 创建承诺书</view>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </scroll-view>
+
+  <!-- ============== 年度目标弹层 ============== -->
+  <view class="modal-mask" wx:if="{{showGoalForm}}" bindtap="cancelGoalForm">
+    <view class="modal-box" catchtap="">
+      <text class="modal-title">新增年度目标</text>
+      <picker mode="selector" range="{{categories}}" bindchange="onGoalCategoryChange">
+        <view class="form-row"><text class="form-label">类别</text><text class="form-val {{goalForm.category ? '' : 'ph'}}">{{goalForm.category || '请选择'}}</text></view>
+      </picker>
+      <view class="form-row"><text class="form-label">目标</text><input class="form-input" placeholder="输入年度目标" value="{{goalForm.title}}" bindinput="onGoalTitleInput"/></view>
+      <view class="form-row"><text class="form-label">描述</text><textarea class="form-textarea" placeholder="方法和措施..." value="{{goalForm.content}}" bindinput="onGoalContentInput"/></view>
+      <view class="modal-btns"><view class="mbtn cancel" bindtap="cancelGoalForm">取消</view><view class="mbtn confirm" bindtap="saveGoal">保存</view></view>
+    </view>
+  </view>
+
+  <!-- ============== 月度目标弹窗 ============== -->
+  <view class="modal-mask" wx:if="{{showMonthlyFormFlag}}" bindtap="hideMonthlyForm">
+    <view class="modal-box" catchtap="">
+      <text class="modal-title">新增月度目标</text>
+      <picker mode="selector" range="{{priorities}}" bindchange="onMonthlyPriorityChange"><view class="form-row"><text class="form-label">优先级</text><text class="form-val">{{monthlyForm.priority || 'A1'}}</text></view></picker>
+      <view class="form-row"><text class="form-label">目标</text><input class="form-input" placeholder="输入月度目标" value="{{monthlyForm.title}}" bindinput="onMonthlyTitleInput"/></view>
+      <view class="form-row"><text class="form-label">措施</text><textarea class="form-textarea" placeholder="具体措施..." value="{{monthlyForm.content}}" bindinput="onMonthlyContentInput"/></view>
+      <view class="modal-btns"><view class="mbtn cancel" bindtap="hideMonthlyForm">取消</view><view class="mbtn confirm" bindtap="saveMonthlyGoal">保存</view></view>
+    </view>
+  </view>
+
+  <!-- ============== 承诺书弹窗 ============== -->
+  <view class="modal-mask" wx:if="{{showCommitmentForm}}" bindtap="cancelCommitmentForm">
+    <view class="modal-box" catchtap="">
+      <text class="modal-title">🤝 新建承诺书</text>
+      <view class="form-row"><text class="form-label">标题</text><input class="form-input" placeholder="例如：30天坚持写日志" value="{{commitmentForm.title}}" bindinput="onCommitmentTitleInput"/></view>
+      <view class="form-row"><text class="form-label">内容</text><textarea class="form-textarea" placeholder="写下你的承诺..." value="{{commitmentForm.content}}" bindinput="onCommitmentContentInput"/></view>
+      <view class="form-row"><text class="form-label">监督人</text><input class="form-input" placeholder="监督人姓名" value="{{commitmentForm.supervisor}}" bindinput="onCommitmentSupervisorInput"/></view>
+      <view class="form-row"><text class="form-label">PK人</text><input class="form-input" placeholder="PK人姓名" value="{{commitmentForm.pk_person}}" bindinput="onCommitmentPkInput"/></view>
+      <view class="form-row"><text class="form-label">天数({{commitmentForm.duration}}天)</text><slider min="7" max="365" value="{{commitmentForm.duration}}" activeColor="#e94560" bindchange="onDurationChange"/></view>
+      <view class="modal-btns"><view class="mbtn cancel" bindtap="cancelCommitmentForm">取消</view><view class="mbtn confirm" bindtap="saveCommitment">创建承诺</view></view>
+    </view>
+  </view>
+</view>

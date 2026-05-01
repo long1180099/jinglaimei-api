@@ -1,0 +1,141 @@
+<!-- 收益概览 v2.0 -->
+<view class="page">
+  <!-- 收益头部 -->
+  <view class="income-header">
+    <view class="header-deco"></view>
+    <view class="balance-card">
+      <view class="balance-top">
+        <text class="balance-label">累计收益（元）</text>
+        <view class="eye-btn" bindtap="toggleAmount">
+          <text>{{showAmount ? '🙈' : '👁️'}}</text>
+        </view>
+      </view>
+      <text class="balance-amount">{{showAmount ? (overview.totalIncome || '0.00') : '***'}}</text>
+      <view class="balance-sub">
+        <view class="sub-item">
+          <text class="sub-dot" style="background: rgba(255,255,255,0.5)"></text>
+          <text class="sub-label">待结算</text>
+          <text class="sub-value">{{showAmount ? (overview.pendingIncome || '0.00') : '***'}}</text>
+        </view>
+        <view class="sub-divider"></view>
+        <view class="sub-item">
+          <text class="sub-dot" style="background: #55efc4"></text>
+          <text class="sub-label">已提现</text>
+          <text class="sub-value">{{showAmount ? (overview.withdrawnAmount || '0.00') : '***'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-row">
+      <view class="action-btn" bindtap="goWithdraw">
+        <view class="action-icon-wrap" style="background:rgba(255,255,255,0.15)">
+          <text class="action-icon">💰</text>
+        </view>
+        <text class="action-label">提现</text>
+      </view>
+      <view class="action-btn" bindtap="goRecords">
+        <view class="action-icon-wrap" style="background:rgba(255,255,255,0.15)">
+          <text class="action-icon">📋</text>
+        </view>
+        <text class="action-label">明细</text>
+      </view>
+      <view class="action-btn" bindtap="goWithdrawals">
+        <view class="action-icon-wrap" style="background:rgba(255,255,255,0.15)">
+          <text class="action-icon">📦</text>
+        </view>
+        <text class="action-label">提现记录</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 代理等级卡片 -->
+  <view class="level-card">
+    <view class="level-header">
+      <view class="level-left">
+        <text class="level-title">代理等级</text>
+      </view>
+      <view class="level-badge-wrap">
+        <text class="level-badge" style="background:{{levelColor}}">{{levelText}}</text>
+      </view>
+    </view>
+    <view class="level-progress">
+      <view class="progress-track">
+        <view class="progress-fill" style="width:{{levelProgress}}%"></view>
+        <view class="progress-dot" style="left:{{levelProgress}}%"></view>
+      </view>
+      <view class="progress-info">
+        <text class="progress-text">距下一等级还需 ¥{{nextLevelNeed}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 今日/本月收益 -->
+  <view class="stats-row">
+    <view class="stat-card">
+      <view class="stat-icon-wrap" style="background: var(--primary-bg)">
+        <text class="stat-icon">📈</text>
+      </view>
+      <text class="stat-label">今日收益</text>
+      <text class="stat-value">¥{{showAmount ? (overview.todayIncome || '0.00') : '***'}}</text>
+    </view>
+    <view class="stat-card">
+      <view class="stat-icon-wrap" style="background: var(--warning-light)">
+        <text class="stat-icon">📊</text>
+      </view>
+      <text class="stat-label">本月收益</text>
+      <text class="stat-value">¥{{showAmount ? (overview.monthIncome || '0.00') : '***'}}</text>
+    </view>
+  </view>
+
+  <!-- 团队管理入口 -->
+  <view class="team-section">
+    <view class="team-card" bindtap="goTeam">
+      <view class="team-left">
+        <view class="team-icon-wrap">
+          <text class="team-icon">👥</text>
+        </view>
+        <view class="team-info">
+          <text class="team-title">团队管理</text>
+          <text class="team-desc">查看下级团队 · 树状图</text>
+        </view>
+      </view>
+      <view class="team-right">
+        <text class="team-stat-num">{{teamTotal || 0}}</text>
+        <text class="team-stat-label">人</text>
+        <text class="team-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 最近收益 -->
+  <view class="section">
+    <view class="section-header">
+      <view class="section-title-wrap">
+        <view class="title-accent"></view>
+        <text class="section-title">最近收益</text>
+      </view>
+      <view class="section-more" bindtap="goRecords">
+        <text>全部</text>
+        <text class="more-arrow">→</text>
+      </view>
+    </view>
+    <view class="record-list">
+      <view class="record-item" wx:for="{{recentRecords}}" wx:key="id">
+        <view class="record-icon-wrap {{item.type == 1 ? 'direct' : 'indirect'}}">
+          <text>{{item.type == 1 ? '⟐' : '⟡'}}</text>
+        </view>
+        <view class="record-left">
+          <text class="record-type">{{item.type == 1 ? '直接收益' : '团队收益'}}</text>
+          <text class="record-time">{{item.created_at}}</text>
+        </view>
+        <text class="record-amount {{item.type == 1 ? 'direct' : 'indirect'}}">+{{item.amount}}</text>
+      </view>
+      <view class="empty-state" wx:if="{{recentRecords.length == 0}}">
+        <text class="empty-icon">💰</text>
+        <text class="empty-text">暂无收益记录</text>
+        <text class="empty-hint">推广商品产生销售后即可获得收益</text>
+      </view>
+    </view>
+  </view>
+</view>

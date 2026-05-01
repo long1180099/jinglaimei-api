@@ -1,0 +1,174 @@
+/* 商学院 v4.1 精致简洁版 */
+
+.page {
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+  background: #f5f6fa;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ========== Banner ========== */
+.banner {
+  background: linear-gradient(160deg, #e94560 0%, #c62d47 50%, #a82338 100%);
+  padding: 56rpx 32rpx 40rpx;
+  position: relative; overflow: hidden;
+}
+
+.banner::after {
+  content: '';
+  position: absolute;
+  width: 320rpx; height: 320rpx; border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+  top: -140rpx; right: -80rpx; pointer-events: none;
+}
+
+.banner-title {
+  font-size: 42rpx; font-weight: 800; color: #fff;
+  display: block; letter-spacing: 2rpx; position: relative; z-index: 1;
+}
+
+.banner-sub {
+  font-size: 24rpx; color: rgba(255,255,255,0.6);
+  margin-top: 10rpx; display: block;
+  letter-spacing: 1rpx; position: relative; z-index: 1;
+}
+
+.banner-stats {
+  display: flex; align-items: center;
+  justify-content: center;
+  margin-top: 28rpx;
+  background: rgba(255,255,255,0.12);
+  border-radius: 18rpx; padding: 22rpx 48rpx;
+  backdrop-filter: blur(8px); position: relative; z-index: 1;
+}
+
+.bs-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+
+.bs-num { font-size: 38rpx; font-weight: 800; }
+.bs-label { font-size: 21rpx; opacity: 0.6; margin-top: 6rpx; }
+
+.bs-line { width: 1rpx; height: 44rpx; background: rgba(255,255,255,0.2); margin: 0 36rpx; }
+
+/* ========== 功能板块列表 ========== */
+.mod-list {
+  margin: -24rpx 24rpx 20rpx;
+  background: #fff; border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 6rpx 24rpx rgba(0,0,0,0.05);
+  position: relative; z-index: 10;
+}
+
+.mod-card {
+  display: flex; align-items: center;
+  padding: 26rpx 24rpx;
+  border-bottom: 1rpx solid #f7f8fa;
+  position: relative;
+  transition: background 150ms ease;
+}
+
+.mod-card:last-child { border-bottom: none; }
+.mod-card:active { background: #fafbfd; }
+
+/* 左侧彩色竖条 - 视觉亮点 */
+.mod-bar {
+  width: 5rpx; height: 52rpx;
+  border-radius: 3rpx; margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.mod-icon-box {
+  width: 76rpx; height: 76rpx;
+  border-radius: 18rpx;
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 20rpx; flex-shrink: 0;
+}
+
+.mod-icon { font-size: 36rpx; }
+
+.mod-body { flex: 1; display: flex; flex-direction: column; }
+
+.mod-name {
+  font-size: 30rpx; font-weight: 600;
+  color: #1a1a2e; letter-spacing: 0.5rpx;
+}
+
+.mod-desc {
+  font-size: 22rpx; color: #b0b3b8;
+  margin-top: 6rpx; line-height: 1.4;
+}
+
+.mod-arrow {
+  font-size: 34rpx; font-weight: 300;
+  opacity: 0.45; margin-left: 12rpx;
+}
+
+/* ========== 热门课程推荐 ========== */
+.rec-area {
+  margin: 0 24rpx 20rpx;
+  background: #fff; border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.rec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 26rpx 26rpx 16rpx;
+}
+
+.rec-tit { font-size: 29rpx; font-weight: 700; color: #1a1a2e; }
+.rec-more { font-size: 23rpx; color: #e94560; font-weight: 500; }
+
+.rec-cards { padding: 0 20rpx 20rpx; display: flex; flex-direction: column; gap: 14rpx; }
+
+.rcard {
+  display: flex; align-items: center;
+  padding: 22rpx 20rpx;
+  background: #fafbfc; border-radius: 16rpx;
+  border: 1rpx solid #f0f1f3;
+  transition: all 150ms ease;
+}
+.rcard:active { transform: scale(0.98); background: #f0f2f5; }
+
+.rc-left {
+  width: 72rpx; height: 72rpx;
+  border-radius: 16rpx;
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 18rpx; flex-shrink: 0;
+  box-shadow: 0 3rpx 10rpx rgba(0,0,0,0.08);
+}
+.rc-left text { font-size: 32rpx; }
+
+.rc-mid { flex: 1; display: flex; flex-direction: column; }
+
+.rc-name { font-size: 27rpx; font-weight: 600; color: #1a1a2e; }
+.rc-info { font-size: 21rpx; color: #9ca3af; margin-top: 4rpx; }
+
+.rc-arrow { font-size: 30rpx; color: #d1d5db; font-weight: 300; margin-left: 12rpx; }
+
+/* ========== 学习小贴士 ========== */
+.tips-area {
+  margin: 0 24rpx 20rpx;
+  background: #fff; border-radius: 20rpx;
+  padding: 26rpx 26rpx 22rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.tips-tit { font-size: 28rpx; font-weight: 700; color: #1a1a2e; display: block; margin-bottom: 20rpx; }
+
+.tips-items { display: flex; flex-direction: column; gap: 18rpx; }
+
+.tip { display: flex; align-items: flex-start; gap: 16rpx; }
+
+.tip-n {
+  width: 38rpx; height: 38rpx;
+  border-radius: 10rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20rpx; font-weight: 800; color: #fff;
+  flex-shrink: 0; margin-top: 2rpx;
+}
+
+.tip-n--1 { background: linear-gradient(135deg, #e94560, #ff6b81); }
+.tip-n--2 { background: linear-gradient(135deg, #1890ff, #36cfc9); }
+.tip-n--3 { background: linear-gradient(135deg, #fa8c16, #ffc53d); }
+
+.tip-txt { font-size: 25rpx; color: #555d66; line-height: 1.6; flex: 1; }

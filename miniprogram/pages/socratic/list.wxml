@@ -1,0 +1,303 @@
+<!-- AI销售学院 - 首页 -->
+<view class="page">
+
+  <!-- ==================== 1. 顶部等级卡片（始终显示）==================== -->
+  <view class="level-header">
+    <view class="level-bg-decoration"></view>
+    <view class="level-content">
+      <!-- 左侧：等级信息 -->
+      <view class="level-left">
+        <view class="level-badge">
+          <text class="level-icon">{{levelInfo.icon || '🌱'}}</text>
+          <view class="level-info">
+            <text class="level-title">Lv.{{levelInfo.level}} {{levelInfo.levelName || levelInfo.title || '销售新人'}}</text>
+            <text class="level-xp-text">{{levelInfo.xp}} / {{levelInfo.nextLevelXp || 'MAX'}} XP</text>
+          </view>
+        </view>
+        <!-- 经验值进度条 -->
+        <view class="xp-bar-wrap" wx:if="{{!levelInfo.maxLevel && !levelInfo.isMax}}">
+          <view class="xp-bar"><view class="xp-fill" style="width:{{levelInfo.progressToNext || 0}}%"></view></view>
+          <text class="xp-percent">{{levelInfo.progressToNext || 0}}%</text>
+        </view>
+        <view class="xp-bar-wrap" wx:else>
+          <text class="xp-max">已达到最高等级！</text>
+        </view>
+      </view>
+
+      <!-- 右侧：快速统计 -->
+      <view class="level-stats">
+        <view class="stat-item">
+          <text class="stat-num">{{dashboard ? dashboard.totalSessions : 0}}</text>
+          <text class="stat-label">训练次数</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-num">{{dashboard ? dashboard.avgScore : 0}}</text>
+          <text class="stat-label">平均分</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-num streak-num">{{dashboard ? dashboard.streak : 0}}</text>
+          <text class="stat-label">连续天数</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ==================== 2. 每日任务横幅 ==================== -->
+  <view class="daily-task-banner" wx:if="{{(dailyTasks.length > 0 || dailyTaskSummary) && !dailyTaskSummary.allCompleted}}">
+    <view class="dt-header">
+      <text class="dt-icon">⚡</text>
+      <text class="dt-title">今日任务</text>
+      <text class="dt-count">{{dailyTaskSummary.completed || 0}}/{{dailyTaskSummary.total || dailyTasks.length}}</text>
+    </view>
+    <scroll-view scroll-x class="dt-list" enable-flex>
+      <view class="dt-card {{item.completed ? 'done' : ''}}" 
+            wx:for="{{dailyTasks}}" wx:key="id"
+            bindtap="claimReward" data-key="{{item.key}}"
+            wx:if="{{item.canClaim || !item.claimed}}">
+        <text class="dt-task-icon">{{item.icon}}</text>
+        <view class="dt-info">
+          <text class="dt-name">{{item.name}}</text>
+          <view class="dt-progress-mini" wx:if="{{!item.completed}}">
+            <view class="dt-progress-bar"><view class="dt-progress-fill" style="width:{{item.currentProgress / item.targetCount * 100}}%"></view></view>
+          </view>
+        </view>
+        <view class="dt-action" wx:if="{{item.canClaim}}">
+          <text class="dt-claim-btn">领取+{{item.xpReward}}XP</text>
+        </view>
+        <text class="dt-done-icon" wx:elif="{{item.completed}}">✅</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 全部完成提示 -->
+  <view class="daily-all-done" wx:if="{{dailyTaskSummary.allCompleted}}">
+    <text>🎉 今日任务全部完成！继续保持！</text>
+  </view>
+
+  <!-- ==================== 3. 智能推荐区域 ==================== -->
+  <view class="recommend-section" wx:if="{{recommendation}}">
+    <view class="rec-card">
+      <view class="rec-tag">{{recommendation.type === 'welcome' ? '🌟' : recommendation.type === 'improvement' ? '💡' : '🎯'}}</view>
+      <view class="rec-body">
+        <text class="rec-message">{{recommendation.message}}</text>
+        <text class="rec-reason">{{recommendation.reason}}</text>
+      </view>
+      <view class="rec-action" wx:if="{{recommendation.suggestedScenarioId}}" bindtap="goRecommendedChat" data-id="{{recommendation.suggestedScenarioId}}">
+        <text>开始训练 →</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ==================== 4. 学习路径（始终显示）==================== -->
+  <view class="paths-section">
+    <view class="section-head">
+      <text class="section-title">📚 学习路径</text>
+      <text class="section-sub">{{learningPaths.length > 0 ? '循序渐进，系统提升' : '登录后解锁系统化学习路径'}}</text>
+    </view>
+    <scroll-view scroll-x class="path-scroll" enable-flex>
+      <view class="path-card" wx:for="{{learningPaths}}" wx:key="id"
+            style="--path-color:{{item.cover_color || '#e94560'}}"
+            bindtap="goPathTraining" data-path="{{item}}">
+        <!-- 路径头部 -->
+        <view class="path-header">
+          <text class="path-icon">{{item.icon}}</text>
+          <view class="path-meta">
+            <text class="diff-badge diff-{{item.difficulty}}">{{item.difficulty === 'easy' ? '入门' : item.difficulty === 'medium' ? '进阶' : item.difficulty === 'hard' ? '高级' : '大师'}}</text>
+          </view>
+        </view>
+        <text class="path-name">{{item.name}}</text>
+        <text class="path-desc">{{item.description}}</text>
+        
+        <!-- 进度条（已加入时显示） -->
+        <view class="path-progress-area" wx:if="{{item.enrolled}}">
+          <view class="path-progress-bar">
+            <view class="path-progress-fill" style="width:{{item.progress}}%"></view>
+          </view>
+          <text class="path-pct">{{item.progress}}%</text>
+          <text class="path-step" wx:if="{{item.status !== 'completed'}}">{{item.completedScenarios}}/{{item.totalScenarios}}</text>
+          <text class="path-step done" wx:else>✓ 已完成</text>
+        </view>
+
+        <!-- 加入按钮（未加入时显示） -->
+        <view class="start-path-btn" wx:if="{{!item.enrolled}}" catchtap="startPath" data-id="{{item.id}}">
+          <text>加入路径</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 学习路径空态 -->
+    <view class="path-empty" wx:if="{{learningPaths.length == 0}}">
+      <text class="path-empty-icon">🛤️</text>
+      <text class="path-empty-text">4条精选学习路径等你探索</text>
+      <text class="path-empty-sub">登录后即可加入适合你的训练路径</text>
+    </view>
+  </view>
+
+  <!-- ==================== 5. 场景分类Tab + 列表 ==================== -->
+  <view class="scenarios-section">
+    <view class="section-head">
+      <text class="section-title">🎭 训练场景</text>
+      <text class="section-more" bindtap="goHistory">历史记录 ›</text>
+    </view>
+
+    <!-- 分类Tab -->
+    <scroll-view class="category-scroll" scroll-x enable-flex>
+      <view class="category-tab {{currentCategory == 'all' ? 'active' : ''}}" bindtap="switchCategory" data-key="all">
+        <text>全部</text>
+      </view>
+      <view class="category-tab {{currentCategory == item.key ? 'active' : ''}}" 
+            wx:for="{{categories}}" wx:key="key"
+            bindtap="switchCategory" data-key="{{item.key}}">
+        <text class="cat-icon">{{item.icon}}</text>
+        <text>{{item.name}}</text>
+      </view>
+    </scroll-view>
+
+    <!-- 场景列表 -->
+    <view class="scenario-list" wx:if="{{scenarios.length > 0}}">
+      <view class="scenario-card" wx:for="{{scenarios}}" wx:key="id" bindtap="goChat" data-scenario="{{item}}">
+        <!-- 卡片头部标签 -->
+        <view class="card-tags">
+          <view class="personality-tag {{item.personality_type || 'default'}}">
+            {{personalityNames[item.personality_type] || '通用'}}
+          </view>
+          <view class="difficulty-tag {{item.difficulty}}">
+            {{difficultyNames[item.difficulty] || '中等'}}
+          </view>
+          <view wx:if="{{item.best_grade}}" class="best-grade {{item.best_grade}}">
+            最佳:{{item.best_grade}}
+          </view>
+        </view>
+
+        <!-- 场景名称和描述 -->
+        <view class="card-name">{{item.name}}</view>
+        <view class="card-desc">{{item.description}}</view>
+        <view wx:if="{{item.goal}}" class="card-goal">🎯 {{item.goal}}</view>
+
+        <!-- 底部操作栏 -->
+        <view class="card-footer">
+          <view class="footer-left">
+            <text wx:if="{{item.best_score > 0}}" class="best-score">最高分: {{item.best_score}}</text>
+            <text wx:else class="practice-hint">点击开始练习</text>
+          </view>
+          <view class="start-btn">
+            <text>开始训练</text>
+            <text class="btn-arrow">▶</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{loaded && scenarios.length == 0}}">
+      <text class="empty-icon">📝</text>
+      <text class="empty-text">暂无场景数据</text>
+      <text class="empty-sub">管理员正在准备训练场景...</text>
+    </view>
+  </view>
+
+  <!-- ==================== 6. 成就展示条（始终显示）==================== -->
+  <view class="achievement-section">
+    <view class="section-head" bindtap="goAchievementList">
+      <view>
+        <text class="section-title">🏆 成就</text>
+        <text class="achieve-sub">{{achievementStats.unlocked || 0}}/{{achievementStats.total || 22}} 已解锁</text>
+      </view>
+      <text class="section-more">查看全部 ›</text>
+    </view>
+    
+    <!-- 已解锁成就横向滚动 -->
+    <scroll-view scroll-x class="achieve-scroll" enable-flex wx:if="{{recentAchievements.length > 0}}">
+      <view class="achieve-item" wx:for="{{recentAchievements}}" wx:key="id"
+            style="--ac-color:{{rarityColors[item.rarity] || '#e94560'}}">
+        <view class="achieve-icon-box" style="border-color:{{rarityColors[item.rarity] || '#e94560'}}; background:{{rarityColors[item.rarity] || '#e94560'}}15">
+          <text class="achieve-icon">{{item.icon}}</text>
+        </view>
+        <text class="achieve-name">{{item.name}}</text>
+        <text class="achieve-rarity rarity-{{item.rarity}}">{{item.rarity === 'legendary' ? '传说' : item.rarity === 'epic' ? '史诗' : item.rarity === 'rare' ? '稀有' : '普通'}}</text>
+      </view>
+    </scroll-view>
+
+    <!-- 无解锁成就时的空态 -->
+    <view class="achieve-empty" wx:if="{{recentAchievements.length == 0 && (achievementStats.total || 0) > 0}}">
+      <text class="achieve-empty-text">完成训练来解锁你的第一个成就吧 🌱</text>
+    </view>
+    
+    <!-- 未登录时的引导 -->
+    <view class="achieve-empty" wx:if="{{!loaded || (achievementStats.total || 0) == 0}}">
+      <text class="achieve-empty-text">登录后开始训练，解锁22个专属成就 🏅</text>
+    </view>
+    
+    <!-- 总体进度条 -->
+    <view class="achieve-total-progress" wx:if="{{achievementStats.total > 0}}">
+      <view class="achieve-bar-bg"><view class="achieve-bar-fill" style="width:{{achievementStats.progress}}%"></view></view>
+      <text class="achieve-pct">{{achievementStats.progress}}%</text>
+    </view>
+  </view>
+
+  <!-- ==================== 7. 提问技巧速查 ==================== -->
+  <view class="types-section" wx:if="{{questionTypes}}">
+    <view class="section-head">
+      <text class="section-title">🎯 五种提问技巧</text>
+      <text class="section-more" bindtap="showTypesDetail">了解详情 ›</text>
+    </view>
+    <view class="types-grid">
+      <view class="type-card" wx:for="{{questionTypes}}" wx:key="index"
+            style="border-left-color:{{item.color}}">
+        <text class="type-icon">{{item.icon}}</text>
+        <text class="type-name">{{item.name}}</text>
+        <text class="type-desc">{{item.description}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ==================== 原理弹窗 ==================== -->
+  <view class="modal-mask" wx:if="{{showPrinciple}}" bindtap="hidePrincipleDetail">
+    <view class="modal-content principle-modal" catchtap="">
+      <view class="modal-header">
+        <text class="modal-title">苏格拉底核心原理</text>
+        <text class="modal-close" bindtap="hidePrincipleDetail">✕</text>
+      </view>
+      <scroll-view scroll-y class="modal-body">
+        <view class="principle-item" wx:for="{{principleList}}" wx:key="type_name">
+          <view class="p-type" style="color:{{item.color}}">
+            <text>{{item.icon}} {{item.type_name}}</text>
+          </view>
+          <view class="p-purpose">目的：{{item.purpose}}</view>
+          <view class="p-example">示例："{{item.example}}"</view>
+        </view>
+        <view class="principle-tip">
+          <text class="tip-label">💡 核心心法</text>
+          <text class="tip-text">不是告诉客户答案，而是通过提问让她自己找到答案！</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 提问类型详情弹窗 -->
+  <view class="modal-mask" wx:if="{{showTypesModal}}" bindtap="hideTypesDetail">
+    <view class="modal-content types-modal" catchtap="">
+      <view class="modal-header">
+        <text class="modal-title">五种提问技巧详解</text>
+        <text class="modal-close" bindtap="hideTypesDetail">✕</text>
+      </view>
+      <scroll-view scroll-y class="modal-body">
+        <view class="type-detail-item" wx:for="{{questionTypes}}" wx:key="index" 
+              style="border-top-color:{{item.color}}">
+          <view class="td-header" style="background:{{item.color}}15">
+            <text class="td-icon">{{item.icon}}</text>
+            <text class="td-name" style="color:{{item.color}}">{{item.name}}</text>
+          </view>
+          <view class="td-desc">{{item.description}}</view>
+          <view class="td-examples">
+            <text class="td-example-label">典型话术：</text>
+            <view class="td-example-list">
+              <text class="td-example" wx:for="{{item.examples}}" wx:for-item="ex" wx:key="*this">· {{ex}}</text>
+            </view>
+          </view>
+          <view class="td-tips">📌 {{item.tips}}</view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

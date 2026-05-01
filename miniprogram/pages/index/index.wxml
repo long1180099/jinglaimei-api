@@ -1,0 +1,321 @@
+<!-- 首页 v2.0 -->
+<view class="page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <view class="search-icon-wrap">
+        <text class="search-icon">⌕</text>
+      </view>
+      <text class="search-placeholder">搜索商品、品牌</text>
+    </view>
+    <view class="search-action">
+      <text class="search-scan">⦿</text>
+    </view>
+  </view>
+
+  <!-- 轮播图 -->
+  <swiper class="banner" indicator-dots indicator-color="rgba(255,255,255,0.3)" indicator-active-color="#fff" autoplay circular interval="4500" style="border-radius: 24rpx;">
+    <swiper-item wx:for="{{banners}}" wx:key="id">
+      <image class="banner-img" src="{{item.image_url}}" mode="aspectFill" bindtap="onBannerTap" data-item="{{item}}"></image>
+    </swiper-item>
+    <swiper-item wx:if="{{banners.length == 0}}">
+      <view class="banner-placeholder">
+        <!-- 背景光效层 -->
+        <view class="banner-bg-glow"></view>
+        <view class="banner-bg-glow banner-bg-glow2"></view>
+
+        <!-- 装饰元素 - 浮动光球 -->
+        <view class="banner-orb orb1"></view>
+        <view class="banner-orb orb2"></view>
+        <view class="banner-orb orb3"></view>
+        <view class="banner-orb orb4"></view>
+        <view class="banner-sparkle s1">✦</view>
+        <view class="banner-sparkle s2">✦</view>
+        <view class="banner-sparkle s3">✧</view>
+        <view class="banner-sparkle s4">✧</view>
+
+        <!-- 底部波浪 -->
+        <view class="banner-wave"></view>
+
+        <!-- 主内容区 -->
+        <view class="banner-ph-content">
+          <view class="ph-top-row">
+            <view class="ph-tag-premium">
+              <text class="ph-tag-icon">♦</text>
+              <text>MEIXIAOKE PREMIUM</text>
+            </view>
+          </view>
+          <view class="ph-brand-row">
+            <text class="banner-ph-brand">玫小可</text>
+          </view>
+          <view class="ph-slogan-row">
+            <text class="ph-slogan-line1">专注肌肤之美</text>
+            <view class="ph-divider"></view>
+            <text class="ph-slogan-line2">打造素颜裸妆肌</text>
+          </view>
+          <view class="ph-features">
+            <view class="ph-feature-item"><text class="pf-icon">✿</text><text>科学护肤</text></view>
+            <view class="ph-feature-dot"></view>
+            <view class="ph-feature-item"><text class="pf-icon">❋</text><text>AI诊断</text></view>
+            <view class="ph-feature-dot"></view>
+            <view class="ph-feature-item"><text class="pf-icon">✦</text><text>定制方案</text></view>
+          </view>
+          <view class="banner-ph-btn">
+            <text class="btn-text">探索精品</text>
+            <text class="btn-arrow">⟶</text>
+          </view>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <!-- 快捷功能 -->
+  <view class="quick-nav">
+    <view class="nav-item" bindtap="goCategory" data-id="0">
+      <view class="nav-icon-wrap">
+        <view class="nav-icon" style="background:linear-gradient(135deg,#ff7675,#d63031)">✦</view>
+      </view>
+      <text class="nav-label">全部商品</text>
+    </view>
+    <view class="nav-item" bindtap="goCategory" data-id="1">
+      <view class="nav-icon-wrap">
+        <view class="nav-icon" style="background:linear-gradient(135deg,#55efc4,#00b894)">◈</view>
+      </view>
+      <text class="nav-label">护肤系列</text>
+    </view>
+    <view class="nav-item" bindtap="goCategory" data-id="2">
+      <view class="nav-icon-wrap">
+        <view class="nav-icon" style="background:linear-gradient(135deg,#a29bfe,#6c5ce7)">◉</view>
+      </view>
+      <text class="nav-label">彩妆系列</text>
+    </view>
+    <view class="nav-item" bindtap="goCategory" data-id="3">
+      <view class="nav-icon-wrap">
+        <view class="nav-icon" style="background:linear-gradient(135deg,#ffeaa7,#fdcb6e)">❖</view>
+      </view>
+      <text class="nav-label">新品上市</text>
+    </view>
+    <view class="nav-item" bindtap="goSchool">
+      <view class="nav-icon-wrap">
+        <view class="nav-icon" style="background:linear-gradient(135deg,#fd79a8,#e84393)">⊞</view>
+      </view>
+      <text class="nav-label">商学院</text>
+    </view>
+  </view>
+
+  <!-- AI皮肤分析入口 -->
+  <view class="skin-entry" bindtap="goSkinAnalysis">
+    <view class="skin-entry-left">
+      <view class="skin-icon-wrap">
+        <text class="skin-icon-emoji">🔬</text>
+      </view>
+      <view class="skin-texts">
+        <text class="skin-title">AI皮肤分析</text>
+        <text class="skin-sub">玫小可 · 打造素颜裸妆肌</text>
+      </view>
+    </view>
+    <view class="skin-entry-right">
+      <text class="skin-btn">立即检测</text>
+      <text class="skin-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 公告 -->
+  <view class="notice-bar" wx:if="{{notice}}">
+    <view class="notice-tag">
+      <text class="notice-tag-text">NEW</text>
+    </view>
+    <swiper class="notice-swiper" vertical autoplay circular interval="3500" duration="500">
+      <swiper-item>
+        <text class="notice-text">{{notice}}</text>
+      </swiper-item>
+    </swiper>
+    <text class="notice-arrow">›</text>
+  </view>
+
+  <!-- 企业公告资讯 -->
+  <view class="section news-section" wx:if="{{announcements.length > 0}}">
+    <view class="section-header">
+      <view class="section-title-wrap">
+        <view class="title-accent" style="background:linear-gradient(180deg,#1890ff,#69c0ff)"></view>
+        <text class="section-title">企业公告</text>
+        <view class="title-badge" style="background:linear-gradient(135deg,#1890ff,#69c0ff)">资讯</view>
+      </view>
+      <view class="section-more" bindtap="goNewsList">
+        <text>查看更多</text>
+        <text class="more-arrow">→</text>
+      </view>
+    </view>
+    <!-- 置顶公告（头条） -->
+    <view class="news-top" wx:if="{{topAnnouncement}}" bindtap="goNewsDetail" data-id="{{topAnnouncement.id}}">
+      <view class="news-top-left">
+        <view class="news-top-badge">置顶</view>
+        <text class="news-top-title line-1">{{topAnnouncement.title}}</text>
+      </view>
+      <text class="news-top-date">{{topAnnouncement.published_at || ''}}</text>
+    </view>
+    <!-- 资讯列表 -->
+    <view class="news-list">
+      <view class="news-item" wx:for="{{announcementList}}" wx:key="id" bindtap="goNewsDetail" data-id="{{item.id}}">
+        <view class="news-item-dot" style="background:{{item.category == 'notice' ? '#e94560' : item.category == 'activity' ? '#faad14' : item.category == 'update' ? '#52c41a' : '#1890ff'}}"></view>
+        <text class="news-item-title line-1">{{item.title}}</text>
+        <text class="news-item-date">{{item.published_at || ''}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 行动日志入口 -->
+  <view class="section action-log-entry">
+    <view class="section-header">
+      <view class="section-title-wrap">
+        <view class="title-accent" style="background:linear-gradient(180deg,#52c41a,#95de64)"></view>
+        <text class="section-title">行动日志</text>
+        <view class="title-badge" style="background:linear-gradient(135deg,#52c41a,#95de64)">目标</view>
+      </view>
+      <view class="section-more" bindtap="goActionLog">
+        <text>开始记录</text>
+        <text class="more-arrow">→</text>
+      </view>
+    </view>
+    <view class="action-log-card" bindtap="goActionLog">
+      <view class="al-left">
+        <view class="al-icon-row">
+          <text class="al-emoji">📝</text>
+          <text class="al-subtitle">每日目标管理</text>
+          <view class="al-tag-new">NEW</view>
+        </view>
+        <text class="al-desc">设定目标 · 记录进展 · 追踪承诺</text>
+        <view class="al-tags">
+          <text class="al-tag">年度目标</text>
+          <text class="al-tag">月度追踪</text>
+          <text class="al-tag">承诺书</text>
+        </view>
+      </view>
+      <view class="al-arrow">
+        <text>›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 业绩排行榜 -->
+  <view class="section ranking-section" wx:if="{{rankingList.length > 0}}">
+    <view class="section-header">
+      <view class="section-title-wrap">
+        <view class="title-accent" style="background:linear-gradient(180deg,#faad14,#ffd666)"></view>
+        <text class="section-title">业绩排行</text>
+        <view class="title-badge" style="background: linear-gradient(135deg,#faad14,#ffd666)">TOP</view>
+      </view>
+      <view class="section-more" bindtap="goRanking">
+        <text>完整榜单</text>
+        <text class="more-arrow">→</text>
+      </view>
+    </view>
+    <!-- 前三名横向展示 -->
+    <view class="top3-row" wx:if="{{rankingList.length >= 3}}">
+      <view class="top3-item t3i-2">
+        <text class="t3-medal">{{rankingList[1].rank == 2 ? '🥈' : '🏅'}}</text>
+        <image class="t3-avatar" src="{{rankingList[1].avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <text class="t3-name">{{rankingList[1].nickname}}</text>
+        <text class="t3-money">¥{{rankingList[1].total_income}}</text>
+      </view>
+      <view class="top3-item t3i-1">
+        <text class="t3-crown">👑</text>
+        <text class="t3-medal">🥇</text>
+        <image class="t3-avatar t3-avatar-top" src="{{rankingList[0].avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <text class="t3-name t3-name-top">{{rankingList[0].nickname}}</text>
+        <text class="t3-money t3-money-top">¥{{rankingList[0].total_income}}</text>
+      </view>
+      <view class="top3-item t3i-3">
+        <text class="t3-medal">{{rankingList[2].rank == 3 ? '🥉' : '🏅'}}</text>
+        <image class="t3-avatar" src="{{rankingList[2].avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <text class="t3-name">{{rankingList[2].nickname}}</text>
+        <text class="t3-money">¥{{rankingList[2].total_income}}</text>
+      </view>
+    </view>
+    <!-- 4~8名列表 -->
+    <view class="rank-mini-list" wx:if="{{rankingList.length > 3}}">
+      <view class="rml-item" wx:for="{{rankingList}}" wx:key="id" wx:if="{{index >= 3}}">
+        <text class="rml-pos">{{item.rank}}</text>
+        <image class="rml-avatar" src="{{item.avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+        <text class="rml-name">{{item.nickname}}</text>
+        <text class="rml-val">¥{{item.total_income}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 热门推荐 -->
+  <view class="section">
+    <view class="section-header">
+      <view class="section-title-wrap">
+        <view class="title-accent"></view>
+        <text class="section-title">热门推荐</text>
+        <view class="title-badge">HOT</view>
+      </view>
+      <view class="section-more" bindtap="goCategory" data-id="0">
+        <text>查看更多</text>
+        <text class="more-arrow">→</text>
+      </view>
+    </view>
+    <scroll-view class="product-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="scroll-content">
+        <view class="product-card-sm" wx:for="{{hotProducts}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+          <view class="product-img-wrap">
+            <image class="product-img" src="{{item.__localImage || item.main_image || item.image || '/images/default-product.png'}}" mode="aspectFill"></image>
+            <view class="product-badge" wx:if="{{item.sales_count > 100}}">爆款</view>
+          </view>
+          <view class="product-sm-info">
+            <text class="product-name line-1">{{item.product_name}}</text>
+            <view class="product-sm-bottom">
+              <view class="price-row">
+                <text class="price-symbol">¥</text>
+                <text class="price-num">{{item.retail_price}}</text>
+              </view>
+              <text class="sales-count">{{item.sales_count || 0}}人付款</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 新品上架 -->
+  <view class="section">
+    <view class="section-header">
+      <view class="section-title-wrap">
+        <view class="title-accent"></view>
+        <text class="section-title">新品上架</text>
+        <view class="title-badge" style="background: linear-gradient(135deg,#00b894,#55efc4)">NEW</view>
+      </view>
+      <view class="section-more" bindtap="goCategory" data-id="3">
+        <text>查看更多</text>
+        <text class="more-arrow">→</text>
+      </view>
+    </view>
+    <view class="product-grid">
+      <view class="product-card" wx:for="{{newProducts}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+        <view class="product-img-wrap">
+          <image class="product-img" src="{{item.__localImage || item.main_image || item.image || '/images/default-product.png'}}" mode="aspectFill"></image>
+          <view class="product-new-tag" wx:if="{{item.is_new}}">新品</view>
+        </view>
+        <view class="product-info">
+          <text class="product-name line-2">{{item.product_name}}</text>
+          <text class="product-desc line-1">{{item.description || ''}}</text>
+          <view class="product-bottom">
+            <view class="price-row">
+              <text class="price-symbol">¥</text>
+              <text class="price-num">{{item.retail_price}}</text>
+            </view>
+            <view class="btn-add-cart" catchtap="addToCart" data-item="{{item}}">
+              <text>+</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="empty-state" wx:if="{{newProducts.length == 0 && !loading}}">
+      <text class="empty-icon">📦</text>
+      <text class="empty-text">暂无新品上架</text>
+      <text class="empty-hint">更多优质好品正在准备中</text>
+    </view>
+  </view>
+</view>

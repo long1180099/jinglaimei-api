@@ -1,0 +1,396 @@
+<!-- 隐私政策 -->
+<view class="page">
+  <view class="header">
+    <text class="title">隐私政策</text>
+    <text class="subtitle">静莱美代理商平台</text>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="doc-body">
+
+      <!-- 更新日期 -->
+      <view class="update-info">生效日期：2026年4月5日</view>
+
+      <!-- 引言 -->
+      <view class="section intro">
+        <view class="section-text">
+          <text class="text-p highlight-box">
+            「静莱美」（以下简称"我们"）非常重视用户的隐私保护。本《隐私政策》将详细说明我们如何收集、使用、存储、共享和保护您的个人信息。请您在使用我们的服务前仔细阅读并充分理解本政策全部内容。
+          </text>
+          <text class="text-p">本政策将帮助您了解以下内容：</text>
+          <view class="toc-list">
+            <text class="toc-item">一、我们收集的个人信息类型及目的</text>
+            <text class="toc-item">二、我们收集个人信息的方式</text>
+            <text class="toc-item">三、我们如何使用您的个人信息</text>
+            <text class="toc-item">四、我们如何存储和保护您的信息</text>
+            <text class="toc-item">五、我们如何共享、转让、公开披露您的信息</text>
+            <text class="toc-item">六、您享有的权利</text>
+            <text class="toc-item">七、未成年人保护</text>
+            <text class="toc-item">八、本政策的更新与通知</text>
+            <text class="toc-item">九、联系我们</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 第一条 -->
+      <view class="section">
+        <view class="section-title">一、我们收集的个人信息类型及使用目的</view>
+        <view class="section-text">
+
+          <view class="info-table">
+            <view class="table-header">
+              <text class="th th-type">信息类型</text>
+              <text class="th th-detail">具体内容</text>
+              <text class="th th-purpose">使用目的</text>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag phone">手机号</text></view>
+              <view class="td td-detail"><text class="detail-text">注册或登录时提供的手机号码</text></view>
+              <view class="td td-purpose"><text class="purpose-text">账号唯一标识、身份验证、登录认证、订单通知、客服联系、安全风控</text></view>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag wechat">微信授权信息</text></view>
+              <view class="td td-detail"><text class="detail-text">微信OpenID、UnionID（加密）、昵称、头像</text></view>
+              <view class="td td-purpose"><text class="purpose-text">微信快捷登录身份识别、账户关联、个人资料展示</text></view>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag basic">基本信息</text></view>
+              <view class="td td-detail"><text class="detail-text">真实姓名、昵称、性别、代理等级</text></view>
+              <view class="td td-purpose"><text class="purpose-text">代理商身份认证、等级权益管理、个人中心展示</text></view>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag order">订单信息</text></view>
+              <view class="td td-detail"><text class="detail-text">商品名称、数量、金额、收货地址（姓名/电话/地址）、配送方式、支付方式</text></view>
+              <view class="td td-purpose"><text class="purpose-text">商品交易处理、物流配送、订单管理、售后服务、财务核算</text></view>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag finance">财务信息</text></view>
+              <view class="td td-detail"><text class="detail-text">代理收益记录、提现记录、余额变动记录、银行账户信息（提现时提供）</text></view>
+              <view class="td td-purpose"><text class="purpose-text">收益结算、提现转账、财务管理、税务合规</text></view>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag team">团队关系</text></view>
+              <view class="td td-detail"><text class="detail-text">上级代理ID、团队成员信息、团队结构</text></view>
+              <view class="td td-purpose"><text class="purpose-text">代理商体系管理、收益计算、团队业绩统计、代理收益结算</text></view>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag learn">学习数据</text></view>
+              <view class="td td-detail"><text class="detail-text">商学院课程学习进度、AI训练通关记录、行动日志数据、学习积分</text></view>
+              <view class="td td-purpose"><text class="purpose-text">学习进度跟踪、能力评估、培训效果分析、个性化推荐</text></view>
+            </view>
+
+            <view class="table-row">
+              <view class="td td-type"><text class="type-tag device">设备与日志</text></view>
+              <view class="td td-detail"><text class="detail-text">设备型号、操作系统版本、IP地址、操作日志、访问时间</text></view>
+              <view class="td td-purpose"><text class="purpose-text">保障平台正常运行、安全防护、故障排查、统计分析、防范欺诈行为</text></view>
+            </view>
+          </view>
+
+        </view>
+      </view>
+
+      <!-- 第二条 -->
+      <view class="section">
+        <view class="section-title">二、我们收集个人信息的方式</view>
+        <view class="section-text">
+          <view class="method-card">
+            <view class="method-icon">📝</view>
+            <view class="method-content">
+              <text class="method-title">主动提供</text>
+              <text class="method-desc">您在注册、登录、下单、申请代理等过程中主动填写和提交的信息，如手机号、真实姓名、收货地址等。</text>
+            </view>
+          </view>
+          <view class="method-card">
+            <view class="method-icon">💬</view>
+            <view class="method-content">
+              <text class="method-title">微信授权</text>
+              <text class="method-desc">通过微信开放接口获取您授权的微信基本信息（需您点击同意授权），包括OpenID、昵称、头像等。</text>
+            </view>
+          </view>
+          <view class="method-card">
+            <view class="method-icon">📱</view>
+            <view class="method-content">
+              <text class="method-title">手机号快速验证</text>
+              <text class="method-desc">使用微信「手机号快速验证」组件获取您微信绑定的手机号（需您主动触发并授权），用于快捷登录。</text>
+            </view>
+          </view>
+          <view class="method-card">
+            <view class="method-icon">🔧</view>
+            <view class="method-content">
+              <text class="method-title">自动采集</text>
+              <text class="method-desc">在您使用平台服务过程中自动采集的设备信息和操作日志，用于保障服务安全和优化用户体验。</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 第三条 -->
+      <view class="section">
+        <view class="section-title">三、我们如何使用您的个人信息</view>
+        <view class="section-text">
+          <text class="text-p">我们会严格按照以下目的和方式使用您的个人信息：</text>
+
+          <view class="use-grid">
+            <view class="use-item">
+              <text class="use-num">01</text>
+              <text class="use-title">账号管理</text>
+              <text class="use-desc">创建和管理您的账户，进行身份验证和安全保障</text>
+            </view>
+            <view class="use-item">
+              <text class="use-num">02</text>
+              <text class="use-title">交易处理</text>
+              <text class="use-desc">处理商品订单、支付结算、物流配送和售后服务</text>
+            </view>
+            <view class="use-item">
+              <text class="use-num">03</text>
+              <text class="use-title">代理商服务</text>
+              <text class="use-desc">代理等级管理、收益结算、差价计算、团队运营</text>
+            </view>
+            <view class="use-item">
+              <text class="use-num">04</text>
+              <text class="use-title">学习培训</text>
+              <text class="use-desc">提供商学院课程、AI话术训练、行动日志等学习服务</text>
+            </view>
+            <view class="use-item">
+              <text class="use-num">05</text>
+              <text class="use-title">消息通知</text>
+              <text class="use-desc">发送订单状态、收益变动、系统公告等相关通知</text>
+            </view>
+            <view class="use-item">
+              <text class="use-num">06</text>
+              <text class="use-title">安全保障</text>
+              <text class="use-desc">防范欺诈行为、检测安全风险、保障账户和数据安全</text>
+            </view>
+            <view class="use-item">
+              <text class="use-num">07</text>
+              <text class="use-title">服务优化</text>
+              <text class="use-desc">分析使用数据以改进产品功能、提升用户体验和服务质量</text>
+            </view>
+            <view class="use-item">
+              <text class="use-num">08</text>
+              <text class="use-title">法律合规</text>
+              <text class="use-desc">遵守法律法规要求，配合监管部门执法调查</text>
+            </view>
+          </view>
+
+          <view class="notice-box">
+            <text class="notice-label">⚠️ 重要说明</text>
+            <text class="notice-text">未经您的明确单独同意，我们不会将您的个人信息用于上述用途之外的其他目的。如需改变用途范围，我们会再次征求您的同意。</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 第四条 -->
+      <view class="section">
+        <view class="section-title">四、我们如何存储和保护您的个人信息</view>
+        <view class="section-text">
+
+          <view class="sub-section">
+            <text class="sub-title">4.1 存储位置与期限</text>
+            <text class="text-p">• 您的个人信息存储于中华人民共和国境内的服务器上。</text>
+            <text class="text-p">• 我们仅在实现本政策所述目的所需的期限内保留您的个人信息。</text>
+            <text class="text-p">• 一般情况下：账户信息保存至账户注销后180天；交易信息保存至交易完成后3年；日志信息保存至生成后6个月。</text>
+            <text class="text-p">• 超过保留期限后，我们将对您的个人信息进行匿名化处理或依法删除。</text>
+          </view>
+
+          <view class="sub-section">
+            <text class="sub-title">4.2 安全保护措施</text>
+            <text class="text-p">我们采用业界标准的安全技术和严格的管理制度来保护您的个人信息：</text>
+          </view>
+
+          <view class="security-list">
+            <view class="security-item">
+              <text class="security-emoji">🔒</text>
+              <view class="security-info">
+                <text class="security-name">传输加密</text>
+                <text class="security-desc">使用HTTPS/TLS协议对数据传输进行加密保护</text>
+              </view>
+            </view>
+            <view class="security-item">
+              <text class="security-emoji">🛡️</text>
+              <view class="security-info">
+                <text class="security-name">存储加密</text>
+                <text class="security-desc">敏感数据采用加密算法进行安全存储</text>
+              </view>
+            </view>
+            <view class="security-item">
+              <text class="security-emoji">👤</text>
+              <view class="security-info">
+                <text class="security-name">访问控制</text>
+                <text class="security-desc">严格的权限管理和最小权限原则，仅授权人员可访问</text>
+              </view>
+            </view>
+            <view class="security-item">
+              <text class="security-emoji">📋</text>
+              <view class="security-info">
+                <text class="security-name">安全审计</text>
+                <text class="security-desc">定期进行安全审计和漏洞扫描，及时修复安全隐患</text>
+              </view>
+            </view>
+            <view class="security-item">
+              <text class="security-emoji">🚨</text>
+              <view class="security-info">
+                <text class="security-name">应急响应</text>
+                <text class="security-desc">建立数据泄露应急响应机制，发生安全事件时及时通知用户</text>
+              </view>
+            </view>
+          </view>
+
+        </view>
+      </view>
+
+      <!-- 第五条 -->
+      <view class="section">
+        <view class="section-title">五、我们如何共享、转让、公开披露您的信息</view>
+        <view class="section-text">
+
+          <view class="sub-section">
+            <text class="sub-title">5.1 共享</text>
+            <text class="text-p">原则上我们不会与任何第三方共享您的个人信息，但以下情形除外：</text>
+            <view class="share-case">
+              <text class="case-item">✓ 获得您的明确授权同意后 — 如您授权第三方服务商协助我们提供服务</text>
+              <text class="case-item">✓ 与关联公司共享 — 为向您提供一致的服务体验，可能与静莱美关联公司必要共享</text>
+              <text class="case-item">✓ 法律法规要求 — 根据法律法规、行政或司法强制要求必须提供</text>
+              <text class="case-item">✓ 合作伙伴必要场景 — 物流公司（配送需要）、支付机构（支付结算）、云服务提供商（技术服务）</text>
+            </view>
+          </view>
+
+          <view class="sub-section">
+            <text class="sub-title">5.2 转让</text>
+            <text class="text-p">我们不会将您的个人信息转让给除静莱美及其关联方以外的任何第三方，除非：</text>
+            <text class="text-p">• 获得您的明确同意；</text>
+            <text class="text-p">• 涉及合并、收购或破产清算时，涉及个人信息转让的，我们会告知您接收方的信息。</text>
+          </view>
+
+          <view class="sub-section">
+            <text class="sub-title">5.3 公开披露</text>
+            <text class="text-p">除法律法规规定或执法机关要求外，我们不会公开披露您的个人信息。</text>
+          </view>
+
+        </view>
+      </view>
+
+      <!-- 第六条 -->
+      <view class="section">
+        <view class="section-title">六、您对个人信息的权利</view>
+        <view class="section-text">
+          <text class="text-p">按照相关法律法规，您对您的个人信息享有以下权利：</text>
+
+          <view class="right-list">
+            <view class="right-item">
+              <view class="right-icon">👁️</view>
+              <view class="right-body">
+                <text class="right-title">查阅权</text>
+                <text class="right-desc">您可以随时查看我们持有的关于您的个人信息</text>
+              </view>
+            </view>
+            <view class="right-item">
+              <view class="right-icon">✏️</view>
+              <view class="right-body">
+                <text class="right-title">更正权</text>
+                <text class="right-desc">当您的信息有误或不完整时，可以申请更正或补充</text>
+              </view>
+            </view>
+            <view class="right-item">
+              <view class="right-icon">🗑️</view>
+              <view class="right-body">
+                <text class="right-title">删除权</text>
+                <text class="right-desc">在特定情形下，您有权请求删除您的个人信息</text>
+              </view>
+            </view>
+            <view class="right-item">
+              <view class="right-icon">⏸️</view>
+              <view class="right-body">
+                <text class="right-title">撤回授权</text>
+                <text class="right-desc">您可以随时撤回此前对我们的授权同意</text>
+              </view>
+            </view>
+            <view class="right-item">
+              <view class="right-icon">🚪</view>
+              <view class="right-body">
+                <text class="right-title">注销账户</text>
+                <text class="right-desc">您可以申请注销账户，注销后我们将停止为您提供服务</text>
+              </view>
+            </view>
+          </view>
+
+          <text class="text-p right-note">如您需要行使以上权利，请通过本政策第九条中的联系方式与我们联系。我们将在15个工作日内核实身份后予以处理。</text>
+        </view>
+      </view>
+
+      <!-- 第七条 -->
+      <view class="section">
+        <view class="section-title">七、未成年人保护</view>
+        <view class="section-text">
+          <view class="protect-box">
+            <text class="protect-icon">👶</text>
+            <view class="protect-content">
+              <text class="text-p red-bold">我们非常重视未成年人的个人信息保护。</text>
+              <text class="text-p">• 如果您是18周岁以下的未成年人，请在监护人的陪同下阅读本政策，并在取得监护人明确同意后使用我们的服务。</text>
+              <text class="text-p">• 监护人应切实履行监护职责，对未成年人的网络行为进行引导和保护。</text>
+              <text class="text-p">• 如我们发现未事先征得监护人同意的情况下收集了未成年人的个人信息，我们将尽快删除相关数据。</text>
+              <text class="text-p">• 如您是监护人且有理由认为我们违规收集了被监护人的信息，请立即联系我们。</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 第八条 -->
+      <view class="section">
+        <view class="section-title">八、本政策的更新与通知</view>
+        <view class="section-text">
+          <text class="text-p">8.1 我们可能会适时更新本政策的内容。重大变更将通过小程序内弹窗、推送通知等方式告知您。</text>
+          <text class="text-p">8.2 未经您明确同意，我们不会削减您依据本政策所应享受的权利。</text>
+          <text class="text-p">8.3 对于重大变更，我们还会提供更为显著的通知方式（包括在您首次打开小程序时弹窗提示确认）。</text>
+          <text class="text-p">8.4 本政策所指的重大变更包括但不限于：</text>
+          <text class="text-p indent">（1）我们的服务模式发生重大变化；</text>
+          <text class="text-p indent">（2）个人信息共享、转让或公开披露的对象、范围、目的发生变化；</text>
+          <text class="text-p indent">（3）您参与个人信息处理方面的权利及其行使方式发生重大变化；</text>
+          <text class="text-p indent">（4）我们负责处理个人信息安全的责任部门、联络方式及投诉渠道发生变化；</text>
+          <text class="text-p indent">（5）其他可能对您的个人信息权益产生重大影响的变化。</text>
+        </view>
+      </view>
+
+      <!-- 第九条 -->
+      <view class="section">
+        <view class="section-title">九、联系我们</view>
+        <view class="section-text">
+          <text class="text-p">如果您对本隐私政策有任何疑问、意见或建议，或需要行使您的相关权利，请通过以下方式联系我们：</text>
+
+          <view class="contact-cards">
+            <view class="contact-card">
+              <text class="contact-label">运营主体</text>
+              <text class="contact-value">静莱美</text>
+            </view>
+            <view class="contact-card">
+              <text class="contact-label">客服邮箱</text>
+              <text class="contact-value">support@jinglaimei.com</text>
+            </view>
+            <view class="contact-card">
+              <text class="contact-label">数据保护负责人</text>
+              <text class="contact-value">privacy@jinglaimei.com</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 同意确认区 -->
+      <view class="consent-area">
+        <text class="consent-tip">继续使用即表示您已阅读、理解并同意本《隐私政策》的全部内容。</text>
+      </view>
+
+    </view>
+  </scroll-view>
+
+  <view class="footer">
+    <text class="footer-text">静莱美 © 2026 版权所有</text>
+    <text class="footer-icp">鲁ICP备2026019556号</text>
+  </view>
+</view>

@@ -134,7 +134,7 @@ router.post('/books/create-with-file', upload.single('file'), (req, res) => {
     
     // Step 2: 从body取书籍信息（同时支持camelCase和snake_case）
     const { title, author, description, category, difficulty, pages, reading_time: readingTime,
-            tags, summary, keyPoints, status, coverUrl } = req.body;
+            tags, summary, keyPoints, status, coverUrl, access_level, is_top } = req.body;
             
     console.log('[BOOK_CREATE_WITH_FILE] Body:', JSON.stringify({ title, author, pages, fileUrl }));
     
@@ -142,8 +142,8 @@ router.post('/books/create-with-file', upload.single('file'), (req, res) => {
     
     const db = getDB();
     const result = db.prepare(`
-      INSERT INTO learning_books (title, author, description, category, difficulty, pages, reading_time, tags, summary, key_points, status, file_url, file_name, file_format, file_size, cover_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO learning_books (title, author, description, category, difficulty, pages, reading_time, tags, summary, key_points, status, file_url, file_name, file_format, file_size, cover_url, access_level, is_top)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       title || '',
       author || '',
@@ -160,7 +160,9 @@ router.post('/books/create-with-file', upload.single('file'), (req, res) => {
       req.file.originalname,             // ← 文件名来自实际上传的文件
       ext,                              // ← 格式来自实际上传的文件
       req.file.size,                    // ← 大小来自实际上传的文件
-      coverUrl || ''
+      coverUrl || '',
+      access_level || 'all',
+      is_top ? 1 : 0
     );
     
     const newId = result.lastInsertRowid;
@@ -370,7 +372,7 @@ router.put('/books/:id', (req, res) => {
     const book = db.prepare('SELECT id FROM learning_books WHERE id = ?').get(req.params.id);
     if (!book) return error(res, '电子书不存在', 404);
 
-    const { title, author, description, category, difficulty, pages, reading_time, tags, summary, keyPoints, status, fileUrl, fileName, fileFormat, fileSize, coverUrl } = req.body;
+    const { title, author, description, category, difficulty, pages, reading_time, tags, summary, keyPoints, status, fileUrl, fileName, fileFormat, fileSize, coverUrl, access_level, is_top } = req.body;
 
     db.prepare(`
       UPDATE learning_books SET
@@ -390,6 +392,8 @@ router.put('/books/:id', (req, res) => {
         file_format = COALESCE(?, file_format),
         file_size = COALESCE(?, file_size),
         cover_url = COALESCE(?, cover_url),
+        access_level = COALESCE(?, access_level),
+        is_top = COALESCE(?, is_top),
         updated_at = datetime('now','localtime')
       WHERE id = ?
     `).run(
@@ -399,6 +403,7 @@ router.put('/books/:id', (req, res) => {
       summary,
       Array.isArray(keyPoints) ? JSON.stringify(keyPoints) : keyPoints,
       status, fileUrl, fileName, fileFormat, fileSize, coverUrl,
+      access_level, is_top,
       req.params.id
     );
 
@@ -533,3 +538,109 @@ router.get('/books/:id/download', (req, res) => {
 });
 
 module.exports = router;
+
+// ==================== 以下为附加在router上的分类管理 ====================
+
+// GET /api/school/books/categories - 获取分类列表
+router.get('/books/categories', (req, res) => {
+  try {
+    const db = getDB();
+    const categories = db.prepare('SELECT * FROM ebook_categories ORDER BY sort_order ASC').all();
+    success(res, categories);
+  } catch (err) {
+    error(res, err.message, 500);
+  }
+});
+
+// POST /api/school/books/categories - 新增分类
+router.post('/books/categories', (req, res) => {
+  try {
+    const db = getDB();
+    const { name, icon, sort_order } = req.body;
+    if (!name) return error(res, '分类名称不能为空');
+    const result = db.prepare('INSERT INTO ebook_categories (name, icon, sort_order) VALUES (?, ?, ?)').run(
+      name, icon || '', sort_order || 0
+    );
+    success(res, { id: result.lastInsertRowid }, '分类创建成功', 201);
+  } catch (err) {
+    error(res, err.message, 500);
+  }
+});
+
+// PUT /api/school/books/categories/:id - 更新分类
+router.put('/books/categories/:id', (req, res) => {
+  try {
+    const db = getDB();
+    const { name, icon, sort_order, status } = req.body;
+    db.prepare(`
+      UPDATE ebook_categories SET
+        name = COALESCE(?, name),
+        icon = COALESCE(?, icon),
+        sort_order = COALESCE(?, sort_order),
+        status = COALESCE(?, status)
+      WHERE id = ?
+    `).run(name, icon, sort_order, status, req.params.id);
+    success(res, null, '分类更新成功');
+  } catch (err) {
+    error(res, err.message, 500);
+  }
+});
+
+// DELETE /api/school/books/categories/:id - 删除分类
+router.delete('/books/categories/:id', (req, res) => {
+  try {
+    const db = getDB();
+    db.prepare('DELETE FROM ebook_categories WHERE id = ?').run(req.params.id);
+    success(res, null, '分类删除成功');
+  } catch (err) {
+    error(res, err.message, 500);
+  }
+});
+
+// PUT /api/school/books/:id/top - 置顶/取消置顶
+router.put('/books/:id/top', (req, res) => {
+  try {
+    ensureBooksTable();
+    const db = getDB();
+    const { is_top } = req.body;
+    db.prepare('UPDATE learning_books SET is_top = ?, updated_at = datetime(\'now\',\'localtime\') WHERE id = ?')
+      .run(is_top ? 1 : 0, req.params.id);
+    success(res, null, is_top ? '已置顶' : '已取消置顶');
+  } catch (err) {
+    error(res, err.message, 500);
+  }
+});
+
+// GET /api/school/books/reading-stats - 阅读数据统计
+router.get('/books/reading-stats', (req, res) => {
+  try {
+    const db = getDB();
+    // 总阅读人数
+    const readerCount = db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM user_read_progress WHERE progress > 0').get().c;
+    // 热门书籍 TOP10
+    const topBooks = db.prepare(`
+      SELECT b.id, b.title, b.author, b.category, b.cover_url, b.views, b.downloads,
+             COUNT(rp.id) as reader_count
+      FROM learning_books b
+      LEFT JOIN user_read_progress rp ON rp.book_id = b.id AND rp.progress > 0
+      WHERE b.status IN ('1','active','available','recommended') OR b.status IS NULL
+      GROUP BY b.id
+      ORDER BY b.views DESC
+      LIMIT 10
+    `).all();
+    // 最近阅读记录
+    const recentReads = db.prepare(`
+      SELECT rp.progress, rp.last_read_time, u.real_name, u.username,
+             b.title as book_title, b.cover_url
+      FROM user_read_progress rp
+      JOIN users u ON rp.user_id = u.id
+      JOIN learning_books b ON rp.book_id = b.id
+      ORDER BY rp.last_read_time DESC
+      LIMIT 20
+    `).all();
+
+    success(res, { readerCount, topBooks, recentReads });
+  } catch (err) {
+    error(res, err.message, 500);
+  }
+});

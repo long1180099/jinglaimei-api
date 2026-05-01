@@ -1,0 +1,426 @@
+<!-- 性格色彩话术 -->
+<view class="page">
+  <!-- 顶部Banner -->
+  <view class="personality-banner">
+    <text class="banner-title">🎨 性格色彩成交话术</text>
+    <text class="banner-desc">读懂客户，精准成交</text>
+  </view>
+
+  <!-- Tab切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab == item.key ? 'active' : ''}}"
+          wx:for="{{tabs}}" wx:key="key"
+          bindtap="switchTab" data-key="{{item.key}}">
+      <text class="tab-icon">{{item.icon}}</text>
+      <text>{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 性格速查 -->
+  <scroll-view class="tab-content" scroll-y wx:if="{{activeTab == 'overview'}}">
+
+    <!-- 三秒识人法入口卡片 -->
+    <view class="quick-scan-card" bindtap="toggleQuickScan">
+      <view class="qs-header">
+        <view class="qs-icon-wrap">
+          <text class="qs-icon">⚡</text>
+        </view>
+        <view class="qs-title-wrap">
+          <text class="qs-title">三秒识人法</text>
+          <text class="qs-subtitle">看三点→定一色，小白秒懂</text>
+        </view>
+        <text class="qs-arrow {{showQuickScan ? 'expanded' : ''}}">›</text>
+      </view>
+
+      <!-- 展开内容 -->
+      <view class="qs-body" wx:if="{{showQuickScan}}">
+        <!-- 黄金公式 -->
+        <view class="qs-section">
+          <text class="qs-section-title">🎯 三秒识人黄金公式</text>
+          <text class="qs-section-desc">看三点→定一色：</text>
+          <view class="qs-formula">
+            <view class="qs-formula-item">
+              <text class="qs-formula-num">1</text>
+              <text class="qs-formula-text">面部表情 + 肢体语言（0.5秒）</text>
+            </view>
+            <view class="qs-formula-item">
+              <text class="qs-formula-num">2</text>
+              <text class="qs-formula-text">说话方式 + 语速（1.5秒）</text>
+            </view>
+            <view class="qs-formula-item">
+              <text class="qs-formula-num">3</text>
+              <text class="qs-formula-text">第一反应 + 关注点（1秒）</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 四色快速识别表 -->
+        <view class="qs-section">
+          <text class="qs-section-title">📊 四色快速识别表</text>
+          <view class="qs-table">
+            <!-- 红色 -->
+            <view class="qs-table-row qs-row-red">
+              <view class="qs-color-badge" style="background:#e94560;">红</view>
+              <view class="qs-table-content">
+                <text class="qs-table-motif">快乐导向</text>
+                <view class="qs-tags">
+                  <text class="qs-tag">表情丰富 笑容灿烂</text>
+                  <text class="qs-tag">语速快 爱插话</text>
+                  <text class="qs-tag">分享感受 关注氛围</text>
+                </view>
+              </view>
+            </view>
+            <!-- 蓝色 -->
+            <view class="qs-table-row qs-row-blue">
+              <view class="qs-color-badge" style="background:#1890ff;">蓝</view>
+              <view class="qs-table-content">
+                <text class="qs-table-motif">完美导向</text>
+                <view class="qs-tags">
+                  <text class="qs-tag">表情平静 眼神专注</text>
+                  <text class="qs-tag">语速平稳 用词严谨</text>
+                  <text class="qs-tag">分析细节 关注问题</text>
+                </view>
+              </view>
+            </view>
+            <!-- 黄色 -->
+            <view class="qs-table-row qs-row-yellow">
+              <view class="qs-color-badge" style="background:#faad14;">黄</view>
+              <view class="qs-table-content">
+                <text class="qs-table-motif">目标导向</text>
+                <view class="qs-tags">
+                  <text class="qs-tag">表情严肃 眼神坚定</text>
+                  <text class="qs-tag">语气果断 爱主导</text>
+                  <text class="qs-tag">解决问题 关注目标</text>
+                </view>
+              </view>
+            </view>
+            <!-- 绿色 -->
+            <view class="qs-table-row qs-row-green">
+              <view class="qs-color-badge" style="background:#52c41a;">绿</view>
+              <view class="qs-table-content">
+                <text class="qs-table-motif">和谐导向</text>
+                <view class="qs-tags">
+                  <text class="qs-tag">表情温和 眼神友善</text>
+                  <text class="qs-tag">语速慢 声音轻柔</text>
+                  <text class="qs-tag">回避冲突 关注他人</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 实战演练 -->
+        <view class="qs-section">
+          <text class="qs-section-title">🎭 实战演练</text>
+
+          <view class="qs-scene-block">
+            <text class="qs-scene-label">场景1：初次见面打招呼</text>
+            <view class="qs-dialog-list">
+              <view class="qs-dialog-item qs-dialog-red">
+                <text class="qs-dialog-color">🔴 红</text>
+                <text class="qs-dialog-text">"哇！终于见到你了！你今天穿得真好看！"</text>
+              </view>
+              <view class="qs-dialog-item qs-dialog-blue">
+                <text class="qs-dialog-color">🔵 蓝</text>
+                <text class="qs-dialog-text">"你好，我是XX，之前通过XX联系过。"</text>
+              </view>
+              <view class="qs-dialog-item qs-dialog-yellow">
+                <text class="qs-dialog-color">🟡 黄</text>
+                <text class="qs-dialog-text">"你好，我是XX。我们直接谈正事吧？"</text>
+              </view>
+              <view class="qs-dialog-item qs-dialog-green">
+                <text class="qs-dialog-color">🟢 绿</text>
+                <text class="qs-dialog-text">"你好呀，路上过来顺利吗？要不要先喝点水？"</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="qs-scene-block">
+            <text class="qs-scene-label">场景2：遇到突发问题（如电梯故障）</text>
+            <view class="qs-dialog-list">
+              <view class="qs-dialog-item qs-dialog-red">
+                <text class="qs-dialog-color">🔴 红</text>
+                <text class="qs-dialog-text">"哈哈，太有意思了！趁机聊聊天！"</text>
+              </view>
+              <view class="qs-dialog-item qs-dialog-blue">
+                <text class="qs-dialog-color">🔵 蓝</text>
+                <text class="qs-dialog-text">"别慌，我查一下应急电话和备用方案。"</text>
+              </view>
+              <view class="qs-dialog-item qs-dialog-yellow">
+                <text class="qs-dialog-color">🟡 黄</text>
+                <text class="qs-dialog-text">"大家听我指挥，先按报警按钮！"</text>
+              </view>
+              <view class="qs-dialog-item qs-dialog-green">
+                <text class="qs-dialog-color">🟢 绿</text>
+                <text class="qs-dialog-text">"大家别吵，慢慢等维修人员来吧。"</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 避坑指南 -->
+        <view class="qs-section qs-tips-section">
+          <text class="qs-section-title">⚠️ 小白避坑指南</text>
+          <view class="qs-tips-list">
+            <view class="qs-tip-item">
+              <text class="qs-tip-num">1</text>
+              <text class="qs-tip-text">没有纯单色人，大多数人是主色+次色</text>
+            </view>
+            <view class="qs-tip-item">
+              <text class="qs-tip-num">2</text>
+              <text class="qs-tip-text">三秒识人是初步判断，深入了解需结合更多场景</text>
+            </view>
+            <view class="qs-tip-item">
+              <text class="qs-tip-num">3</text>
+              <text class="qs-tip-text">动机优先于行为——同样迟到，动机完全不同</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 一句话总结 -->
+        <view class="qs-summary">
+          <text class="qs-summary-text">💡 红看情绪，蓝看细节，黄看目标，绿看和谐——三秒搞定！</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="personality-list">
+      <!-- AI深度分析入口 -->
+      <view class="ai-insight-entry" bindtap="fetchAiInsight">
+        <view class="ai-entry-left">
+          <text class="ai-entry-icon">{{aiInsightLoading ? '⏳' : '🧠'}}</text>
+          <view class="ai-entry-text">
+            <text class="ai-entry-title">AI 深度分析</text>
+            <text class="ai-entry-desc">{{Object.keys(aiInsights).length > 0 ? '已生成4种性格的深度解读' : '一键获取每种性格的沟通策略与成交技巧'}}</text>
+          </view>
+        </view>
+        <text class="ai-entry-arrow">›</text>
+      </view>
+
+      <!-- 性格卡片 -->
+      <view class="personality-card" wx:for="{{personalities}}" wx:key="type"
+            style="border-left: 8rpx solid {{item.color}};">
+        <view class="personality-header">
+          <text class="personality-icon">{{item.icon}}</text>
+          <view class="personality-name-wrap">
+            <text class="personality-name" style="color:{{item.color}}">{{item.name}}</text>
+            <text class="personality-subtitle">{{item.subtitle}}</text>
+          </view>
+          <!-- 有AI解读时显示查看按钮 -->
+          <view class="view-ai-btn" wx:if="{{aiInsights[item.type]}}" catchtap="viewAiDetail" data-type="{{item.type}}">
+            AI解读
+          </view>
+          <view class="view-scripts-btn" bindtap="goFromOverview" data-type="{{item.type}}">
+            查看话术 ›
+          </view>
+        </view>
+
+        <text class="personality-desc">{{item.description}}</text>
+
+        <view class="personality-traits">
+          <text class="trait-tag" wx:for="{{item.traits}}" wx:for-item="trait" wx:key="*this"
+                style="background:{{item.bgColor}}; color:{{item.color}};">
+            {{trait}}
+          </text>
+        </view>
+
+        <view class="personality-buying">
+          <text class="buying-label">消费特点：</text>
+          <text class="buying-text">{{item.buyingStyle}}</text>
+        </view>
+
+        <!-- 简版AI解读预览（有数据时显示） -->
+        <view class="ai-insight-preview" wx:if="{{aiInsights[item.type] && showAiInsight}}">
+          <view class="ai-preview-tags">
+            <text class="ai-preview-tag" wx:for="{{aiInsights[item.type].dos || []}}" wx:key="*this">✅ {{item}}</text>
+            <text class="ai-preview-tag warning" wx:for="{{aiInsights[item.type].donts || []}}" wx:key="*this">⚠️ {{item}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 话术库 -->
+  <scroll-view class="tab-content" scroll-y wx:if="{{activeTab == 'scripts'}}">
+    <!-- 筛选 -->
+    <view class="filter-bar">
+      <view class="type-filters">
+        <text class="filter-tag {{!activeType ? 'active' : ''}}" bindtap="filterByType" data-type="">全部</text>
+        <text class="filter-tag {{activeType == 'red' ? 'active' : ''}}" bindtap="filterByType" data-type="red" style="{{activeType == 'red' ? 'background:#e94560;color:#fff;' : 'color:#e94560;'}}">🔴 红</text>
+        <text class="filter-tag {{activeType == 'blue' ? 'active' : ''}}" bindtap="filterByType" data-type="blue" style="{{activeType == 'blue' ? 'background:#1890ff;color:#fff;' : 'color:#1890ff;'}}">🔵 蓝</text>
+        <text class="filter-tag {{activeType == 'yellow' ? 'active' : ''}}" bindtap="filterByType" data-type="yellow" style="{{activeType == 'yellow' ? 'background:#faad14;color:#fff;' : 'color:#faad14;'}}">🟡 黄</text>
+        <text class="filter-tag {{activeType == 'green' ? 'active' : ''}}" bindtap="filterByType" data-type="green" style="{{activeType == 'green' ? 'background:#52c41a;color:#fff;' : 'color:#52c41a;'}}">🟢 绿</text>
+      </view>
+      <scroll-view class="scene-filters" scroll-x enhanced show-scrollbar="{{false}}">
+        <text class="scene-tag {{!activeScene ? 'active' : ''}}" bindtap="filterByScene" data-scene="">全部场景</text>
+        <text class="scene-tag {{activeScene == item ? 'active' : ''}}" wx:for="{{scenes}}" wx:key="*this"
+              bindtap="filterByScene" data-scene="{{item}}">{{item}}</text>
+      </scroll-view>
+
+      <!-- AI生成话术按钮 -->
+      <view class="ai-generate-btn {{aiGenerating ? 'generating' : ''}} {{(!activeType || !activeScene) ? 'disabled' : ''}}"
+            bindtap="generateAiScript">
+        <text class="ai-gen-icon">{{aiGenerating ? '⏳' : '✨'}}</text>
+        <text>{{aiGenerating ? 'AI正在创作...' : (activeType && activeScene) ? 'AI生成专属话术' : '请先选性格+场景'}}</text>
+      </view>
+    </view>
+
+    <!-- 话术列表 -->
+    <view class="script-list">
+      <view class="script-card {{item.is_ai_generated ? 'ai-script-card' : ''}}" wx:for="{{scripts}}" wx:key="id" bindtap="openScriptDetail" data-script="{{item}}">
+        <view class="script-header">
+          <view class="script-type-badge" style="background:{{item.type == 'red' ? '#e94560' : item.type == 'blue' ? '#1890ff' : item.type == 'yellow' ? '#faad14' : '#52c41a'}}">
+            {{item.type == 'red' ? '红' : item.type == 'blue' ? '蓝' : item.type == 'yellow' ? '黄' : '绿'}}
+          </view>
+          <!-- AI生成标签 -->
+          <text class="script-ai-badge" wx:if="{{item.is_ai_generated}}">✨ AI</text>
+          <text class="script-scene tag tag-primary">{{item.scene}}</text>
+          <text class="script-fav {{item.isFavorited ? 'faved' : ''}}" catchtap="toggleFavorite" data-id="{{item.id}}">
+            {{item.isFavorited ? '⭐' : '☆'}}
+          </text>
+        </view>
+        <text class="script-title">{{item.title}}</text>
+        <text class="script-preview line-2">{{item.content}}</text>
+        <view class="script-difficulty">
+          <text>难度：</text>
+          <text wx:for="{{[1,2,3]}}" wx:key="*this" class="star {{item.difficulty >= item ? 'filled' : ''}}">★</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:if="{{scripts.length == 0 && !loading}}">
+      <text class="empty-icon">💬</text>
+      <text class="empty-text">暂无匹配话术</text>
+    </view>
+  </scroll-view>
+
+  <!-- 我的收藏 -->
+  <scroll-view class="tab-content" scroll-y wx:if="{{activeTab == 'favorites'}}">
+    <view class="script-list">
+      <view class="script-card" wx:for="{{favorites}}" wx:key="id" bindtap="openScriptDetail" data-script="{{item}}">
+        <view class="script-header">
+          <view class="script-type-badge" style="background:{{item.type == 'red' ? '#e94560' : item.type == 'blue' ? '#1890ff' : item.type == 'yellow' ? '#faad14' : '#52c41a'}}">
+            {{item.type == 'red' ? '红' : item.type == 'blue' ? '蓝' : item.type == 'yellow' ? '黄' : '绿'}}
+          </view>
+          <text class="script-scene tag tag-primary">{{item.scene}}</text>
+          <text class="script-fav faved" catchtap="toggleFavorite" data-id="{{item.id}}">⭐</text>
+        </view>
+        <text class="script-title">{{item.title}}</text>
+        <text class="script-preview line-2">{{item.content}}</text>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:if="{{favorites.length == 0 && !loading}}">
+      <text class="empty-icon">⭐</text>
+      <text class="empty-text">还没有收藏话术</text>
+      <text class="empty-hint">在话术库中点击☆收藏喜欢的话术</text>
+    </view>
+  </scroll-view>
+
+  <!-- 话术详情弹窗 -->
+  <view class="modal-mask" wx:if="{{showScriptDetail}}" bindtap="closeScriptDetail">
+    <view class="script-detail" catchtap="">
+      <view class="detail-header" wx:if="{{currentScript}}">
+        <view class="detail-type-badge" style="background:{{currentScript.type == 'red' ? '#e94560' : currentScript.type == 'blue' ? '#1890ff' : currentScript.type == 'yellow' ? '#faad14' : '#52c41a'}}">
+          {{currentScript.type == 'red' ? '🔴 红色性格' : currentScript.type == 'blue' ? '🔵 蓝色性格' : currentScript.type == 'yellow' ? '🟡 黄色性格' : '🟢 绿色性格'}}
+        </view>
+        <text class="script-ai-badge-inline" wx:if="{{currentScript.is_ai_generated}}">✨ AI生成</text>
+        <text class="detail-scene">{{currentScript.scene}}</text>
+      </view>
+
+      <text class="detail-title" wx:if="{{currentScript}}">{{currentScript.title}}</text>
+
+      <!-- 对话气泡 -->
+      <view class="dialogue-bubble {{currentScript.is_ai_generated ? 'ai-bubble' : ''}}" wx:if="{{currentScript}}">
+        <text class="bubble-text">{{currentScript.content}}</text>
+      </view>
+
+      <view class="detail-tips" wx:if="{{currentScript && currentScript.tips}}">
+        <text class="tips-label">💡 使用建议</text>
+        <text class="tips-content">{{currentScript.tips}}</text>
+      </view>
+
+      <!-- AI生成提示 -->
+      <view class="ai-script-notice" wx:if="{{currentScript && currentScript.is_ai_generated}}">
+        <text class="ai-notice-text">🤖 此话术由AI根据当前筛选条件智能生成，仅供参考和启发</text>
+      </view>
+
+      <view class="detail-actions">
+        <view class="detail-action-btn copy" bindtap="copyScript" data-content="{{currentScript.content}}">
+          📋 复制话术
+        </view>
+        <view class="detail-action-btn fav" bindtap="toggleFavorite" data-id="{{currentScript.id}}">
+          {{currentScript.isFavorited ? '⭐ 取消收藏' : '☆ 收藏话术'}}
+        </view>
+      </view>
+
+      <view class="detail-close" bindtap="closeScriptDetail">关闭</view>
+    </view>
+  </view>
+
+  <!-- AI深度解读详情弹窗 -->
+  <view class="modal-mask" wx:if="{{currentAiInsight}}" bindtap="closeAiDetail">
+    <view class="ai-insight-modal" catchtap="">
+      <view class="ai-modal-header" style="border-left: 6rpx solid {{currentAiInsight.color || '#e94560'}};">
+        <text class="ai-modal-icon">{{aiInsightLoading ? '⏳' : '🧠'}}</text>
+        <view class="ai-modal-title-wrap">
+          <text class="ai-modal-title">{{currentAiInsight.name || ''}} AI深度解读</text>
+          <text class="ai-modal-subtitle">基于DeepSeek AI智能分析</text>
+        </view>
+        <text class="ai-modal-close" bindtap="closeAiDetail">✕</text>
+      </view>
+
+      <scroll-view class="ai-modal-body" scroll-y wx:if="{{!aiInsightLoading}}">
+        <!-- 核心分析 -->
+        <view class="ai-section" wx:if="{{currentAiInsight.core_analysis}}">
+          <text class="ai-section-title">📊 核心分析</text>
+          <text class="ai-section-text">{{currentAiInsight.core_analysis}}</text>
+        </view>
+
+        <!-- 沟通策略 -->
+        <view class="ai-section" wx:if="{{currentAiInsight.communication_strategy}}">
+          <text class="ai-section-title">💬 沟通策略</text>
+          <text class="ai-section-text">{{currentAiInsight.communication_strategy}}</text>
+        </view>
+
+        <!-- 推荐做法 -->
+        <view class="ai-section" wx:if="{{currentAiInsight.dos && currentAiInsight.dos.length > 0}}">
+          <text class="ai-section-title">✅ 推荐做法</text>
+          <view class="ai-list-items">
+            <text class="ai-list-item do" wx:for="{{currentAiInsight.dos}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+
+        <!-- 避免做法 -->
+        <view class="ai-section" wx:if="{{currentAiInsight.donts && currentAiInsight.donts.length > 0}}">
+          <text class="ai-section-title">⚠️ 避免做法</text>
+          <view class="ai-list-items">
+            <text class="ai-list-item dont" wx:for="{{currentAiInsight.donts}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+
+        <!-- 关键话术 -->
+        <view class="ai-section" wx:if="{{currentAiInsight.key_phrases && currentAiInsight.key_phrases.length > 0}}">
+          <text class="ai-section-title">🗣️ 关键话术金句</text>
+          <view class="ai-list-items">
+            <text class="ai-item-phrase" wx:for="{{currentAiInsight.key_phrases}}" wx:key="*this">"{{item}}"</text>
+          </view>
+        </view>
+
+        <!-- 典型异议 -->
+        <view class="ai-section" wx:if="{{currentAiInsight.typical_objections && currentAiInsight.typical_objections.length > 0}}">
+          <text class="ai-section-title">🛡️ 常见异议与应对</text>
+          <view class="ai-list-items">
+            <text class="ai-item-objection" wx:for="{{currentAiInsight.typical_objections}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 加载中 -->
+      <view class="ai-modal-body ai-loading-body" wx:if="{{aiInsightLoading}}">
+        <text class="ai-loading-icon">⏳</text>
+        <text class="ai-loading-text">AI正在分析性格特征...</text>
+      </view>
+    </view>
+  </view>
+</view>

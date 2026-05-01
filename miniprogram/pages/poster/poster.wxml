@@ -1,0 +1,119 @@
+<!-- AI营销海报生成器 -->
+<view class="poster-page">
+  
+  <!-- 顶部提示 -->
+  <view class="header-tip">
+    <text class="tip-icon">✨</text>
+    <text>AI一键生成精美营销海报，发朋友圈超有范儿</text>
+  </view>
+
+  <!-- 风格选择 -->
+  <view class="section">
+    <view class="section-title">🎨 选择风格</view>
+    <scroll-view scroll-x class="style-scroll" show-scrollbar="{{false}}">
+      <view class="style-list">
+        <view 
+          wx:for="{{styles}}" wx:key="id"
+          class="style-item {{currentStyle === item.id ? 'active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onStyleTap"
+          style="--preview: {{item.previewColor}}"
+        >
+          <view class="style-preview"></view>
+          <text class="style-name">{{item.name}}</text>
+          <text class="style-desc">{{item.description}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 文案选择 -->
+  <view class="section">
+    <view class="section-title">📝 选择文案</view>
+    
+    <!-- Tab切换 -->
+    <view class="quote-tabs">
+      <view class="tab {{activeTab === 'business' ? 'active' : ''}}" data-tab="business" bindtap="onTabChange">事业金句</view>
+      <view class="tab {{activeTab === 'culture' ? 'active' : ''}}" data-tab="culture" bindtap="onTabChange">企业文化</view>
+      <view class="tab {{activeTab === 'custom' ? 'active' : ''}}" data-tab="custom" bindtap="onTabChange">自定义</view>
+    </view>
+    
+    <!-- 文案列表（事业金句/企业文化） -->
+    <scroll-view wx:if="{{activeTab !== 'custom'}}" scroll-y class="quote-list" style="height: 220rpx;">
+      <view 
+        wx:for="{{quotes[activeTab]}}" wx:key="id"
+        class="quote-item {{currentQuote && currentQuote.id === item.id ? 'selected' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onQuoteSelect"
+      >
+        <text class="quote-text">{{item.text}}</text>
+        <text wx:if="{{currentQuote && currentQuote.id === item.id}}" class="check-icon">✓</text>
+      </view>
+      <view wx:if="{{!quotes[activeTab] || quotes[activeTab].length === 0}}" class="empty-quote">加载中...</view>
+    </scroll-view>
+    
+    <!-- 自定义输入 -->
+    <view wx:if="{{activeTab === 'custom'}}" class="custom-input-area">
+      <textarea
+        class="custom-textarea"
+        value="{{customText}}"
+        placeholder="输入你想展示的文案..."
+        maxlength="100"
+        auto-height
+        bindinput="onCustomInput"
+      />
+      <text class="char-count">{{customText.length}}/100</text>
+    </view>
+  </view>
+
+  <!-- 当前选中预览 -->
+  <view wx:if="{{currentQuote || customText}}" class="current-preview-card">
+    <text class="preview-label">当前文案：</text>
+    <text class="preview-text">{{customText || currentQuote.text}}</text>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-bar">
+    <button class="btn-random" bindtap="onRandomGenerate" disabled="{{generating}}">
+      🎲 随机灵感生成
+    </button>
+    <button class="btn-generate" bindtap="onGenerate" disabled="{{generating}}">
+      {{generating ? '⏳ AI创作中...' : '🚀 一键生成海报'}}
+    </button>
+  </view>
+
+  <!-- Canvas（备用绘制用，隐藏） -->
+  <canvas type="2d" id="posterCanvas" canvas-id="posterCanvas" style="width: 750rpx; height: 1000rpx; position: fixed; left: -9999px; top: -9999px;"></canvas>
+</view>
+
+<!-- 图片预览弹窗 -->
+<view wx:if="{{showPreview}}" class="preview-mask" bindtap="closePreview">
+  <view class="preview-content" catchtap="">
+    <!-- 关闭按钮 -->
+    <view class="preview-close" bindtap="closePreview">✕</view>
+    
+    <!-- 生成的图片 -->
+    <image 
+      wx:if="{{generatedImage}}" 
+      src="{{generatedImage}}" 
+      mode="aspectFit"
+      class="preview-image"
+      catchtap="previewImage"
+    />
+    
+    <!-- 底部操作栏 -->
+    <view class="preview-actions" catchtap="">
+      <button class="action-btn save-btn" catchtap="saveToAlbum">
+        💾 保存相册
+      </button>
+      <button class="action-btn share-btn" open-type="share">
+        🔗 分享好友
+      </button>
+      <button class="action-btn retry-btn" bindtap="closePreview">
+        🔄 重新生成
+      </button>
+    </view>
+    
+    <view class="preview-hint">点击图片可放大预览</view>
+  </view>
+</view>

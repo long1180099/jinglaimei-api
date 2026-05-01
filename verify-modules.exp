@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+# 远程验证模块加载
+set timeout 60
+set host "118.195.185.6"
+set password {@M3^w,uc2JFTHD}
+
+spawn ssh -o StrictHostKeyChecking=no root@$host "cd /root/database-server && node -e \"
+const ds = require('./src/services/deepseekService');
+const funcs = Object.keys(ds);
+console.log('=== DeepSeek Service 导出函数 ===');
+console.log('总数:', funcs.length);
+funcs.forEach(f => console.log('  -', f));
+console.log('');
+console.log('=== 模块加载: OK ===\"
+\""
+
+expect "password:"
+send "$password\r"
+expect eof
+exit 0

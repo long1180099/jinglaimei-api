@@ -1,0 +1,142 @@
+/* 团队关系树 v2.0 */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-page);
+}
+
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-8) var(--space-6);
+  background: var(--bg-card);
+  border-bottom: 1rpx solid var(--border-light);
+}
+
+.tree-title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tree-desc {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  background: var(--gray-100);
+  padding: 6rpx 20rpx;
+  border-radius: var(--radius-xl);
+}
+
+.tree-container {
+  flex: 1;
+  padding: var(--space-5) var(--space-6);
+}
+
+.tree-node {
+  margin-bottom: var(--space-3);
+}
+
+.level-0 { margin-left: 0; }
+.level-1 { margin-left: 40rpx; }
+.level-2 { margin-left: 40rpx; }
+
+.node-content {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
+  border: 1rpx solid var(--border-light);
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.node-content:active {
+  box-shadow: var(--shadow-sm);
+}
+
+.node-avatar-wrap {
+  width: 80rpx;
+  height: 80rpx;
+  margin-right: var(--space-4);
+  flex-shrink: 0;
+}
+
+.node-avatar-wrap.small {
+  width: 64rpx;
+  height: 64rpx;
+}
+
+.node-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2rpx solid var(--gray-100);
+  background: var(--gray-50);
+}
+
+.node-info {
+  flex: 1;
+}
+
+.node-name {
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  font-weight: 500;
+  display: block;
+}
+
+.node-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.level-badge {
+  font-size: var(--font-xs);
+  color: #fff;
+  padding: 4rpx 14rpx;
+  border-radius: var(--radius-xl);
+  font-weight: 500;
+}
+
+.node-count {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.expand-icon {
+  font-size: 32rpx;
+  color: var(--gray-400);
+  transition: transform var(--duration-normal) var(--ease-out);
+  font-weight: 300;
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
+  color: var(--primary);
+}
+
+.children {
+  margin-top: var(--space-3);
+  padding-left: var(--space-5);
+  border-left: 3rpx solid var(--gray-200);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+  color: var(--gray-400);
+  font-size: var(--font-base);
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: var(--space-4);
+  opacity: 0.4;
+}

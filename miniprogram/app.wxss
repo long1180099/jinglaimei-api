@@ -1,0 +1,492 @@
+/**
+ * 静莱美代理商系统 - 全局设计系统 v2.0
+ * Design System: Premium Beauty E-commerce
+ */
+page {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 28rpx;
+  color: #2d3436;
+  background-color: #f8f9fa;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1.6;
+}
+
+/* ==================== Design Tokens ==================== */
+page {
+  /* 主色系 - 玫瑰红 */
+  --primary: #e94560;
+  --primary-dark: #d63851;
+  --primary-darker: #b82e45;
+  --primary-light: #ff6b81;
+  --primary-lighter: #ff8fa3;
+  --primary-bg: rgba(233, 69, 96, 0.06);
+  --primary-bg-hover: rgba(233, 69, 96, 0.10);
+
+  /* 中性色系 */
+  --gray-50: #fafbfc;
+  --gray-100: #f4f5f7;
+  --gray-200: #ebedf0;
+  --gray-300: #dfe1e6;
+  --gray-400: #c1c7d0;
+  --gray-500: #97a0af;
+  --gray-600: #6b778c;
+  --gray-700: #505f79;
+  --gray-800: #344563;
+  --gray-900: #172b4d;
+
+  /* 功能色 */
+  --success: #36b37e;
+  --success-light: rgba(54, 179, 126, 0.08);
+  --warning: #ffab00;
+  --warning-light: rgba(255, 171, 0, 0.08);
+  --danger: #ff5630;
+  --danger-light: rgba(255, 86, 48, 0.08);
+  --info: #0065ff;
+  --info-light: rgba(0, 101, 255, 0.08);
+
+  /* 语义色 */
+  --bg-page: #f8f9fa;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-placeholder: #c9cdd4;
+  --border-light: #f0f1f3;
+  --border-default: #e5e7eb;
+
+  /* 阴影系统 */
+  --shadow-xs: 0 1rpx 2rpx rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04), 0 1rpx 2rpx rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.06), 0 2rpx 4rpx rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.08), 0 4rpx 8rpx rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 16rpx 48rpx rgba(0, 0, 0, 0.10), 0 8rpx 16rpx rgba(0, 0, 0, 0.06);
+  --shadow-primary: 0 8rpx 24rpx rgba(233, 69, 96, 0.25);
+  --shadow-card: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+
+  /* 圆角系统 */
+  --radius-xs: 8rpx;
+  --radius-sm: 12rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 20rpx;
+  --radius-xl: 28rpx;
+  --radius-2xl: 40rpx;
+  --radius-full: 9999rpx;
+
+  /* 间距系统 */
+  --space-1: 4rpx;
+  --space-2: 8rpx;
+  --space-3: 12rpx;
+  --space-4: 16rpx;
+  --space-5: 20rpx;
+  --space-6: 24rpx;
+  --space-7: 28rpx;
+  --space-8: 32rpx;
+  --space-10: 40rpx;
+  --space-12: 48rpx;
+  --space-15: 60rpx;
+  --space-16: 64rpx;
+
+  /* 字体系统 */
+  --font-xs: 20rpx;
+  --font-sm: 24rpx;
+  --font-base: 28rpx;
+  --font-md: 30rpx;
+  --font-lg: 32rpx;
+  --font-xl: 36rpx;
+  --font-2xl: 40rpx;
+  --font-3xl: 48rpx;
+  --font-4xl: 56rpx;
+  --font-5xl: 72rpx;
+
+  /* 动效系统 */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* ==================== 容器 ==================== */
+.container {
+  padding: var(--space-5) var(--space-6);
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
+
+/* ==================== 卡片系统 ==================== */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  margin-bottom: var(--space-5);
+  border: 1rpx solid var(--border-light);
+}
+
+.card-title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title .more {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ==================== 按钮系统 ==================== */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-2xl);
+  height: 92rpx;
+  line-height: 92rpx;
+  font-size: var(--font-md);
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+  box-shadow: var(--shadow-primary);
+  letter-spacing: 1rpx;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.btn-primary::after {
+  border: none;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 4rpx 12rpx rgba(233, 69, 96, 0.2);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 2rpx solid var(--primary);
+  border-radius: var(--radius-2xl);
+  height: 76rpx;
+  line-height: 72rpx;
+  font-size: var(--font-sm);
+  text-align: center;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-outline:active {
+  background: var(--primary-bg);
+}
+
+.btn-sm {
+  height: 60rpx;
+  line-height: 60rpx;
+  font-size: var(--font-sm);
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-xl);
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* ==================== 价格系统 ==================== */
+.price {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.price-symbol {
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.price-value {
+  font-size: var(--font-2xl);
+}
+
+.price-small {
+  font-size: var(--font-base);
+}
+
+.price-original {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  font-size: var(--font-sm);
+  margin-left: var(--space-3);
+  font-weight: 400;
+}
+
+/* ==================== 标签系统 ==================== */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 16rpx;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-xs);
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.tag-primary {
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+.tag-success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.tag-warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.tag-info {
+  background: var(--info-light);
+  color: var(--info);
+}
+
+/* ==================== 空状态 ==================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 60rpx;
+}
+
+.empty-state .empty-icon {
+  width: 200rpx;
+  height: 200rpx;
+  margin-bottom: var(--space-8);
+  opacity: 0.4;
+}
+
+.empty-state .empty-text {
+  color: var(--text-muted);
+  font-size: var(--font-base);
+}
+
+/* ==================== 列表 ==================== */
+.list-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-6) 0;
+  border-bottom: 1rpx solid var(--border-light);
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+/* ==================== 头像 ==================== */
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: var(--gray-100);
+}
+
+.avatar-sm {
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.avatar-lg {
+  width: 120rpx;
+  height: 120rpx;
+}
+
+/* ==================== Flex 布局 ==================== */
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* ==================== 文本 ==================== */
+.text-center {
+  text-align: center;
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-bold {
+  font-weight: 600;
+}
+
+.text-lg {
+  font-size: var(--font-xl);
+}
+
+.text-sm {
+  font-size: var(--font-sm);
+}
+
+.text-xs {
+  font-size: var(--font-xs);
+}
+
+/* ==================== 安全区域 ==================== */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ==================== 间距工具 ==================== */
+.mt-10 { margin-top: 10rpx; }
+.mt-20 { margin-top: 20rpx; }
+.mt-30 { margin-top: 30rpx; }
+.mb-10 { margin-bottom: 10rpx; }
+.mb-20 { margin-bottom: 20rpx; }
+.mb-30 { margin-bottom: 30rpx; }
+.ml-10 { margin-left: 10rpx; }
+.mr-10 { margin-right: 10rpx; }
+.p-20 { padding: 20rpx; }
+.px-24 { padding-left: 24rpx; padding-right: 24rpx; }
+.py-20 { padding-top: 20rpx; padding-bottom: 20rpx; }
+
+/* ==================== 分割线 ==================== */
+.divider {
+  height: 1rpx;
+  background: var(--border-light);
+  margin: var(--space-5) 0;
+}
+
+/* ==================== 浮动按钮 ==================== */
+.fab {
+  position: fixed;
+  right: 30rpx;
+  bottom: 200rpx;
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-primary);
+  z-index: 100;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.fab:active {
+  transform: scale(0.92);
+}
+
+/* ==================== 加载更多 ==================== */
+.load-more {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+/* ==================== 渐变背景 ==================== */
+.gradient-bg {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.gradient-bg-light {
+  background: linear-gradient(135deg, #fff5f5 0%, #fff0f3 100%);
+}
+
+/* ==================== 数字角标 ==================== */
+.badge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  background: var(--danger);
+  color: #fff;
+  font-size: var(--font-xs);
+  min-width: 32rpx;
+  height: 32rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  font-weight: 600;
+}
+
+/* ==================== 文本截断 ==================== */
+.line-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.line-3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* ==================== 输入框全局样式 ==================== */
+input, textarea {
+  font-size: var(--font-md);
+  color: var(--text-primary);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-placeholder);
+}
+
+/* ==================== 页面过渡动效 ==================== */
+view {
+  transition-timing-function: var(--ease-out);
+}
+
+/* ==================== Scrollbar 隐藏 ==================== */
+::-webkit-scrollbar {
+  display: none;
+}

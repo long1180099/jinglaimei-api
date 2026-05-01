@@ -1,0 +1,53 @@
+<!-- 学习积分页面 -->
+<view class="page">
+  <!-- 顶部信息卡 -->
+  <view class="points-header">
+    <view class="points-card">
+      <view class="points-main">
+        <text class="points-num">{{points}}</text>
+        <text class="points-label">学习积分</text>
+      </view>
+      <view class="level-badge">
+        <text class="level-text">Lv.{{level}}</text>
+        <text class="level-name">{{levelName}}</text>
+      </view>
+    </view>
+    <view class="points-desc">完成课程、参与互动即可获得学习积分</view>
+  </view>
+
+  <!-- 积分说明 -->
+  <view class="section">
+    <view class="section-title">积分规则</view>
+    <view class="rule-list">
+      <view class="rule-item">
+        <text class="rule-icon">📖</text>
+        <text class="rule-text">完成课程学习 +10积分</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-icon">✍️</text>
+        <text class="rule-text">通过课程考核 +20积分</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-icon">💬</text>
+        <text class="rule-text">参与AI对话练习 +5积分/次</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-icon">🏆</text>
+        <text class="rule-text">完成每日任务 +15积分</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 等级进度 -->
+  <view class="section">
+    <view class="section-title">等级进度</view>
+    <view class="level-progress">
+      <view class="progress-bar">
+        <view class="progress-fill" style="width: {{Math.min(points / 100 * 100, 100)}}%"></view>
+      </view>
+      <view class="progress-info">
+        <text>{{points}} / {{(Math.floor(points/100)+1)*100}} 升级</text>
+      </view>
+    </view>
+  </view>
+</view>

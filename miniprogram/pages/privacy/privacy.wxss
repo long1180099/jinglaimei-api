@@ -1,0 +1,508 @@
+/* 隐私政策页面样式 */
+page {
+  background-color: #f5f6fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 头部 */
+.header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 80rpx 40rpx 50rpx;
+  text-align: center;
+}
+
+.title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 4rpx;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.subtitle {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.7);
+  display: block;
+}
+
+/* 更新日期 */
+.update-info {
+  text-align: center;
+  color: #999;
+  font-size: 24rpx;
+  padding: 30rpx 40rpx 20rpx;
+}
+
+/* 内容区 */
+.content {
+  flex: 1;
+  height: calc(100vh - 300rpx);
+}
+
+.doc-body {
+  padding: 0 30rpx 40rpx;
+}
+
+/* 章节通用 */
+.section {
+  margin-bottom: 36rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx 28rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.section.intro {
+  background: linear-gradient(180deg, #fff 0%, #f8f9ff 100%);
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 24rpx;
+  padding-left: 20rpx;
+  border-left: 8rpx solid #1a1a2e;
+  line-height: 1.3;
+}
+
+.section-text {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.text-p {
+  font-size: 26rpx;
+  color: #444;
+  line-height: 1.85;
+  text-align: justify;
+}
+
+.text-p .bold {
+  font-weight: 600;
+  color: #222;
+}
+
+.text-p.indent {
+  padding-left: 20rpx;
+}
+
+.text-p.red-bold {
+  color: #e94560;
+  font-weight: 600;
+  font-size: 28rpx;
+}
+
+.text-p.right-note {
+  margin-top: 16rpx;
+  padding: 18rpx 22rpx;
+  background: #f8f9ff;
+  border-radius: 10rpx;
+  font-size: 25rpx;
+  color: #555;
+  line-height: 1.7;
+}
+
+.highlight-box {
+  display: block;
+  font-size: 27rpx !important;
+  color: #1a1a2e !important;
+  line-height: 1.85 !important;
+  padding: 24rpx !important;
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.05), rgba(15, 52, 96, 0.08)) !important;
+  border-radius: 12rpx !important;
+  border-left: 6rpx solid #1a1a2e !important;
+  margin-bottom: 12rpx !important;
+  font-weight: 500;
+}
+
+/* 目录 */
+.toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-top: 8rpx;
+}
+
+.toc-item {
+  font-size: 25rpx;
+  color: #555;
+  padding: 8rpx 0 8rpx 16rpx;
+  border-left: 3rpx solid #ddd;
+  line-height: 1.6;
+}
+
+/* ===== 信息表格（核心：收集类型/内容/用途）===== */
+.info-table {
+  border-radius: 12rpx;
+  overflow: hidden;
+  border: 1rpx solid #e8eaed;
+}
+
+.table-header {
+  display: flex;
+  background: linear-gradient(135deg, #1a1a2e, #0f3460);
+  padding: 22rpx 16rpx;
+}
+
+.th {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+}
+
+.th-type { width: 20%; }
+.th-detail { width: 38%; }
+.th-purpose { width: 42%; }
+
+.table-row {
+  display: flex;
+  border-bottom: 1rpx solid #f0f0f0;
+  padding: 20rpx 12rpx;
+  align-items: center;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.td { display: flex; align-items: center; }
+.td-type { width: 20%; justify-content: center; }
+.td-detail { width: 38%; }
+.td-purpose { width: 42%; }
+
+.type-tag {
+  display: inline-block;
+  font-size: 21rpx;
+  font-weight: 600;
+  padding: 6rpx 14rpx;
+  border-radius: 8rpx;
+  white-space: nowrap;
+}
+.type-tag.phone { background: #fef3e6; color: #e67e22; }
+.type-tag.wechat { background: #e8f5e9; color: #07c160; }
+.type-tag.basic { background: #e3f2fd; color: #1976d2; }
+.type-tag.order { background: #fce4ec; color: #c0392b; }
+.type-tag.finance { background: #fff3e0; color: #f39c12; }
+.type-tag.team { background: #f3e5f5; color: #8e44ad; }
+.type-tag.learn { background: #e0f7fa; color: #00acc1; }
+.type-tag.device { background: #eceff1; color: #546e7a; }
+
+.detail-text {
+  font-size: 23rpx;
+  color: #555;
+  line-height: 1.5;
+}
+
+.purpose-text {
+  font-size: 23rpx;
+  color: #666;
+  line-height: 1.55;
+}
+
+/* 收集方式卡片 */
+.method-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 20rpx;
+  background: #fafbfc;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.method-icon {
+  font-size: 36rpx;
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+
+.method-content {
+  flex: 1;
+}
+
+.method-title {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.method-desc {
+  font-size: 25rpx;
+  color: #666;
+  line-height: 1.65;
+}
+
+/* 使用目的网格 */
+.use-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.use-item {
+  background: linear-gradient(135deg, #f8f9ff, #fff);
+  border-radius: 12rpx;
+  padding: 20rpx;
+  border: 1rpx solid #eef0f5;
+}
+
+.use-num {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #e94560;
+  opacity: 0.3;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.use-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.use-desc {
+  font-size: 23rpx;
+  color: #777;
+  line-height: 1.5;
+}
+
+/* 提示框 */
+.notice-box {
+  margin-top: 16rpx;
+  padding: 20rpx 24rpx;
+  background: linear-gradient(135deg, #fff8e1, #fff3cd);
+  border-radius: 12rpx;
+  border-left: 6rpx solid #ffc107;
+}
+
+.notice-label {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #856404;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.notice-text {
+  font-size: 25rpx;
+  color: #856404;
+  line-height: 1.7;
+}
+
+/* 子标题 */
+.sub-section {
+  margin-bottom: 20rpx;
+}
+
+.sub-section:last-child {
+  margin-bottom: 0;
+}
+
+.sub-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 12rpx;
+  padding-left: 14rpx;
+  border-left: 4rpx solid #e94560;
+}
+
+/* 安全措施列表 */
+.security-list {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.security-item {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 18rpx 20rpx;
+  background: #f8f9fa;
+  border-radius: 10rpx;
+}
+
+.security-emoji {
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+
+.security-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+}
+
+.security-desc {
+  font-size: 24rpx;
+  color: #777;
+  line-height: 1.5;
+}
+
+/* 共享场景 */
+.share-case {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 10rpx;
+}
+
+.case-item {
+  font-size: 25rpx;
+  color: #555;
+  line-height: 1.65;
+  padding: 12rpx 16rpx;
+  background: #f8f9ff;
+  border-radius: 8rpx;
+}
+
+.case-item .bold {
+  font-weight: 600;
+  color: #333;
+}
+
+/* 用户权利列表 */
+.right-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-top: 10rpx;
+}
+
+.right-item {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 18rpx 20rpx;
+  background: linear-gradient(135deg, #f8f9ff, #fff);
+  border-radius: 12rpx;
+  border: 1rpx solid #eef2f7;
+}
+
+.right-icon {
+  font-size: 34rpx;
+  flex-shrink: 0;
+}
+
+.right-title {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  display: block;
+}
+
+.right-desc {
+  font-size: 24rpx;
+  color: #777;
+  line-height: 1.5;
+}
+
+/* 未成年人保护 */
+.protect-box {
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #fce4ec, #fff3e0);
+  border-radius: 14rpx;
+}
+
+.protect-icon {
+  font-size: 44rpx;
+  flex-shrink: 0;
+}
+
+.protect-content {
+  flex: 1;
+}
+
+.protect-content .text-p {
+  font-size: 25rpx !important;
+  line-height: 1.75 !important;
+}
+
+/* 联系方式 */
+.contact-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.contact-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: #f8f9ff;
+  border-radius: 10rpx;
+}
+
+.contact-label {
+  font-size: 26rpx;
+  color: #888;
+  font-weight: 500;
+}
+
+.contact-value {
+  font-size: 26rpx;
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+/* 同意确认区 */
+.consent-area {
+  text-align: center;
+  padding: 30rpx 20rpx;
+}
+
+.consent-tip {
+  font-size: 24rpx;
+  color: #aaa;
+  line-height: 1.6;
+}
+
+/* 底部 */
+.footer {
+  text-align: center;
+  padding: 30rpx 0 40rpx;
+}
+
+.footer-text {
+  font-size: 24rpx;
+  color: #bbb;
+}
+
+.footer-icp {
+  font-size: 22rpx;
+  color: #ccc;
+  display: block;
+  margin-top: 8rpx;
+}

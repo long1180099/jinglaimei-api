@@ -1,0 +1,164 @@
+<!-- 登录页 v2.0 -->
+<view class="page">
+  <view class="login-bg">
+    <!-- 顶部装饰 -->
+    <view class="deco-circle deco-1"></view>
+    <view class="deco-circle deco-2"></view>
+
+    <view class="login-container">
+      <!-- Logo区域 -->
+      <view class="logo-area">
+        <view class="logo-ring">
+          <view class="logo-circle">
+            <text class="logo-text">静莱美</text>
+          </view>
+        </view>
+        <text class="app-slogan">品质美妆 · 代理商平台</text>
+      </view>
+
+      <!-- 登录表单 -->
+      <view class="login-form" wx:if="{{!isRegister}}">
+        <view class="form-title">欢迎回来</view>
+        <view class="form-subtitle">登录你的代理账号</view>
+        
+        <!-- 手机号快捷登录（新版API） -->
+        <button class="btn-wechat" open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">
+          <view class="phone-icon-wrap">
+            <text class="phone-icon">📱</text>
+          </view>
+          <text class="btn-wechat-text">手机号快捷登录</text>
+        </button>
+
+        <!-- 手机号登录 -->
+        <view class="divider-row">
+          <view class="divider-line"></view>
+          <view class="divider-bubble">或</view>
+          <view class="divider-line"></view>
+        </view>
+
+        <view class="input-group">
+          <view class="input-icon">☰</view>
+          <text class="input-prefix">+86</text>
+          <input class="input-field" type="number" placeholder="请输入手机号" value="{{phone}}" bindinput="onPhoneInput" maxlength="11" focus="{{focusPhoneInput}}" bindblur="onPhoneBlur" />
+        </view>
+
+        <view class="input-group">
+          <view class="input-icon">ۤ</view>
+          <input class="input-field" type="number" placeholder="请输入验证码" value="{{smsCode}}" bindinput="onCodeInput" maxlength="6" />
+          <view class="btn-sms {{countdown > 0 ? 'disabled' : ''}}" bindtap="sendSmsCode">
+            {{countdown > 0 ? countdown + 's' : '获取验证码'}}
+          </view>
+        </view>
+
+        <!-- 邀请码（选填，新用户注册时绑定上级） -->
+        <view class="invite-code-section">
+          <view class="invite-code-header">
+            <view class="invite-code-label">
+              <text class="invite-icon">🎁</text>
+              <text>邀请码</text>
+              <text class="optional-tag">选填</text>
+            </view>
+            <view class="invite-hint" bindtap="showInviteHint">
+              <text class="hint-text">有什么用？</text>
+            </view>
+          </view>
+          <view class="input-group">
+            <view class="input-icon">🎫</view>
+            <input 
+              class="input-field" 
+              placeholder="请填写上级的邀请码，自动绑定关系" 
+              value="{{inviteCode}}" 
+              bindinput="onInviteCodeInput"
+              maxlength="10" 
+            />
+          </view>
+          <view wx:if="{{inviteCheckResult}}" class="invite-check-result {{inviteCheckResult.valid ? 'valid' : 'invalid'}}">
+            <text>{{inviteCheckResult.msg}}</text>
+          </view>
+        </view>
+
+        <button class="btn-login" bindtap="phoneLogin" disabled="{{!phone || !smsCode}}">
+          登录 / 注册
+        </button>
+
+        <!-- 暂不登录 / 返回首页 -->
+        <view class="skip-login" bindtap="goBackHome">
+          <text class="skip-text">暂不登录，先逛逛</text>
+        </view>
+
+      </view>
+
+      <!-- 申请代理 -->
+      <view class="login-form" wx:if="{{isRegister && isApply}}">
+        <view class="form-title">申请代理</view>
+        <view class="form-subtitle">填写信息成为代理商</view>
+        
+        <view class="input-group labeled">
+          <text class="input-label">真实姓名</text>
+          <input class="input-field" placeholder="请输入真实姓名" value="{{realName}}" bindinput="onRealNameInput" />
+        </view>
+        
+        <view class="input-group labeled">
+          <text class="input-label">联系电话</text>
+          <input class="input-field" type="number" placeholder="请输入联系电话" value="{{applyPhone}}" bindinput="onApplyPhoneInput" />
+        </view>
+        
+        <view class="input-group labeled">
+          <text class="input-label">申请等级</text>
+          <picker mode="selector" range="{{['打版代言人', '代理商', '批发商', '首席分公司', '集团事业部']}}" value="{{applyLevel}}" bindchange="onLevelChange">
+            <view class="picker-text">
+              <text>{{applyLevelOptions[applyLevel] || '请选择等级'}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <button class="btn-login" bindtap="submitApply">提交申请</button>
+        <text class="link-text" bindtap="cancelApply">暂不申请，先逛逛</text>
+      </view>
+
+      <!-- 编辑资料 -->
+      <view class="login-form" wx:if="{{isRegister && isEdit}}">
+        <view class="form-title">完善资料</view>
+        <view class="form-subtitle">设置你的个人昵称</view>
+
+        <view class="input-group labeled">
+          <text class="input-label">昵称</text>
+          <input class="input-field" placeholder="请输入昵称" value="{{editNickname}}" bindinput="onEditNicknameInput" />
+        </view>
+
+        <button class="btn-login" bindtap="saveProfile">保存并继续</button>
+      </view>
+
+      <!-- 用户协议 -->
+      <view class="agreement">
+        <view class="agreement-checkbox {{agreed ? 'checked' : ''}}" bindtap="toggleAgreement">
+          <view class="agreement-check-icon" wx:if="{{agreed}}"></view>
+        </view>
+        <text class="agreement-text">我已阅读并同意</text>
+        <text class="agreement-link" bindtap="showUserAgreement">《用户服务协议》</text>
+        <text class="agreement-text">及</text>
+        <text class="agreement-link" bindtap="showPrivacyPolicy">《隐私政策》</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 隐私授权弹窗（微信审核强制要求） -->
+  <privacy-popup id="privacyPopup" bind:agreed="onPrivacyAgreed" />
+
+  <!-- 自定义隐私协议确认弹窗 -->
+  <view class="privacy-confirm-mask" wx:if="{{showPrivacyConfirm}}" bindtap="cancelPrivacyConfirm">
+    <view class="privacy-confirm-dialog" catchtap="">
+      <view class="privacy-confirm-title">用户协议与隐私政策</view>
+      <view class="privacy-confirm-content">请先阅读并同意《用户服务协议》和《隐私政策》</view>
+      <view class="privacy-confirm-links">
+        <text bindtap="showUserAgreement" style="color:#576b95">《用户服务协议》</text>
+        <text bindtap="showPrivacyPolicy" style="color:#576b95">《隐私政策》</text>
+      </view>
+      <view class="privacy-confirm-btns">
+        <view class="privacy-confirm-cancel" bindtap="cancelPrivacyConfirm">取消</view>
+        <view class="privacy-confirm-ok" bindtap="confirmPrivacyAgree">同意并继续</view>
+      </view>
+    </view>
+  </view>
+</view>

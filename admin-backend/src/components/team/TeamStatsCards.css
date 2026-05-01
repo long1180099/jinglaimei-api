@@ -1,0 +1,258 @@
+/**
+ * 团队统计卡片样式
+ */
+
+.stats-cards-container {
+  margin-bottom: 16px;
+}
+
+.stats-cards-container.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.stats-card {
+  height: 100%;
+  transition: all 0.3s;
+}
+
+.stats-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stats-icon-container {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.stats-icon {
+  font-size: 24px;
+}
+
+.stats-info {
+  flex: 1;
+  min-width: 0; /* 防止内容溢出 */
+}
+
+.stats-title {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-value {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.stats-prefix {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-right: 2px;
+}
+
+.stats-number {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1;
+}
+
+.stats-suffix {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-left: 2px;
+}
+
+.stats-trend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.trend-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.trend-up {
+  color: #52c41a;
+  background-color: rgba(82, 196, 26, 0.1);
+}
+
+.trend-down {
+  color: #f5222d;
+  background-color: rgba(245, 34, 45, 0.1);
+}
+
+.trend-stable {
+  color: #8c8c8c;
+  background-color: rgba(140, 140, 140, 0.1);
+}
+
+.trend-value {
+  font-size: 11px;
+}
+
+.stats-description {
+  color: #8c8c8c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 等级分布卡片 */
+.level-distribution-card {
+  margin-top: 16px;
+}
+
+.level-distribution-card .ant-card-head {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.level-distribution-card .ant-card-body {
+  padding-top: 8px;
+}
+
+.level-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.level-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.level-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.level-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.level-name {
+  font-size: 14px;
+  color: #1f1f1f;
+  min-width: 60px;
+}
+
+.level-count {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.level-bar {
+  flex: 1;
+  height: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.level-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease-out;
+}
+
+.level-percentage {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f1f1f;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .stats-card-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .stats-icon-container {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .stats-number {
+    font-size: 20px;
+  }
+  
+  .stats-trend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .level-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .level-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .level-bar {
+    width: 100%;
+  }
+  
+  .level-percentage {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-cards-container {
+    padding: 0 8px;
+  }
+  
+  .stats-number {
+    font-size: 18px;
+  }
+  
+  .level-name {
+    min-width: 50px;
+    font-size: 13px;
+  }
+}

@@ -1,0 +1,116 @@
+<!-- 系列课详情页 · 玫小可商学院 -->
+<view class="sdp">
+
+  <!-- 加载中 -->
+  <view class="load-box" wx:if="{{loading}}">
+    <view class="lds-ring"></view>
+    <text>正在加载课程信息...</text>
+  </view>
+
+  <block wx:if="{{!loading && series}}">
+
+    <!-- 头部封面 -->
+    <view class="sd-header">
+      <image src="{{series.coverUrl}}" mode="aspectFill" class="sd-cover" lazy-load wx:if="{{series.coverUrl}}" />
+      <view wx:else class="sd-cover-ph">
+        <text>📚</text>
+        <text class="sd-ph-sub">系列课程</text>
+      </view>
+
+      <view class="sd-overlay">
+        <!-- 价格标签 -->
+        <view class="sd-price-badge {{isPurchased ? 'owned' : ''}}" wx:if="{{!isPurchased || series.price > 0}}">
+          <text wx:if="{{isPurchased}}">✅ 已购买</text>
+          <text wx:else>¥{{series.price || 0}}</text>
+        </view>
+
+        <text class="sd-title">{{series.title}}</text>
+        <text class="sd-desc" wx:if="{{series.description}}">{{series.description}}</text>
+
+        <view class="sd-metas">
+          <view class="sd-chip"><text>{{episodes.length}}集课程</text></view>
+          <view class="sd-chip" wx:if="{{series.durationStr && series.durationStr !== '0分钟'}}"><text>⏱ {{series.durationStr}}</text></view>
+          <view class="sd-chip"><text>👥 {{series.studentCount||0}}人在学</text></view>
+          <view class="sd-chip" wx:if="{{series.instructor}}"><text>👤 {{series.instructor}}</text></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 购买按钮 -->
+    <view class="buy-sec" wx:if="{{!isPurchased && series.price > 0}}">
+      <button class="buy-btn" bindtap="handleBuySeries">💎 立即购买全套 · ¥{{series.price || 0}}</button>
+      <text class="buy-note">购买后可观看全部{{episodes.length}}集课程，永久有效</text>
+    </view>
+
+    <!-- 剧集列表 -->
+    <view class="epi-sec">
+      <view class="epi-hd-row">
+        <text class="epi-hd-tt">📺 课程目录</text>
+        <text class="epi-hd-cnt">共{{episodes.length}}集</text>
+      </view>
+
+      <view class="ep-item {{item.isCompleted ? 'ep-done' : ''}}"
+        wx:for="{{episodes}}" wx:key="id"
+        data-id="{{item.id}}" data-index="{{index}}" bindtap="playEpisode">
+
+        <view class="ep-num-wrap {{item.isCompleted ? 'ep-num-done' : ''}}">
+          <text wx:if="{{item.isCompleted}}" class="ep-check">✓</text>
+          <text wx:else class="ep-idx">{{item.epIndex}}</text>
+        </view>
+
+        <view class="ep-info-col">
+          <text class="ep-name">{{item.title}}</text>
+
+          <view class="ep-bot-row">
+            <text class="ep-dur" wx:if="{{item.durationStr}}">{{item.durationStr}}</text>
+
+            <view class="ep-pb" wx:if="{{item.progressPercent > 0 && !item.isCompleted && isPurchased}}">
+              <view class="ep-pf" style="width:{{item.progressPercent}}%"></view>
+            </view>
+
+            <text class="ep-price-txt" wx:if="{{!isPurchased && !item.isFree && item.price > 0}}">¥{{item.price}}</text>
+            <text class="ep-free-txt" wx:if="{{!isPurchased && item.isFree}}">免费试看</text>
+            <text class="ep-pct-txt" wx:if="{{isPurchased && item.progressPercent > 0 && !item.isCompleted}}">{{item.progressPercent}}%</text>
+            <text class="ep-done-txt" wx:if="{{item.isCompleted}}">已完成 ✓</text>
+          </view>
+        </view>
+
+        <view class="ep-action" wx:if="{{isPurchased || item.isFree}}">
+          <text class="ep-play-icon">▶</text>
+        </view>
+        <view class="ep-lock" wx:elif="{{!isPurchased && !item.isFree}}">
+          <text class="ep-lock-ico">🔒</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 课程详情 -->
+    <view class="info-sec">
+      <text class="info-sec-tt">📋 课程详情</text>
+
+      <view class="inf-blk">
+        <view class="inf-blk-hd"><text class="inf-lbl">讲师</text></view>
+        <text class="inf-val">{{series.instructor || '玫小可认证团队'}}</text>
+      </view>
+
+      <view class="inf-blk">
+        <view class="inf-blk-hd"><text class="inf-lbl">难度等级</text></view>
+        <view class="diff-row">
+          <text class="diff-dot diff-{{series.difficulty || 'beginner'}}"></text>
+          <text class="inf-val">{{series.difficultyLabel || '入门级'}}</text>
+        </view>
+      </view>
+
+      <view class="inf-blk" wx:if="{{series.description}}">
+        <view class="inf-blk-hd"><text class="inf-lbl">课程简介</text></view>
+        <text class="inf-val inf-desc">{{series.description}}</text>
+      </view>
+
+      <view class="inf-blk">
+        <view class="inf-blk-hd"><text class="inf-lbl">学习人数</text></view>
+        <text class="inf-val inf-highlight">{{series.studentCount || 0}} 人</text>
+      </view>
+    </view>
+
+  </block>
+</view>

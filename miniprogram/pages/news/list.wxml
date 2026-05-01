@@ -1,0 +1,52 @@
+<view class="page">
+  <!-- 分类Tab -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab == 'all' ? 'active' : ''}}" bindtap="switchTab" data-tab="all">
+      <text>全部</text>
+    </view>
+    <view class="tab-item {{activeTab == 'notice' ? 'active' : ''}}" bindtap="switchTab" data-tab="notice">
+      <text>公告</text>
+    </view>
+    <view class="tab-item {{activeTab == 'activity' ? 'active' : ''}}" bindtap="switchTab" data-tab="activity">
+      <text>活动</text>
+    </view>
+    <view class="tab-item {{activeTab == 'update' ? 'active' : ''}}" bindtap="switchTab" data-tab="update">
+      <text>更新</text>
+    </view>
+    <view class="tab-item {{activeTab == 'policy' ? 'active' : ''}}" bindtap="switchTab" data-tab="policy">
+      <text>政策</text>
+    </view>
+  </view>
+  <!-- 列表 -->
+  <view class="news-card" wx:for="{{list}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+    <view class="card-left">
+      <view class="card-top" wx:if="{{item.is_top}}">
+        <text class="top-tag">置顶</text>
+      </view>
+      <text class="card-title line-2">{{item.title}}</text>
+      <view class="card-meta">
+        <text class="card-category" style="color:{{item.category == 'notice' ? '#e94560' : item.category == 'activity' ? '#faad14' : item.category == 'update' ? '#52c41a' : item.category == 'policy' ? '#1890ff' : '#722ed1'}}">{{item.category == 'notice' ? '公告' : item.category == 'activity' ? '活动' : item.category == 'update' ? '更新' : item.category == 'policy' ? '政策' : '资讯'}}</text>
+        <text class="card-date">{{item.published_at || ''}}</text>
+        <text class="card-views">{{item.view_count || 0}}阅读</text>
+      </view>
+    </view>
+    <view class="card-arrow-wrap">
+      <text class="card-arrow">›</text>
+    </view>
+  </view>
+  <!-- 加载更多 -->
+  <view class="load-more" wx:if="{{hasMore && !loading}}">
+    <text class="load-more-text" bindtap="loadMore">加载更多</text>
+  </view>
+  <view class="load-more" wx:if="{{loading}}">
+    <text class="load-more-text">加载中...</text>
+  </view>
+  <view class="load-more" wx:if="{{!hasMore && list.length > 0}}">
+    <text class="load-more-text">— 没有更多了 —</text>
+  </view>
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && list.length == 0}}">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无公告</text>
+  </view>
+</view>

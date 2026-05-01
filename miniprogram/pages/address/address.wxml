@@ -1,0 +1,62 @@
+<!-- 地址管理 -->
+<view class="page">
+  <!-- 地址列表 -->
+  <view class="address-list" wx:if="{{addressList.length > 0}}">
+    <view
+      class="address-item {{item.isDefault ? 'default' : ''}}"
+      wx:for="{{addressList}}"
+      wx:key="id"
+    >
+      <view class="item-main" bindtap="selectAddress" data-index="{{index}}">
+        <view class="item-tag-wrap">
+          <text class="default-tag" wx:if="{{item.isDefault}}">默认</text>
+          <text class="name-tag">{{item.name}}</text>
+        </view>
+        <view class="item-phone">{{item.phone}}</view>
+        <view class="item-detail">{{item.province}}{{item.city}}{{item.district}}{{item.detail}}</view>
+
+        <view class="item-check" wx:if="{{mode === 'select'}}">
+          <view class="check-circle {{selectedIndex == index ? 'checked' : ''}}">
+            <text wx:if="{{selectedIndex == index}}">✓</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="item-actions">
+        <view class="action-btn" bindtap="editAddress" data-index="{{index}}">
+          <text class="action-icon">✏️</text>
+          <text>编辑</text>
+        </view>
+        <view class="action-btn delete" bindtap="deleteAddress" data-index="{{index}}" wx:if="{{addressList.length > 1}}">
+          <text class="action-icon">🗑️</text>
+          <text>删除</text>
+        </view>
+        <view class="action-btn default-btn" bindtap="setDefault" data-index="{{index}}" wx:if="{{!item.isDefault}}">
+          <text class="action-icon">⭐</text>
+          <text>设为默认</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-address" wx:else>
+    <text class="empty-icon">📍</text>
+    <text class="empty-text">暂无收货地址</text>
+    <text class="empty-hint">点击下方按钮添加新地址</text>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="bottom-bar safe-bottom">
+    <view class="btn-add" bindtap="addAddress">
+      <text class="btn-plus">+</text>
+      <text>新增收货地址</text>
+    </view>
+    <view class="btn-confirm {{selectedId === '' ? 'disabled' : ''}}"
+         wx:if="{{mode === 'select'}}"
+         bindtap="confirmSelect"
+    >
+      确认使用此地址
+    </view>
+  </view>
+</view>

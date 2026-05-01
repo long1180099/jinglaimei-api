@@ -1,0 +1,63 @@
+<!-- pages/ai-training/session-detail.wxml -->
+<view class="container">
+  <scroll-view class="messages" scroll-y>
+    <block wx:for="{{messages}}" wx:key="id">
+      <view class="message {{item.role == 'ai' ? 'ai-msg' : 'user-msg'}}">
+        <view class="avatar {{item.role == 'ai' ? 'ai-avatar' : 'user-avatar'}}">
+          {{item.role == 'ai' ? '🤖' : '我'}}
+        </view>
+        <view class="bubble {{item.role == 'ai' ? 'ai-bubble' : 'user-bubble'}}">
+          {{item.content}}
+        </view>
+      </view>
+    </block>
+  </scroll-view>
+
+  <!-- 评分信息 -->
+  <view wx:if="{{feedback}}" class="result-panel">
+    <view class="result-header">
+      <text class="result-title">AI评分结果</text>
+      <text class="result-score">{{overallScore}}分</text>
+    </view>
+    <view class="score-bars">
+      <view class="score-bar-item">
+        <text class="bar-label">性格匹配</text>
+        <view class="bar-track"><view class="bar-fill" style="width:{{feedback.scores.personality}}%"></view></view>
+        <text class="bar-value">{{feedback.scores.personality}}</text>
+      </view>
+      <view class="score-bar-item">
+        <text class="bar-label">需求挖掘</text>
+        <view class="bar-track"><view class="bar-fill" style="width:{{feedback.scores.need_discovery}}%"></view></view>
+        <text class="bar-value">{{feedback.scores.need_discovery}}</text>
+      </view>
+      <view class="score-bar-item">
+        <text class="bar-label">共情能力</text>
+        <view class="bar-track"><view class="bar-fill" style="width:{{feedback.scores.empathy}}%"></view></view>
+        <text class="bar-value">{{feedback.scores.empathy}}</text>
+      </view>
+      <view class="score-bar-item">
+        <text class="bar-label">专业呈现</text>
+        <view class="bar-track"><view class="bar-fill" style="width:{{feedback.scores.professional}}%"></view></view>
+        <text class="bar-value">{{feedback.scores.professional}}</text>
+      </view>
+      <view class="score-bar-item">
+        <text class="bar-label">异议处理</text>
+        <view class="bar-track"><view class="bar-fill" style="width:{{feedback.scores.objection}}%"></view></view>
+        <text class="bar-value">{{feedback.scores.objection}}</text>
+      </view>
+      <view class="score-bar-item">
+        <text class="bar-label">成交推动</text>
+        <view class="bar-track"><view class="bar-fill" style="width:{{feedback.scores.closing}}%"></view></view>
+        <text class="bar-value">{{feedback.scores.closing}}</text>
+      </view>
+      <view class="score-bar-item">
+        <text class="bar-label">语言自然度</text>
+        <view class="bar-track"><view class="bar-fill" style="width:{{feedback.scores.naturalness}}%"></view></view>
+        <text class="bar-value">{{feedback.scores.naturalness}}</text>
+      </view>
+    </view>
+    <view wx:if="{{feedback.summary}}" class="feedback-summary">
+      {{feedback.summary}}
+    </view>
+  </view>
+</view>

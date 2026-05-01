@@ -1,0 +1,171 @@
+<!-- 视频播放器页 · 玫小可商学院 -->
+<view class="pp">
+
+  <!-- ====== 付费墙 ====== -->
+  <view class="pw" wx:if="{{needPay && !isPurchased}}">
+    <view class="pw-bg"></view>
+    <view class="pw-card">
+      <!-- 封面 -->
+      <view class="pw-cover-wrap">
+        <image wx:if="{{video.coverUrl}}" src="{{video.coverUrl}}" mode="aspectFill" class="pw-cover" />
+        <view wx:else class="pw-cover-ph">
+          <text>🔒</text>
+          <text class="pw-ph-sub">付费课程</text>
+        </view>
+      </view>
+
+      <view class="pw-body">
+        <!-- 标签 -->
+        <view class="pw-badge"><text>🔐 付费内容</text></view>
+
+        <text class="pw-title">{{video.title}}</text>
+        <text class="pw-desc" wx:if="{{video.description}}">{{video.description}}</text>
+
+        <view class="pw-metas">
+          <view class="pw-pill" wx:if="{{video.instructor}}">
+            <text>👤 {{video.instructor}}</text>
+          </view>
+          <view class="pw-pill" wx:if="{{durationStr && durationStr !== '未知'}}">
+            <text>⏱ {{durationStr}}</text>
+          </view>
+          <view class="pw-pill">
+            <text>👁 {{video.viewCount || 0}}人观看</text>
+          </view>
+        </view>
+
+        <!-- 价格区 -->
+        <view class="pw-price-area">
+          <text class="pw-price-lbl">课程价格</text>
+          <view class="pw-price-val">
+            <text class="pw-p-sym">¥</text>
+            <text class="pw-p-num">{{video.price || 0}}</text>
+          </view>
+        </view>
+
+        <button class="pw-buy-btn" bindtap="handleBuy">立即购买学习</button>
+        <text class="pw-hint">支付将从代理商余额中扣除</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ====== 正常播放区域 ====== -->
+  <block wx:if="{{!needPay || isPurchased}}">
+
+    <!-- 视频 -->
+    <view class="pv-wrap">
+      <video id="myVideo" src="{{videoUrl}}"
+        class="pv-player" poster="{{video.coverUrl}}"
+        controls autoplay show-center-play-btn show-play-btn show-progress
+        object-fit="contain"
+        bindplay="onPlay" bindpause="onPause" bindended="onEnded"
+        bindtimeupdate="onTimeUpdate" bindloadedmetadata="onLoadedMetadata" binderror="onError"
+        enable-progress-gesture play-btn-position="center"
+        vslide-gesture-in-fullscreen
+      ></video>
+    </view>
+
+    <!-- 信息栏 -->
+    <view class="pi-bar">
+      <view class="pi-main">
+        <text class="pi-title">{{video.title}}</text>
+        <view class="pi-tags">
+          <text class="pi-tg pi-tg-cat" wx:if="{{video.categoryName}}">📂 {{video.categoryName}}</text>
+          <text class="pi-tg pi-tg-diff" wx:if="{{video.difficultyLabel}}">{{video.difficultyLabel}}</text>
+        </view>
+      </view>
+
+      <!-- 进度环 -->
+      <view class="pi-ring" wx:if="{{progressPercent > 0 && !isCompleted}}">
+        <view class="pr-outer"><view class="pr-inner" style="background:conic-gradient(#e94560 {{progressPercent}}%, #eee 0)"></view></view>
+        <text class="pr-txt">{{progressPercent}}%</text>
+      </view>
+
+      <view class="pi-done-tag" wx:if="{{isCompleted}}"><text>✅ 已完成</text></view>
+    </view>
+
+    <!-- 操作栏 -->
+    <view class="act-bar">
+      <view class="act-item {{showNoteInput ? 'act-on' : ''}}" bindtap="toggleNoteInput">
+        <view class="act-circle {{showNoteInput ? 'ac-active' : ''}}">
+          <text>{{showNoteInput ? '✕' : '📝'}}</text>
+        </view>
+        <text class="act-lbl">{{showNoteInput ? '关闭' : '记笔记'}}</text>
+      </view>
+      <view class="act-item" data-id="{{videoId}}" catchtap="goBackToList">
+        <view class="act-circle"><text>📋</text></view>
+        <text class="act-lbl">课程列表</text>
+      </view>
+      <view class="act-item" bindtap="goToLearningCenter">
+        <view class="act-circle"><text>🎯</text></view>
+        <text class="act-lbl">学习中心</text>
+      </view>
+    </view>
+
+    <!-- 笔记（展开/收起动画） -->
+    <view class="note-box {{showNoteInput ? 'nb-open' : ''}}" wx:if="{{showNoteInput}}">
+      <view class="nb-head">
+        <text class="nb-title">📝 学习笔记</text>
+        <text class="nb-count">{{notes.length || 0}}/500</text>
+      </view>
+      <textarea class="nb-input" placeholder="记录你的学习心得和重点..."
+        value="{{notes}}" bindinput="onNoteInput" maxlength="500" auto-height />
+      <button class="nb-save" size="mini" bindtap="saveNote">💾 保存笔记</button>
+    </view>
+
+    <!-- 同系列剧集 -->
+    <view class="epi-section" wx:if="{{relatedEpisodes.length > 1}}">
+      <view class="epi-header">
+        <text class="epi-h-title">📚 同系列课程</text>
+        <text class="epi-h-count">{{relatedEpisodes.length}}集</text>
+      </view>
+
+      <scroll-view scroll-x class="epi-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="epi-card {{item.id == videoId ? 'epi-cur' : ''}}"
+          wx:for="{{relatedEpisodes}}" wx:key="id"
+          data-id="{{item.id}}" bindtap="goToEpisode">
+
+          <view class="ec-cover">
+            <image wx:if="{{item.coverUrl}}" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
+            <view wx:else class="ec-ph">
+              <text>{{item.isCurrentEp ? '▶' : item.epIndex}}</text>
+            </view>
+
+            <view class="ec-prog" wx:if="{{item.progressPercent > 0 && item.id != videoId}}">
+              <view class="ec-prog-fill" style="width:{{item.progressPercent}}%"></view>
+            </view>
+
+            <view class="ec-done-mark" wx:if="{{item.isCompleted && item.id != videoId}}">
+              <text>✓</text>
+            </view>
+
+            <view class="ec-now-tag" wx:if="{{item.id == videoId}}">
+              <text>正在播放</text>
+            </view>
+          </view>
+
+          <view class="ec-info">
+            <text class="ec-title">{{item.title}}</text>
+            <view class="ec-bottom">
+              <text class="ec-dur">{{item.durationStr || ''}}</text>
+              <text class="ec-done-txt" wx:if="{{item.isCompleted}}">✓ 已完成</text>
+              <text class="ec-pct-txt" wx:elif="{{item.progressPercent > 0}}">{{item.progressPercent}}%</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 讲师信息 -->
+    <view class="ins-section" wx:if="{{video.instructor}}">
+      <view class="ins-avatar">
+        <text class="ins-avatar-txt">{{video.instructorAvatar || '讲'}}</text>
+      </view>
+      <view class="ins-detail">
+        <text class="ins-name">{{video.instructor}}</text>
+        <text class="ins-role">玫小可认证讲师 · 专业美妆培训</text>
+      </view>
+      <text class="ins-arrow">›</text>
+    </view>
+
+  </block>
+</view>

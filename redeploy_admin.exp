@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set timeout 300
+
+# Upload the tar.gz file
+spawn scp -o StrictHostKeyChecking=no /tmp/admin_build.tar.gz root@118.195.185.6:/tmp/
+expect "password:"
+send "@M3\^w,uc2JFTHD\r"
+expect eof
+
+# Extract on remote server
+spawn ssh -o StrictHostKeyChecking=no root@118.195.185.6
+expect "password:"
+send "@M3\^w,uc2JFTHD\r"
+expect {
+    "# " { }
+    "$ " { }
+    "> " { }
+}
+send "cd /var/www/admin && tar -xzf /tmp/admin_build.tar.gz && rm /tmp/admin_build.tar.gz && ls -la\r"
+expect "# "
+send "exit\r"
+expect eof

@@ -1,0 +1,161 @@
+<!-- 视频列表页 · 玫小可商学院 -->
+<view class="vp">
+
+  <!-- 搜索栏 -->
+  <view class="search-bar {{showSearch ? 'sb-show' : ''}}" wx:if="{{showSearch}}">
+    <view class="sb-box">
+      <text class="sb-icon">🔍</text>
+      <input class="sb-input" placeholder="搜索视频、讲师名称"
+        value="{{keyword}}" bindconfirm="onSearchConfirm" bindinput="onSearchInput" focus="{{showSearch}}" />
+    </view>
+    <text class="sb-cancel" bindtap="toggleSearch">取消</text>
+  </view>
+
+  <!-- 头部 -->
+  <view class="header">
+    <view class="header-left">
+      <view class="brand-icon">
+        <text>✦</text>
+      </view>
+      <view class="header-texts">
+        <text class="ht-title">玫小可商学院</text>
+        <text class="ht-sub">专业美妆培训 · 精品课程持续更新</text>
+      </view>
+    </view>
+    <view class="search-btn" bindtap="toggleSearch">
+      <text>⌕</text>
+    </view>
+  </view>
+
+  <!-- 主Tab -->
+  <scroll-view class="tabs" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+    <view class="tab-item {{currentMainTab === index ? 'tab-on' : ''}}"
+      wx:for="{{mainTabs}}" wx:key="index" data-index="{{index}}" bindtap="switchMainTab">
+      <text>{{item}}</text>
+    </view>
+  </scroll-view>
+
+  <!-- 分类横滑 -->
+  <scroll-view class="cats" scroll-x enable-flex enhanced show-scrollbar="{{false}}" wx:if="{{categories.length > 1}}">
+    <view class="cat-chip {{activeCategory === item.id ? 'cat-on' : ''}}"
+      wx:for="{{categories}}" wx:key="id" data-id="{{item.id}}" bindtap="switchCategory">
+      <text class="cat-emoji">{{item.icon}}</text>
+      <text class="cat-txt">{{item.name}}</text>
+    </view>
+  </scroll-view>
+
+  <!-- 内容区 -->
+  <scroll-view scroll-y class="content-scroll" style="height:{{scrollHeight}}px">
+    
+    <!-- 骨架屏加载 -->
+    <view class="skeleton-wrap" wx:if="{{loading && videos.length === 0}}">
+      <view class="sk-card" wx:for="{{[1,2,3]}}" wx:key="*this">
+        <view class="sk-cover"></view>
+        <view class="sk-body">
+          <view class="sk-line sk-line-lg"></view>
+          <view class="sk-line sk-line-sm"></view>
+          <view class="sk-line sk-line-xs"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty" wx:if="{{!loading && videos.length === 0 && !loadError}}">
+      <view class="empty-art">
+        <text class="empty-emo">🎬</text>
+      </view>
+      <text class="empty-tt">暂无视频课程</text>
+      <text class="empty-dd">精彩内容正在筹备中，敬请期待～</text>
+      <view class="empty-preview">
+        <view class="ep-item"><text class="ep-no">01</text><text>产品知识深度解析</text></view>
+        <view class="ep-item"><text class="ep-no">02</text><text>销售技巧实战演练</text></view>
+        <view class="ep-item"><text class="ep-no">03</text><text>团队管理经验分享</text></view>
+      </view>
+    </view>
+
+    <!-- 错误状态 -->
+    <view class="error" wx:if="{{loadError && !loading && videos.length === 0}}">
+      <text class="err-emo">😅</text>
+      <text class="err-tt">{{errorMsg || '网络开小差了'}}</text>
+      <button class="retry-btn" bindtap="retryLoad">重新加载</button>
+    </view>
+
+    <!-- 视频卡片列表 -->
+    <view class="card-list" wx:if="{{videos.length > 0 || (!loading && !loadError)}}">
+      
+      <view class="v-card" wx:for="{{videos}}" wx:key="id" data-id="{{item.id}}" bindtap="goToPlayer">
+        
+        <!-- 封面区 -->
+        <view class="vc-cover">
+          <image wx:if="{{item.coverUrl}}" src="{{item.coverUrl}}" mode="aspectFill" class="vc-img" lazy-load />
+          <view wx:else class="vc-ph">
+            <text class="vc-play-ico">▶</text>
+            <text class="vc-ph-hint">点击播放</text>
+          </view>
+
+          <!-- 叠加层标签们 -->
+          <view class="vc-dur" wx:if="{{item.durationStr && item.durationStr !== '00:00'}}">
+            <text>{{item.durationStr}}</text>
+          </view>
+
+          <view class="vc-tag vc-price" wx:if="{{!item.isPurchased}}">
+            <text wx:if="{{item.isFree}}">免费</text>
+            <text wx:elif="{{item.price > 0}}">¥{{item.price}}</text>
+          </view>
+
+          <view class="vc-tag vc-bought" wx:if="{{item.isPurchased}}">
+            <text>已购</text>
+          </view>
+
+          <!-- 进度条 -->
+          <view class="vc-prog" wx:if="{{item.progressPercent > 0 && !item.isCompleted}}">
+            <view class="vc-prog-fill" style="width:{{item.progressPercent}}%"></view>
+          </view>
+
+          <view class="vc-done" wx:if="{{item.isCompleted}}">
+            <text>✓ 已完成</text>
+          </view>
+        </view>
+
+        <!-- 信息区 -->
+        <view class="vc-body">
+          <text class="vc-title">{{item.title}}</text>
+          
+          <view class="vc-meta">
+            <text class="vc-mi" wx:if="{{item.instructor}}">👤 {{item.instructor}}</text>
+            <text class="vc-mi" wx:if="{{item.categoryName}}">📂 {{item.categoryName}}</text>
+            <text class="vc-mi vc-mi-last">👁 {{item.viewCount || 0}}</text>
+          </view>
+
+          <view class="vc-tags" wx:if="{{item.difficultyLabel && item.difficulty !== 'beginner'}}">
+            <text class="vc-diff-badge">{{item.difficultyLabel}}</text>
+          </view>
+
+          <view class="vc-series" wx:if="{{item.seriesTitle}}">
+            <text>📚 {{item.seriesTitle}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 加载更多 -->
+      <view class="load-more" wx:if="{{loading && videos.length > 0}}">
+        <view class="lm-spinner"></view>
+        <text>加载中...</text>
+      </view>
+      <view class="load-end" wx:if="{{!loading && !hasMore && videos.length > 0}}">
+        <view class="le-line"></view>
+        <text>已经到底啦</text>
+        <view class="le-line"></view>
+      </view>
+    </view>
+
+  </scroll-view>
+
+  <!-- 底部入口 -->
+  <view class="bottom-bar" bindtap="goToLearningCenter">
+    <text class="bb-ico">📖</text>
+    <text class="bb-lbl">我的学习中心</text>
+    <text class="bb-arrow">›</text>
+  </view>
+
+</view>

@@ -1,0 +1,271 @@
+/* AI智能训练中心 - 统一入口样式 */
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding-bottom: 40rpx;
+}
+
+/* ====== 统一顶部卡片 ====== */
+.header-card {
+  position: relative;
+  margin: 24rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.ai-center-header .header-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header-bg {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #e94560 0%, #c23152 100%);
+}
+
+.header-content {
+  position: relative; z-index: 1; padding: 36rpx 32rpx;
+}
+
+.header-title {
+  font-size: 44rpx; font-weight: bold; color: #fff; margin-bottom: 8rpx;
+}
+
+.header-subtitle {
+  font-size: 25rpx; color: rgba(255,255,255,0.75); margin-bottom: 24rpx;
+}
+
+/* 模块数据行 */
+.module-stats-row {
+  display: flex; align-items: center; justify-content: center; gap: 0;
+}
+
+.module-stat-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 4rpx; padding: 16rpx 12rpx;
+  border-radius: 12rpx;
+  background: rgba(255,255,255,0.12);
+  transition: all 0.2s;
+}
+.module-stat-item:active { transform: scale(0.96); }
+
+.stat-icon { font-size: 32rpx; }
+.stat-label { font-size: 22rpx; color: rgba(255,255,255,0.7); }
+.stat-value { font-size: 28rpx; color: #fff; font-weight: bold; }
+.stat-divider { width: 2rpx; height: 48rpx; background: rgba(255,255,255,0.15); }
+
+/* ====== 训练模块区块（通用） ====== */
+.training-section {
+  margin: 20rpx 24rpx;
+  background: rgba(255,255,255,0.06);
+  border-radius: 24rpx;
+  padding: 28rpx 28rpx 32rpx;
+  border: 2rpx solid rgba(255,255,255,0.08);
+}
+
+/* 区块标题 */
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10rpx;
+}
+.section-header:active { opacity: 0.7; }
+
+.section-title-group {
+  display: flex; align-items: center; gap: 12rpx;
+}
+.section-icon { font-size: 38rpx; }
+.socratic-icon { font-size: 36rpx; }
+
+.section-title {
+  font-size: 33rpx; font-weight: bold; color: #fff;
+}
+
+.section-badge {
+  font-size: 18rpx; padding: 3rpx 14rpx;
+  border-radius: 16rpx; background: rgba(233,69,96,0.2);
+  color: #e94560; font-weight: 500;
+}
+
+.ai-badge {
+  font-size: 17rpx; padding: 3rpx 14rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #667eea22, #764ba222);
+  color: #a78bfa; font-weight: 500;
+  animation: shimmer 3s infinite;
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }  50% { opacity: 0.6; }
+}
+
+.section-arrow {
+  font-size: 34rpx; color: rgba(255,255,255,0.35);
+}
+
+.section-desc {
+  font-size: 24rpx; color: rgba(255,255,255,0.45);
+  line-height: 1.5; margin-bottom: 20rpx;
+  padding-left: 6rpx;
+}
+
+/* ====== 苏格拉底区块特色 ====== */
+.socratic-section {
+  border-color: rgba(102, 126, 234, 0.25);
+  background: rgba(102, 126, 234, 0.06);
+}
+
+/* 五种提问技巧标签 */
+.socratic-features {
+  display: flex; flex-wrap: wrap; gap: 10rpx;
+  margin-bottom: 24rpx;
+}
+
+.feature-item {
+  display: flex; align-items: center; gap: 6rpx;
+  padding: 10rpx 18rpx; border-radius: 30rpx;
+  background: rgba(167, 139, 250, 0.1);
+  border: 1rpx solid rgba(167, 139, 250, 0.15);
+}
+
+.feature-icon { font-size: 24rpx; }
+.feature-text { font-size: 21rpx; color: #c4b5fd; font-weight: 500; }
+
+/* 数据概览 */
+.socratic-overview {
+  display: flex; align-items: center; justify-content: space-around;
+  background: rgba(255,255,255,0.05);
+  border-radius: 16rpx; padding: 24rpx 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.overview-stat { text-align: center; flex: 1; }
+.overview-num {
+  font-size: 44rpx; font-weight: bold; color: #a78bfa;
+}
+.overview-num.grade-S { color: #ffd700; }
+.overview-num.grade-A { color: #00C896; }
+.overview-num.grade-B { color: #1890ff; }
+.overview-num.grade-C { color: #faad14; }
+.overview-num.grade-D { color: #e94560; }
+
+.overview-label {
+  font-size: 21rpx; color: rgba(255,255,255,0.45); margin-top: 4rpx;
+}
+.overview-divider {
+  width: 2rpx; height: 52rpx; background: rgba(255,255,255,0.08);
+}
+
+/* 底部操作按钮 */
+.bottom-actions {
+  display: flex; gap: 16rpx; margin-top: 4rpx;
+}
+.socratic-actions {
+  /* 苏格拉底的操作栏 */
+}
+
+.action-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 6rpx; padding: 20rpx 12rpx;
+  background: rgba(255,255,255,0.06);
+  border-radius: 16rpx;
+  border: 2rpx solid rgba(255,255,255,0.06);
+  transition: all 0.2s;
+}
+.action-btn:active { transform: scale(0.96); opacity: 0.7; }
+
+.primary-action {
+  flex: 1.5;
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  border-color: transparent !important;
+}
+.primary-action .action-label { color: #fff !important; font-weight: bold !important; }
+
+.action-icon { font-size: 38rpx; }
+.action-label { font-size: 22rpx; color: rgba(255,255,255,0.55); }
+
+/* 原理提示条 */
+.socratic-tip {
+  display: flex; align-items: flex-start; gap: 10rpx;
+  margin-top: 20rpx; padding: 16rpx 20rpx;
+  background: rgba(102, 126, 234, 0.08);
+  border-radius: 12rpx; border-left: 4rpx solid #667eea;
+}
+
+.tip-icon { font-size: 26rpx; flex-shrink: 0; margin-top: 2rpx; }
+.tip-text { font-size: 23rpx; color: rgba(255,255,255,0.5); line-height: 1.5; }
+
+/* ====== 话术通关模块（复用原有样式适配新布局） ====== */
+
+.progress-bar-wrap {
+  background: rgba(255,255,255,0.08);
+  border-radius: 14rpx; padding: 18rpx 20rpx; margin-bottom: 20rpx;
+}
+
+.progress-info {
+  display: flex; justify-content: space-between; margin-bottom: 10rpx;
+}
+.progress-text { font-size: 23rpx; color: rgba(255,255,255,0.7); }
+.progress-count { font-size: 23rpx; color: #fff; font-weight: bold; }
+
+.progress-bar {
+  height: 10rpx; background: rgba(255,255,255,0.15); border-radius: 5rpx; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: linear-gradient(90deg, #ffd700, #ffed4a);
+  border-radius: 5rpx; transition: width 0.5s ease;
+}
+
+/* 迷你关卡地图 */
+.levels-map-mini {
+  display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 24rpx;
+}
+
+.level-node-mini {
+  display: flex; align-items: center; gap: 10rpx;
+  padding: 14rpx 18rpx; border-radius: 14rpx;
+  background: rgba(255,255,255,0.06);
+  border: 2rpx solid rgba(255,255,255,0.08);
+  min-width: 200rpx;
+  transition: all 0.2s;
+}
+.level-node-mini:active { transform: scale(0.97); }
+
+.level-node-mini.passed { border-color: rgba(0,200,150,0.3); }
+.level-node-mini.current { border-color: #e94560; background: rgba(233,69,96,0.1); }
+.level-node-mini.locked { opacity: 0.5; }
+
+.level-num {
+  width: 48rpx; height: 48rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24rpx; font-weight: bold; color: #fff;
+  background: rgba(255,255,255,0.1); flex-shrink: 0;
+}
+.passed .level-num { background: linear-gradient(135deg, #00C896, #00a876); }
+.current .level-num { background: linear-gradient(135deg, #e94560, #c23152); }
+
+.level-name-mini {
+  font-size: 24rpx; color: #fff; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 180rpx;
+}
+
+.mini-badge {
+  font-size: 18rpx; margin-left: auto;
+}
+.mini-badge.passed { color: #00C896; }
+.mini-badge.current { color: #e94560; }
+.mini-badge.locked { color: rgba(255,255,255,0.3); }
+
+.level-more {
+  display: flex; align-items: center; justify-content: center;
+  width: 80rpx; height: 68rpx; border-radius: 14rpx;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.4); font-size: 24rpx;
+  font-weight: bold; cursor: pointer;
+}
+
+/* ====== 页脚 ====== */
+.footer-note {
+  text-align: center; padding: 40rpx 24rpx 20rpx;
+}
+.footer-note text {
+  font-size: 21rpx; color: rgba(255,255,255,0.25);
+}

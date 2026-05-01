@@ -1,0 +1,41 @@
+<!-- 隐私授权弹窗 -->
+<view class="privacy-mask" wx:if="{{showPrivacy}}" catch:touchmove="preventMove">
+  <view class="privacy-dialog">
+    <!-- 标题区域 -->
+    <view class="privacy-header">
+      <image class="privacy-logo" src="/images/logo.png" mode="aspectFit" />
+      <text class="privacy-title">隐私保护提示</text>
+    </view>
+
+    <!-- 内容区域 -->
+    <view class="privacy-body">
+      <text class="privacy-text">
+        在您使用本小程序服务前，请您仔细阅读
+        <text class="privacy-link" catchtap="openPrivacyContract">{{privacyContractName}}</text>
+        并充分理解相关条款内容。
+      </text>
+      <text class="privacy-subtext">我们将按照本隐私指引的内容，使用和保护您的个人信息。</text>
+
+      <!-- 微信隐私接口按钮（必须使用button才能触发授权） -->
+      <view class="privacy-button-area" id="privacy-btn-area">
+        <button
+          id="agreePrivacyBtn"
+          class="privacy-agree-btn"
+          open-type="agreePrivacyAuthorization"
+          bindagreeprivacyauthorization="handleAgree"
+        >
+          同意并继续
+        </button>
+      </view>
+
+      <view class="privacy-disagree-btn" catchtap="handleDisagree">
+        拒绝
+      </view>
+    </view>
+
+    <!-- 底部提示 -->
+    <view class="privacy-footer">
+      <text class="privacy-tip">我们非常重视您的个人信息保护</text>
+    </view>
+  </view>
+</view>

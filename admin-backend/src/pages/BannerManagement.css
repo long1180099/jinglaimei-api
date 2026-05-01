@@ -1,0 +1,104 @@
+/* ==================== 轮播图管理页面 ==================== */
+.banner-management-page {
+  padding: 0;
+  min-height: 100%;
+}
+
+/* 头部 */
+.banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.banner-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.banner-header-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.35);
+}
+
+/* 统计卡片 */
+.stat-card {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+.stat-card-total { border-top: 3px solid #1890ff; }
+.stat-card-active { border-top: 3px solid #52c41a; }
+.stat-card-inactive { border-top: 3px solid #d9d9d9; }
+
+.stat-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stat-icon {
+  font-size: 28px;
+  opacity: 0.85;
+}
+.stat-card-total .stat-icon { color: #1890ff; }
+.stat-card-active .stat-icon { color: #52c41a; }
+.stat-card-inactive .stat-icon { color: #999; }
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1a1a2e;
+}
+.stat-label {
+  font-size: 13px;
+  color: #888;
+}
+
+/* 表格卡片 */
+.banner-table-card .ant-table-thead > tr > th {
+  background: linear-gradient(180deg, #fafafa, #f5f5f5) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  color: #555 !important;
+}
+.banner-table-card .ant-table-row:hover td {
+  background-color: #f8f9ff !important;
+}
+
+/* 缩略图 */
+.banner-thumb-wrap {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-block;
+}
+.banner-thumb-wrap:hover {
+  border-color: #1890ff;
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(24, 144, 255, 0.2);
+}
+
+/* 编辑弹窗 */
+.ant-modal-header {
+  border-bottom: none;
+  padding-bottom: 0 !important;
+}
+.banner-management-page .ant-form-item-label > label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #444;
+}

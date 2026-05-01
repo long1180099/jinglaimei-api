@@ -136,20 +136,24 @@ router.post('/', (req, res) => {
   const { product_code, product_name, category_id, brand, retail_price, agent_price, vip_price, partner_price,
           wholesale_price, chief_price, division_price, cost_price,
           stock_quantity, min_stock_alert, description, specifications, main_image, image_gallery,
-          status, is_hot, is_recommend, sort_order } = req.body;
+          status, is_hot, is_recommend, sort_order, commission_rate } = req.body;
   if (!product_code || !product_name || !category_id) return error(res, '商品编码、名称、分类不能为空');
   if (!retail_price) return error(res, '零售价不能为空');
+  
+  // 确保 commission_rate 列存在（兼容旧数据库）
+  try { db.prepare('ALTER TABLE products ADD COLUMN commission_rate REAL DEFAULT 0').run(); } catch(e) {}
   
   try {
     const result = db.prepare(`
       INSERT INTO products (product_code, product_name, category_id, brand, retail_price, agent_price, vip_price, partner_price,
         wholesale_price, chief_price, division_price, cost_price, stock_quantity, min_stock_alert, description, specifications,
-        main_image, image_gallery, status, is_hot, is_recommend, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        main_image, image_gallery, status, is_hot, is_recommend, sort_order, commission_rate)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(product_code, product_name, category_id, brand, retail_price, agent_price, vip_price || null, partner_price || null,
            wholesale_price || null, chief_price || null, division_price || null,
            cost_price || null, stock_quantity || 0, min_stock_alert || 10, description, specifications,
-           main_image, image_gallery || '[]', status ?? 1, is_hot ?? 0, is_recommend ?? 0, sort_order || 0);
+           main_image, image_gallery || '[]', status ?? 1, is_hot ?? 0, is_recommend ?? 0, sort_order || 0,
+           commission_rate ?? 0);
     return success(res, { id: result.lastInsertRowid }, '商品创建成功', 201);
   } catch (err) {
     if (err.message.includes('UNIQUE')) return error(res, '商品编码已存在');
@@ -160,8 +164,12 @@ router.post('/', (req, res) => {
 // PUT /api/products/:id - 更新商品
 router.put('/:id', (req, res) => {
   const db = getDB();
+  // 确保 commission_rate 列存在（兼容旧数据库）
+  try { db.prepare('ALTER TABLE products ADD COLUMN commission_rate REAL DEFAULT 0').run(); } catch(e) {}
+  
   const fields = ['product_name', 'retail_price', 'agent_price', 'vip_price', 'partner_price', 'stock_quantity',
-                  'min_stock_alert', 'description', 'status', 'is_hot', 'is_recommend', 'sort_order', 'main_image'];
+                  'min_stock_alert', 'description', 'status', 'is_hot', 'is_recommend', 'sort_order', 'main_image',
+                  'commission_rate', 'wholesale_price', 'chief_price', 'division_price', 'cost_price'];
   const updates = [];
   const params = [];
   
@@ -279,6 +287,13 @@ router.delete('/:id', (req, res) => {
 
   // 2. 删除关联的订单明细（级联清理）
   db.prepare('DELETE FROM order_items WHERE product_id = ?').run(req.params.id);
+
+  // 2.1 删除关联的库存记录（inventory_stock有外键约束，必须先删）
+  try {
+    db.prepare('DELETE FROM inventory_stock WHERE product_id = ?').run(req.params.id);
+  } catch(e) {
+    console.warn('[删除商品] 清理inventory_stock失败:', e.message);
+  }
 
   // 3. 删除关联的物理图片
   try {

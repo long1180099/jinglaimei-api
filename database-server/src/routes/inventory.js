@@ -299,6 +299,109 @@ router.post('/out', (req, res) => {
   }
 });
 
+// ==================== 特供产品出货 ====================
+// 注意：这两个路由必须在 /:id 之前注册，否则 :id 会拦截
+
+// GET /api/inventory/search-members - 搜索会员（按姓名/用户名模糊匹配）
+router.get('/search-members', (req, res) => {
+  const db = getDB();
+  const { keyword } = req.query;
+
+  if (!keyword || keyword.trim().length === 0) {
+    return success(res, []);
+  }
+
+  const kw = `%${keyword.trim()}%`;
+  const members = db.prepare(`
+    SELECT id, username, real_name, phone, agent_level,
+           COALESCE(real_name, username) as display_name
+    FROM users
+    WHERE status = 1
+      AND (real_name LIKE ? OR username LIKE ? OR phone LIKE ?)
+    ORDER BY
+      CASE WHEN real_name LIKE ? THEN 0 ELSE 1 END,
+      agent_level DESC
+    LIMIT 20
+  `).all(kw, kw, kw, kw);
+
+  return success(res, members);
+});
+
+// POST /api/inventory/special-out - 特供产品出货（不扣余额，只减库存）
+router.post('/special-out', (req, res) => {
+  const db = getDB();
+  const {
+    stock_id,          // 库存商品ID（必填）
+    member_id,         // 领取会员ID（必填）
+    quantity,          // 出库数量（必填）
+    remark             // 备注
+  } = req.body;
+
+  // 参数校验
+  if (!stock_id) return error(res, '请选择出库商品');
+  if (!member_id) return error(res, '请搜索并选择领取会员');
+  if (!quantity || quantity <= 0) return error(res, '出库数量必须大于0');
+
+  // 查询库存商品
+  const stock = db.prepare('SELECT * FROM inventory_stock WHERE id = ?').get(stock_id);
+  if (!stock) return error(res, '库存商品不存在', 404);
+  if (stock.quantity < quantity) return error(res, `库存不足！当前仅剩 ${stock.quantity}${stock.unit}`);
+
+  // 查询会员信息（确认存在）
+  const member = db.prepare('SELECT id, real_name, username, agent_level FROM users WHERE id = ? AND status = 1').get(member_id);
+  if (!member) return error(res, '会员不存在或已禁用', 404);
+
+  const memberName = member.real_name || member.username;
+
+  // 执行出库事务
+  const outTransaction = db.transaction(() => {
+    const newQty = stock.quantity - quantity;
+
+    // 1. 减少库存
+    db.prepare(`
+      UPDATE inventory_stock SET
+        quantity = ?, total_out = total_out + ?,
+        updated_at = datetime('now','localtime')
+      WHERE id = ?
+    `).run(newQty, quantity, stock_id);
+
+    // 2. 同步更新 products 表的 sold_quantity（如果有关联）
+    if (stock.product_id) {
+      db.prepare("UPDATE products SET sold_quantity = sold_quantity + ?, updated_at = datetime('now','localtime') WHERE id = ?")
+        .run(quantity, stock.product_id);
+    }
+
+    // 3. 写入出库记录（record_type='out'，remark标注特供出货+会员信息）
+    const recordResult = db.prepare(`
+      INSERT INTO inventory_records (
+        stock_id, product_name, record_type, quantity,
+        stock_before, stock_after, remark, operator
+      ) VALUES (?, ?, 'out', ?, ?, ?, ?, ?)
+    `).run(
+      stock_id, stock.product_name, quantity,
+      stock.quantity, newQty,
+      `【特供出货】领取人: ${memberName}(ID:${member_id}, Lv.${member.agent_level || 1})${remark ? ' | ' + remark : ''}`,
+      '管理员'
+    );
+
+    return {
+      recordId: recordResult.lastInsertRowid,
+      newStock: newQty,
+      productName: stock.product_name,
+      memberName: memberName,
+      memberLevel: member.agent_level || 1
+    };
+  });
+
+  try {
+    const result = outTransaction();
+    console.log(`[特供出货] 商品=${result.productName} ×${quantity} → ${result.memberName}(Lv.${result.memberLevel}) 剩余库存=${result.newStock}`);
+    return success(res, result, '✅ 特供出货成功');
+  } catch (err) {
+    return error(res, '特供出货失败: ' + err.message);
+  }
+});
+
 // GET /api/inventory/:id - 商品详情（含所有出入库记录）
 router.get('/:id', (req, res) => {
   const db = getDB();

@@ -1,0 +1,508 @@
+/* 静莱美 - 个人中心页面样式 */
+
+.profile-container {
+  min-height: 100%;
+  background: #f5f6fa;
+}
+
+/* ===== Banner 顶部 ===== */
+.profile-banner {
+  position: relative;
+  background: linear-gradient(135deg, #00C896 0%, #1890ff 60%, #722ED1 100%);
+  padding: 32px 32px 24px;
+  overflow: hidden;
+  border-radius: 0 0 24px 24px;
+}
+
+.banner-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.banner-bg::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+
+.banner-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+/* 头像区 */
+.avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-avatar {
+  border: 4px solid rgba(255,255,255,0.9) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+
+.avatar-edit-btn {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  color: #00C896;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: transform 0.2s;
+}
+.avatar-edit-btn:hover { transform: scale(1.1); }
+
+.profile-identity {
+  color: #fff;
+}
+
+.profile-name {
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.level-tag {
+  font-size: 12px !important;
+  border-radius: 20px !important;
+}
+
+.profile-role {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-bottom: 10px;
+}
+
+.profile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-tag {
+  background: rgba(255,255,255,0.15) !important;
+  border: 1px solid rgba(255,255,255,0.3) !important;
+  color: #fff !important;
+  border-radius: 20px !important;
+  font-size: 11px !important;
+}
+
+/* Banner 统计 */
+.banner-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 16px 24px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.banner-stat-item {
+  padding: 0 20px;
+  text-align: center;
+}
+
+.banner-stat-item .ant-statistic-title {
+  color: rgba(255,255,255,0.75) !important;
+  font-size: 12px !important;
+  margin-bottom: 4px;
+}
+
+.banner-stat-item .ant-statistic-content {
+  color: #fff;
+  font-size: 20px !important;
+}
+
+.banner-stat-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(255,255,255,0.25);
+}
+
+.stat-label { font-size: 12px; }
+
+/* ===== 主内容区 ===== */
+.profile-main {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ===== 左侧卡片 ===== */
+.profile-side-card {
+  border-radius: 16px !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+}
+
+.side-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.side-icon {
+  font-size: 16px;
+  color: #00C896;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.side-label {
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 2px;
+}
+
+.side-value {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 安全评分卡 */
+.security-card .ant-card-head {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+.security-score-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 16px;
+}
+
+.security-score-center {
+  text-align: center;
+}
+
+.score-num {
+  font-size: 24px;
+  font-weight: 700;
+  color: #00C896;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.security-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.security-check-item {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 8px;
+}
+
+.security-check-item.ok {
+  color: #52c41a;
+  background: #f6ffed;
+}
+
+.security-check-item.warn {
+  color: #faad14;
+  background: #fffbe6;
+}
+
+/* ===== 右侧主卡片 ===== */
+.profile-main-card {
+  border-radius: 16px !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+  min-height: 500px;
+}
+
+.profile-tabs .ant-tabs-nav {
+  margin-bottom: 20px;
+}
+
+.tab-content {
+  padding: 4px 0;
+}
+
+/* 我的功能 */
+.my-functions {
+  margin-top: 4px;
+}
+
+.functions-title {
+  margin-bottom: 14px !important;
+  color: #333;
+  font-size: 15px !important;
+}
+
+.function-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 12px;
+  background: #f8f9fb;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.function-card:hover {
+  background: #fff;
+  border-color: #00C896;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 200, 150, 0.12);
+}
+
+.function-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: transform 0.2s;
+}
+
+.function-card:hover .function-icon {
+  transform: scale(1.1);
+}
+
+.function-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+}
+
+.function-count {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ===== 安全设置 ===== */
+.security-section {
+  padding: 20px !important;
+}
+
+.security-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.section-desc {
+  font-size: 12px;
+  color: #999;
+}
+
+.security-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+}
+
+.security-row-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.security-row-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.security-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 3px;
+}
+
+.security-row-desc {
+  font-size: 12px;
+  color: #999;
+}
+
+/* ===== 通知设置 ===== */
+.notify-header {
+  margin-bottom: 16px;
+}
+
+.notify-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.notify-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.notify-item:last-child {
+  border-bottom: none;
+}
+
+.notify-item:hover {
+  background: #fafafa;
+}
+
+.notify-item-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.notify-item-desc {
+  font-size: 12px;
+  color: #999;
+}
+
+/* ===== 操作记录 ===== */
+.operation-timeline {
+  margin-top: 8px;
+}
+
+.operation-timeline .ant-timeline-item-tail {
+  border-left-style: dashed !important;
+}
+
+.timeline-dot {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.timeline-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-action {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.timeline-detail {
+  font-size: 12px;
+  color: #999;
+}
+
+.timeline-time {
+  font-size: 12px;
+  color: #bbb;
+  white-space: nowrap;
+}
+
+.load-more {
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .profile-banner {
+    padding: 24px 20px 20px;
+  }
+
+  .banner-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .banner-stats {
+    width: 100%;
+    justify-content: space-around;
+    padding: 12px 16px;
+    gap: 0;
+  }
+
+  .banner-stat-item {
+    padding: 0 10px;
+  }
+
+  .profile-main {
+    padding: 12px;
+  }
+
+  .profile-name {
+    font-size: 18px;
+  }
+}

@@ -1,0 +1,93 @@
+<!-- pages/ai-training/coach.wxml -->
+<view class="container">
+  <!-- 场景列表 -->
+  <view wx:if="{{!sessionId}}" class="scenarios">
+    <view class="section-header">
+      <text class="section-title">选择练习场景</text>
+      <text class="section-subtitle">AI将扮演对应性格的客户与你对话</text>
+    </view>
+
+    <view class="scenario-list">
+      <view wx:for="{{scenarios}}" wx:key="id" class="scenario-card" bindtap="startSession" data-scenario="{{item}}">
+        <view class="scenario-header">
+          <view class="personality-badge {{item.personality_type}}">
+            {{item.personality_name || item.personality_type}}
+          </view>
+          <view class="difficulty-badge {{item.difficulty}}">
+            {{item.difficulty == 'easy' ? '入门' : item.difficulty == 'medium' ? '进阶' : '高级'}}
+          </view>
+        </view>
+        <view class="scenario-name">{{item.name}}</view>
+        <view class="scenario-desc">{{item.description}}</view>
+        <view wx:if="{{item.user_sessions > 0}}" class="scenario-stats">
+          <text>已练习 {{item.user_sessions}} 次</text>
+          <text>平均分 {{item.user_avg_score}}</text>
+        </view>
+        <view class="scenario-start">开始练习 ▶</view>
+      </view>
+    </view>
+
+    <!-- 历史记录入口 -->
+    <view class="history-entry" bindtap="viewHistory">
+      <text>📋 我的练习记录</text>
+      <text class="arrow">▶</text>
+    </view>
+  </view>
+
+  <!-- 对话界面 -->
+  <view wx:if="{{sessionId}}" class="chat-view">
+    <!-- 对话顶部信息 -->
+    <view class="chat-header">
+      <view class="chat-scenario-info">
+        <text class="chat-personality">{{scenarioInfo.personality_name}}</text>
+        <text class="chat-round">第 {{chatRound}} 轮</text>
+      </view>
+      <view wx:if="{{chatRound >= 5}}" class="end-btn-small" bindtap="confirmEnd">结束对话</view>
+    </view>
+
+    <!-- 消息列表 -->
+    <scroll-view class="messages" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation>
+      <block wx:for="{{messages}}" wx:key="id">
+        <!-- AI消息 -->
+        <view wx:if="{{item.role == 'ai'}}" class="message ai-message" id="msg-{{item.id}}">
+          <view class="avatar ai-avatar">🤖</view>
+          <view class="bubble ai-bubble">
+            <text>{{item.content}}</text>
+            <view wx:if="{{item.hint && showHints}}" class="bubble-hint">
+              💡 提示: {{item.hint}}
+            </view>
+          </view>
+        </view>
+
+        <!-- 用户消息 -->
+        <view wx:if="{{item.role == 'user'}}" class="message user-message" id="msg-{{item.id}}">
+          <view class="bubble user-bubble">
+            <text>{{item.content}}</text>
+          </view>
+          <view class="avatar user-avatar">我</view>
+        </view>
+      </block>
+    </scroll-view>
+
+    <!-- 提示开关 -->
+    <view class="hint-toggle" bindtap="toggleHints">
+      <text>{{showHints ? '隐藏提示' : '显示提示'}}</text>
+    </view>
+
+    <!-- 输入区域 -->
+    <view class="input-area">
+      <view class="input-row">
+        <view class="voice-btn" bindtouchstart="startVoice" bindtouchend="endVoice">
+          🎤
+        </view>
+        <input class="msg-input" 
+               value="{{inputText}}" 
+               bindinput="onInput" 
+               placeholder="输入你的回复..." 
+               confirm-type="send"
+               bindconfirm="sendMessage" />
+        <view class="send-btn {{inputText ? 'active' : ''}}" bindtap="sendMessage">发送</view>
+      </view>
+    </view>
+  </view>
+</view>

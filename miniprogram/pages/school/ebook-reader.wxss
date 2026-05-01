@@ -1,0 +1,99 @@
+.reader-container { height: 100vh; display: flex; flex-direction: column; }
+
+/* 加载状态 */
+.loading-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.loading-icon { font-size: 80rpx; margin-bottom: 20rpx; }
+.loading-text { color: #999; font-size: 28rpx; }
+.loading-hint { color: #bbb; font-size: 24rpx; margin-top: 10rpx; }
+
+/* 文本阅读 */
+.text-reader { flex: 1; display: flex; flex-direction: column; position: relative; }
+.reader-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 30rpx;
+  background: rgba(0,0,0,0.03);
+  font-size: 20rpx;
+  color: rgba(0,0,0,0.3);
+  gap: 12rpx;
+}
+.file-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 30rpx;
+  background: #f8f8f8;
+  font-size: 20rpx;
+  color: #999;
+  gap: 12rpx;
+}
+.brand-name { font-weight: 600; }
+.brand-divider { opacity: 0.4; }
+.brand-notice { opacity: 0.7; }
+.reader-header { padding: 60rpx 40rpx 30rpx; text-align: center; }
+.reader-title { font-size: 40rpx; font-weight: 700; display: block; margin-bottom: 10rpx; }
+.reader-author { font-size: 24rpx; opacity: 0.6; }
+.reader-scroll { flex: 1; height: 0; }
+.reader-content { padding: 20rpx 40rpx; white-space: pre-wrap; word-wrap: break-word; }
+
+/* 底部工具栏 */
+.reader-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16rpx 30rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #f0f0f0;
+  position: relative; z-index: 10;
+}
+.toolbar-progress { font-size: 24rpx; }
+.toolbar-actions { display: flex; gap: 30rpx; }
+.toolbar-btn { font-size: 36rpx; padding: 10rpx; }
+
+/* 主题选择 */
+.theme-picker {
+  position: absolute; bottom: 120rpx; left: 30rpx; right: 30rpx;
+  background: #fff; border-radius: 20rpx; padding: 30rpx;
+  box-shadow: 0 -4rpx 30rpx rgba(0,0,0,0.1);
+  display: flex; justify-content: space-around;
+}
+.theme-option { display: flex; flex-direction: column; align-items: center; gap: 10rpx; }
+.theme-preview { width: 80rpx; height: 80rpx; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; }
+.theme-label { font-size: 22rpx; color: #666; }
+
+/* 设置面板 */
+.settings-panel {
+  position: absolute; bottom: 120rpx; left: 30rpx; right: 30rpx;
+  background: #fff; border-radius: 20rpx; padding: 30rpx;
+  box-shadow: 0 -4rpx 30rpx rgba(0,0,0,0.1);
+}
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 0; }
+.setting-label { font-size: 28rpx; color: #333; }
+.setting-controls { display: flex; align-items: center; gap: 24rpx; }
+.control-btn {
+  width: 64rpx; height: 64rpx; border-radius: 50%; background: #f5f5f5;
+  display: flex; align-items: center; justify-content: center; font-size: 26rpx; color: #333;
+}
+.control-btn:active { background: #e8e8e8; }
+.setting-value { font-size: 26rpx; color: #999; min-width: 60rpx; text-align: center; }
+
+/* 文件类型 - web-view全屏预览 */
+.file-reader { flex: 1; position: relative; width: 100%; height: 100vh; }
+.file-reader web-view { width: 100%; height: 100vh; }
+
+/* 文件预览失败时的降级界面 */
+.file-fallback { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60rpx; }
+.fallback-info { display: flex; flex-direction: column; align-items: center; margin-bottom: 40rpx; }
+.error-hint { font-size: 24rpx; color: #e94560; margin-top: 16rpx; }
+.file-info { display: flex; flex-direction: column; align-items: center; margin-bottom: 60rpx; }
+.file-icon { font-size: 120rpx; margin-bottom: 30rpx; }
+.file-name { font-size: 36rpx; font-weight: 600; color: #333; margin-bottom: 10rpx; }
+.file-format { font-size: 26rpx; color: #999; margin-bottom: 10rpx; }
+.file-progress { font-size: 24rpx; color: #e94560; }
+.file-actions { display: flex; gap: 20rpx; margin-bottom: 40rpx; width: 100%; }
+.action-btn { flex: 1; height: 88rpx; border-radius: 44rpx; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 500; }
+.action-btn.primary { background: linear-gradient(135deg, #e94560, #d63851); color: #fff; }
+.action-btn.primary:active { opacity: 0.9; }
+.action-btn.secondary { background: #f5f5f5; color: #333; }
+.action-btn.secondary:active { background: #eee; }
+.file-tips { text-align: center; }
+.tips-title { font-size: 26rpx; color: #666; font-weight: 500; display: block; margin-bottom: 10rpx; }
+.tips-text { font-size: 24rpx; color: #999; line-height: 1.6; }

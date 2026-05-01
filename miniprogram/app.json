@@ -1,0 +1,108 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/goods/index",
+    "pages/school/list",
+    "pages/income/overview",
+    "pages/profile/profile",
+    "pages/login/login",
+    "pages/product/detail",
+    "pages/order/list",
+    "pages/order/detail",
+    "pages/order/confirm",
+    "pages/income/records",
+    "pages/income/withdraw",
+    "pages/team/my-team",
+    "pages/team/tree",
+    "pages/school/detail",
+    "pages/school/my-courses",
+    "pages/school/ebooks",
+    "pages/school/ebook-reader",
+    "pages/action-log/index",
+    "pages/personality/index",
+    "pages/school/study-points",
+    "pages/news/detail",
+    "pages/news/list",
+    "pages/ai-training/levels",
+    "pages/ai-training/level-detail",
+    "pages/ai-training/coach",
+    "pages/ai-training/rankings",
+    "pages/ai-training/scripts",
+    "pages/ai-training/history",
+    "pages/ai-training/session-detail",
+    "pages/webview/index",
+    "pages/agreement/agreement",
+    "pages/privacy/privacy",
+    "pages/category/category",
+    "pages/socratic/list",
+    "pages/socratic/chat",
+    "pages/socratic/result",
+    "pages/socratic/history",
+    "pages/address/address",
+    "pages/address/edit",
+    "pages/balance/detail",
+    "pages/poster/poster",
+    "pages/skin-analysis/analysis",
+    "pages/skin-analysis/history",
+    "pages/videos/list",
+    "pages/videos/player",
+    "pages/videos/learning",
+    "pages/videos/series-detail"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#e94560",
+    "navigationBarTitleText": "静莱美",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f5f5",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#e94560",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tab-home.png",
+        "selectedIconPath": "images/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/goods/index",
+        "text": "商品",
+        "iconPath": "images/tab-goods.png",
+        "selectedIconPath": "images/tab-goods-active.png"
+      },
+      {
+        "pagePath": "pages/school/list",
+        "text": "商学院",
+        "iconPath": "images/tab-school.png",
+        "selectedIconPath": "images/tab-school-active.png"
+      },
+      {
+        "pagePath": "pages/team/my-team",
+        "text": "团队管理",
+        "iconPath": "images/tab-team.png",
+        "selectedIconPath": "images/tab-team-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab-profile.png",
+        "selectedIconPath": "images/tab-profile-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于获取您的位置信息"
+    }
+  },
+  "requiredPrivateInfos": [
+    "chooseAddress",
+    "getLocation"
+  ],
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

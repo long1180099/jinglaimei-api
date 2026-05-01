@@ -1,0 +1,174 @@
+<!-- pages/ai-training/level-detail.wxml -->
+<view class="container">
+  <!-- 顶部Tab -->
+  <view class="tabs">
+    <view class="tab {{activeTab == 'study' ? 'active' : ''}}" bindtap="switchTab" data-tab="study">📖 学习资料</view>
+    <view class="tab {{activeTab == 'exam' ? 'active' : ''}}" bindtap="switchTab" data-tab="exam">🎯 开始考核</view>
+  </view>
+
+  <!-- 学习资料 -->
+  <view wx:if="{{activeTab == 'study'}}" class="study-content">
+    <view class="study-card">
+      <text class="material-text">{{studyMaterial}}</text>
+    </view>
+    <view class="start-btn" bindtap="switchTab" data-tab="exam">
+      我学好了，开始考核 ▶
+    </view>
+  </view>
+
+  <!-- 考核模式 -->
+  <view wx:if="{{activeTab == 'exam'}}" class="exam-content">
+    <!-- 未开始 -->
+    <view wx:if="{{!examStarted}}" class="exam-start">
+      <view class="exam-icon">🎯</view>
+      <view class="exam-title">{{levelName}}</view>
+      <view class="exam-info">共 {{questions.length}} 道情景模拟题</view>
+      <view class="exam-info">及格分数: {{passScore}}分</view>
+      <view class="start-exam-btn" bindtap="startExam">开始挑战</view>
+    </view>
+
+    <!-- 答题中 -->
+    <view wx:if="{{examStarted && !examFinished}}" class="exam-progress">
+      <view class="progress-header">
+        <text class="progress-label">第 {{currentIndex + 1}}/{{questions.length}} 题</text>
+        <text class="progress-score">当前得分: {{currentScore}}</text>
+      </view>
+      <view class="question-progress-bar">
+        <view class="question-progress-fill" style="width: {{((currentIndex + 1) / questions.length) * 100}}%"></view>
+      </view>
+    </view>
+
+    <view wx:if="{{examStarted && !examFinished}}" class="question-card">
+      <!-- 情景描述 -->
+      <view class="scenario-box">
+        <view class="scenario-label">📋 情景模拟</view>
+        <view class="scenario-text">{{currentQuestion.scenario}}</view>
+        <view wx:if="{{currentQuestion.personality_type}}" class="personality-tag {{currentQuestion.personality_type}}">
+          {{personalityLabel}}
+        </view>
+      </view>
+
+      <!-- 选项 -->
+      <view class="options-list">
+        <view wx:for="{{currentQuestion.options}}" wx:key="key"
+              class="option-item {{selectedAnswer == item.key ? (item.key == currentQuestion.correct_answer ? 'correct' : 'wrong') : ''}} {{showAnswer && item.key == currentQuestion.correct_answer ? 'correct' : ''}}"
+              bindtap="selectOption" data-key="{{item.key}}">
+          <view class="option-key">{{item.key}}</view>
+          <view class="option-text">{{item.text}}</view>
+          <view wx:if="{{showAnswer && item.key == currentQuestion.correct_answer}}" class="option-check">✓</view>
+        </view>
+      </view>
+
+      <!-- 答案解析 -->
+      <view wx:if="{{showAnswer}}" class="analysis-box">
+        <view class="analysis-title">
+          <text wx:if="{{isCorrectAnswer}}">✅ 回答正确！</text>
+          <text wx:else>❌ 回答错误</text>
+          <text class="score-text">+{{earnedScore}}分</text>
+        </view>
+        <view class="analysis-text">{{currentQuestion.analysis}}</view>
+        <view class="next-btn" bindtap="nextQuestion">
+          {{currentIndex < questions.length - 1 ? '下一题 ▶' : '查看结果 🏁'}}
+        </view>
+      </view>
+    </view>
+
+    <!-- 考核结果 -->
+    <view wx:if="{{examFinished}}" class="result-card">
+      <view class="result-icon">{{examResult.passed ? '🎉' : '💪'}}</view>
+      <view class="result-title">{{examResult.passed ? '恭喜通关！' : '继续加油！'}}</view>
+      <view class="result-score">
+        <view class="score-circle {{examResult.passed ? 'passed' : 'failed'}}">
+          <text class="score-number">{{examResult.score}}</text>
+          <text class="score-label">分</text>
+        </view>
+        <view class="score-info">
+          <text>及格线: {{passScore}}分</text>
+          <text>答题时间: {{examDuration}}秒</text>
+        </view>
+      </view>
+
+      <!-- 各题回顾 -->
+      <view class="result-details">
+        <view class="detail-title">答题回顾</view>
+        <view wx:for="{{examResult.results}}" wx:key="question_id" class="result-item {{item.is_correct ? 'correct' : 'wrong'}}">
+          <view class="result-item-header">
+            <text class="result-item-status">{{item.is_correct ? '✓' : '✗'}}</text>
+            <text class="result-item-score">{{item.earned_score}}分</text>
+          </view>
+          <view class="result-item-text">{{item.scenario}}</view>
+          <view wx:if="{{!item.is_correct}}" class="result-item-correct">
+            正确答案: {{item.correct_answer}} | {{item.analysis}}
+          </view>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="result-actions">
+        <!-- AI深度分析入口（有AI数据时显示） -->
+        <view wx:if="{{aiAnalysis}}" class="ai-analysis-toggle {{showAiAnalysis ? 'expanded' : ''}}"
+              bindtap="toggleAiAnalysis">
+          <view class="ai-toggle-left">
+            <text class="ai-toggle-icon">🧠</text>
+            <view class="ai-toggle-text">
+              <text class="ai-toggle-title">DeepSeek AI 深度分析</text>
+              <text class="ai-toggle-desc">基于你的答题情况智能评估</text>
+            </view>
+          </view>
+          <text class="ai-toggle-arrow">{{showAiAnalysis ? '∧' : '∨'}}</text>
+        </view>
+
+        <!-- AI分析内容（展开时显示） -->
+        <view wx:if="{{showAiAnalysis && aiAnalysis}}" class="ai-analysis-content">
+          <!-- 总体评价 -->
+          <view class="ai-section" wx:if="{{aiAnalysis.overall_assessment}}">
+            <text class="ai-section-title">📊 总体评价</text>
+            <text class="ai-section-text">{{aiAnalysis.overall_assessment}}</text>
+          </view>
+
+          <!-- 优势 -->
+          <view class="ai-section" wx:if="{{aiAnalysis.strengths && aiAnalysis.strengths.length > 0}}">
+            <text class="ai-section-title">✅ 你的优势</text>
+            <view class="ai-list-items">
+              <text class="ai-list-item do" wx:for="{{aiAnalysis.strengths}}" wx:key="*this">{{index + 1}}. {{item}}</text>
+            </view>
+          </view>
+
+          <!-- 需要提升 -->
+          <view class="ai-section" wx:if="{{aiAnalysis.weaknesses && aiAnalysis.weaknesses.length > 0}}">
+            <text class="ai-section-title">💪 提升方向</text>
+            <view class="ai-list-items">
+              <text class="ai-list-item dont" wx:for="{{aiAnalysis.weaknesses}}" wx:key="*this">{{index + 1}}. {{item}}</text>
+            </view>
+          </view>
+
+          <!-- 关键失误 -->
+          <view class="ai-section" wx:if="{{aiAnalysis.key_mistakes && aiAnalysis.key_mistakes.length > 0}}">
+            <text class="ai-section-title">⚠️ 关键失误点</text>
+            <view class="ai-list-items">
+              <text class="ai-list-item dont" wx:for="{{aiAnalysis.key_mistakes}}" wx:key="*this">• {{item}}</text>
+            </view>
+          </view>
+
+          <!-- 学习建议 -->
+          <view class="ai-section" wx:if="{{aiAnalysis.study_advice}}">
+            <text class="ai-section-title">📚 AI 学习建议</text>
+            <text class="ai-section-text">{{aiAnalysis.study_advice}}</text>
+          </view>
+
+          <!-- 下一步 -->
+          <view class="ai-section" wx:if="{{aiAnalysis.next_step}}">
+            <text class="ai-section-title">🎯 下一步行动</text>
+            <text class="ai-section-text highlight">{{aiAnalysis.next_step}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{!examResult.passed}}" class="retry-btn" bindtap="startExam">重新挑战</view>
+        <view wx:if="{{examResult.next_level}}" class="next-level-btn" bindtap="goNextLevel">
+          下一关: {{examResult.next_level.name}} ▶
+        </view>
+        <view class="back-btn" bindtap="goBack">返回关卡地图</view>
+      </view>
+    </view>
+  </view>
+</view>

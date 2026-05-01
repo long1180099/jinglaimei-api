@@ -31,3 +31,7 @@ miniprogram。.bak/
 # 临时文件
 generated-products/
 images/
+setup_admin.sh
+setup_admin_v2.sh
+deploy.py
+docs/微信云托管部署指南.md

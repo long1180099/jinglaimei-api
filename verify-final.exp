@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+set timeout 30
+set pwd {@M3^w,uc2JFTHD}
+spawn ssh -o StrictHostKeyChecking=no root@118.195.185.6 "echo '--- 1. Dashboard (需登录) ---' && curl -s 'http://localhost:4000/api/mp/socratic/academy/dashboard' -H 'x-user-id: dev_test_openid_001' | head -c 300 && echo '' && echo '--- 2. Scenarios List ---' && curl -s 'http://localhost:4000/api/mp/socratic/scenarios' | head -c 200 && echo '' && echo '--- 3. PM2 Status ---' && pm2 status --no-color 2>&1 | grep jinglaimei"
+expect "password:"
+send "$pwd\r"
+expect eof

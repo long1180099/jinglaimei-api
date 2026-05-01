@@ -1,0 +1,73 @@
+<!-- 提现 -->
+<view class="page">
+  <!-- 可提现金额 -->
+  <view class="balance-card">
+    <view class="balance-deco"></view>
+    <text class="balance-label">可提现金额(元)</text>
+    <text class="balance-amount">{{balance}}</text>
+    <view class="balance-stats">
+      <view class="balance-stat">
+        <text class="stat-label">累计收益</text>
+        <text class="stat-value">¥{{totalIncome}}</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="balance-stat">
+        <text class="stat-label">已提现</text>
+        <text class="stat-value">¥{{withdrawn}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提现表单 -->
+  <view class="form-card">
+    <view class="form-title">提现信息</view>
+
+    <view class="form-group">
+      <text class="form-label">提现方式</text>
+      <view class="method-tabs">
+        <view class="method-tab {{method == 1 ? 'active' : ''}}" bindtap="setMethod" data-method="1">
+          <text>💬</text> 微信
+        </view>
+        <view class="method-tab {{method == 2 ? 'active' : ''}}" bindtap="setMethod" data-method="2">
+          <text>💳</text> 银行卡
+        </view>
+      </view>
+    </view>
+
+    <view class="form-group" wx:if="{{method == 2}}">
+      <text class="form-label">银行卡号</text>
+      <input class="form-input" type="number" placeholder="请输入银行卡号" value="{{bankCard}}" bindinput="onBankCardInput" />
+    </view>
+
+    <view class="form-group" wx:if="{{method == 2}}">
+      <text class="form-label">开户行</text>
+      <input class="form-input" placeholder="请输入开户行名称" value="{{bankName}}" bindinput="onBankNameInput" />
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">提现金额</text>
+      <view class="amount-input-wrap">
+        <text class="amount-prefix">¥</text>
+        <input class="amount-input" type="digit" placeholder="0.00" value="{{amount}}" bindinput="onAmountInput" />
+      </view>
+      <text class="quick-amount" bindtap="withdrawAll">全部提现</text>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">备注</text>
+      <input class="form-input" placeholder="选填" value="{{remark}}" bindinput="onRemarkInput" />
+    </view>
+  </view>
+
+  <!-- 提现说明 -->
+  <view class="notice-card">
+    <view class="notice-title">提现说明</view>
+    <text class="notice-item">• 最低提现金额: ¥100.00</text>
+    <text class="notice-item">• 提现将在1-3个工作日内到账</text>
+    <text class="notice-item">• 每日最多提现3次</text>
+    <text class="notice-item">• 提现金额将从待结算中扣除</text>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="btn-submit" bindtap="submitWithdraw">确认提现</view>
+</view>

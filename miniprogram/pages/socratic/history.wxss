@@ -1,0 +1,141 @@
+/* 苏格拉底式提问训练 - 历史记录（AI学院增强版） */
+.history-page {
+  min-height: 100vh;
+  background: #0f0f1a;
+}
+
+/* 概览卡片 */
+.overview-card {
+  margin: 20rpx; padding: 28rpx;
+  background: linear-gradient(135deg, rgba(233,69,96,0.08), rgba(114,46,209,0.06));
+  border-radius: 20rpx; border: 1rpx solid rgba(233,69,96,0.12);
+}
+.ov-header { font-size: 26rpx; color: rgba(255,255,255,0.5); margin-bottom: 18rpx; }
+.ov-stats { display: flex; align-items: center; justify-content: space-around; }
+.ov-stat { text-align: center; flex: 1; }
+.ov-num { 
+  font-size: 40rpx; font-weight: 800; color: #fff; display: block; margin-bottom: 4rpx;
+}
+.ov-label { font-size: 21rpx; color: rgba(255,255,255,0.35); display: block; }
+.ov-divider { width: 1rpx; height: 50rpx; background: rgba(255,255,255,0.08); }
+
+/* 本周训练热力（AI学院新增）*/
+.week-heatmap {
+  margin-top: 20rpx; padding-top: 18rpx;
+  border-top: 1rpx solid rgba(255,255,255,0.05);
+}
+.wh-title { font-size: 24rpx; color: rgba(255,255,255,0.45); display: block; margin-bottom: 12rpx; }
+.wh-days { display: flex; gap: 8rpx; }
+.wh-day {
+  flex: 1; text-align: center; padding: 12rpx 4rpx 8rpx;
+  border-radius: 10rpx; transition: all 0.2s;
+}
+.wh-day.trained { border: 1rpx solid var(--heat-color); opacity: 1; }
+.wh-score {
+  font-size: 24rpx; font-weight: 700; display: block; margin-bottom: 2rpx;
+}
+.wh-dash { font-size: 20rpx; color: rgba(255,255,255,0.15); display: block; margin-bottom: 2rpx; }
+.wh-name { font-size: 17rpx; color: rgba(255,255,255,0.3); display: block; }
+
+/* 趋势迷你图（AI学院新增）*/
+.trend-mini { margin-top: 18rpx; padding-top: 18rpx; border-top: 1rpx solid rgba(255,255,255,0.05); }
+.tm-title { font-size: 24rpx; color: rgba(255,255,255,0.45); display: block; margin-bottom: 10rpx; }
+.tm-chart { height: 140rpx; position: relative; }
+.tm-bars {
+  display: flex; align-items: flex-end; gap: 6rpx;
+  height: 120rpx; padding: 0 8rpx;
+}
+.tm-bar-wrap {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  height: 100%;
+}
+.tm-bar {
+  width: 16rpx; min-height: 4rpx; border-radius: 4rpx 4rpx 0 0;
+  transition: height 0.3s ease;
+}
+.tm-bar-label {
+  font-size: 16rpx; color: rgba(255,255,255,0.35); margin-top: 4rpx; display: block; font-weight: 600;
+}
+
+/* 筛选栏（AI学院新增）*/
+.filter-bar {
+  padding: 14rpx 20rpx;
+  display: flex; align-items: center; gap: 12rpx;
+  background: #12122a;
+  border-bottom: 1rpx solid rgba(255,255,255,0.03);
+}
+.filter-scroll { white-space: nowrap; flex: 1; }
+.filter-chip {
+  display: inline-flex; padding: 10rpx 22rpx; margin-right: 10rpx;
+  background: rgba(255,255,255,0.04); border-radius: 20rpx;
+  font-size: 23rpx; color: rgba(255,255,255,0.5); font-weight: 500;
+  border: 1rpx solid transparent; transition: all 0.2s;
+}
+.filter-chip.active {
+  background: rgba(233,69,96,0.12); color: #e94560;
+  border-color: rgba(233,69,96,0.3); font-weight: 600;
+}
+.clear-filter {
+  font-size: 22rpx; color: #e94560; white-space: nowrap; padding: 8rpx 16rpx;
+  border: 1rpx solid rgba(233,69,96,0.25); border-radius: 16rpx;
+}
+
+/* 头部 */
+.section-header-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 24rpx 8rpx; }
+.section-title { font-size: 30rpx; font-weight: 700; color: #fff; }
+.empty-hint { font-size: 24rpx; color: rgba(255,255,255,0.3); }
+
+/* 记录卡片 */
+.record-list { padding: 0 20rpx; }
+.record-card {
+  background: #1a1a2e; border-radius: 18rpx; padding: 24rpx;
+  margin-bottom: 16rpx; border: 1rpx solid rgba(255,255,255,0.05);
+}
+.rc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14rpx; }
+.rc-scenario-name { font-size: 29rpx; font-weight: 600; color: #fff; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-grade {
+  font-size: 26rpx; font-weight: 900; padding: 4rpx 18rpx; border-radius: 12rpx;
+  margin-left: 14rpx; flex-shrink: 0;
+}
+.grade-S { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #333 !important; }
+.grade-A { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff !important; }
+.grade-B { background: rgba(82,196,26,0.15); color: #52c41a !important; }
+.grade-C { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.45) !important; }
+.grade-D { background: rgba(244,67,54,0.12); color: #e57373 !important; }
+
+.rc-score-bar {
+  position: relative; height: 36rpx; background: rgba(255,255,255,0.04);
+  border-radius: 8rpx; overflow: hidden; margin-bottom: 16rpx;
+}
+.rc-score-fill { height: 100%; border-radius: 8rpx; transition: width 0.4s; min-width: 40rpx; }
+.rc-score-text {
+  position: absolute; right: 10rpx; top: 50%; transform: translateY(-50%);
+  font-size: 22rpx; font-weight: 700; color: #fff; text-shadow: 0 1rpx 3rpx rgba(0,0,0,0.5);
+}
+
+/* 五维迷你分数 */
+.rc-dims { display: flex; gap: 6rpx; margin-bottom: 14rpx; }
+.rc-dim {
+  flex: 1; text-align: center; background: rgba(255,255,255,0.03);
+  padding: 10rpx 4rpx; border-radius: 8rpx;
+}
+.rd-val { font-size: 25rpx; font-weight: 700; display: block; line-height: 1.2; }
+.rd-key { font-size: 18rpx; color: rgba(255,255,255,0.3); display: block; margin-top: 2rpx; }
+
+/* 底部信息 */
+.rc-footer { display: flex; gap: 20rpx; align-items: center; }
+.rc-time { flex: 1; font-size: 22rpx; color: rgba(255,255,255,0.35); }
+.rc-duration, .rc-rounds { font-size: 21rpx; color: rgba(255,255,255,0.3); }
+
+/* 空状态 */
+.empty-state { text-align: center; padding: 120rpx 40rpx; }
+.empty-icon { font-size: 80rpx; display: block; margin-bottom: 20rpx; }
+.empty-text { font-size: 30rpx; color: rgba(255,255,255,0.5); display: block; margin-bottom: 10rpx; }
+.empty-sub { font-size: 24rpx; color: rgba(255,255,255,0.3); display: block; margin-bottom: 34rpx; }
+.empty-btn {
+  display: inline-block; padding: 22rpx 56rpx; background: linear-gradient(135deg, #e94560, #c23152);
+  color: #fff; font-size: 28rpx; font-weight: 600; border-radius: 44rpx;
+}
+
+.load-more { text-align: center; padding: 24rpx; font-size: 25rpx; color: rgba(255,255,255,0.3); }
+.safe-bottom { height: 60rpx; }

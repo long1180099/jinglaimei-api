@@ -1,0 +1,156 @@
+<!-- 我的 v3.1 - 精致简洁版 -->
+<view class="page">
+  <!-- 用户信息头部 -->
+  <view class="header">
+    <view class="header-bg"></view>
+    <view class="user-row" wx:if="{{userInfo}}">
+      <image class="avatar" src="{{userInfo.avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="info-col">
+        <view class="name-line">
+          <text class="name">{{userInfo.nickname || '微信用户'}}</text>
+          <view class="level" style="background:{{levelColor}}">{{levelText}}</view>
+        </view>
+        <text class="uid">ID: {{userInfo.id || ''}}</text>
+      </view>
+      <view class="edit-btn" bindtap="editProfile">编辑</view>
+    </view>
+
+    <!-- 邀请码 -->
+    <view class="invite-bar" wx:if="{{userInfo && userInfo.inviteCode}}" bindtap="copyInviteCode">
+      <text class="invite-icon">🎫</text>
+      <view class="invite-middle">
+        <text class="invite-label">我的邀请码</text>
+        <text class="invite-code">{{userInfo.inviteCode}}</text>
+      </view>
+      <text class="invite-copy">复制</text>
+    </view>
+
+    <!-- 未登录 -->
+    <view class="user-row" wx:if="{{!userInfo}}" bindtap="goLogin">
+      <image class="avatar" src="/images/default-avatar.png" mode="aspectFill"></image>
+      <view class="info-col">
+        <text class="name">点击登录</text>
+        <text class="uid">登录后享受更多服务</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 数据概览 -->
+  <view class="stats-row" wx:if="{{userInfo}}">
+    <view class="stat" bindtap="goOrders">
+      <text class="stat-n">{{stats.orderCount || 0}}</text>
+      <text class="stat-l">我的订单</text>
+    </view>
+    <view class="stat-split"></view>
+    <view class="stat" bindtap="goTeam">
+      <text class="stat-n">{{stats.teamCount || 0}}</text>
+      <text class="stat-l">我的团队</text>
+    </view>
+    <view class="stat-split"></view>
+    <view class="stat" bindtap="goIncome">
+      <text class="stat-n stat-n--red">¥{{stats.incomeAmount || '0.00'}}</text>
+      <text class="stat-l">累计收益</text>
+    </view>
+  </view>
+
+  <!-- 余额卡片 -->
+  <view class="balance-card" wx:if="{{userInfo}}" bindtap="goBalance">
+    <view class="bal-left">
+      <text class="bal-emoji">💎</text>
+      <view class="bal-texts">
+        <text class="bal-title">会员余额</text>
+        <text class="bal-hint">可用于余额支付下单</text>
+      </view>
+    </view>
+    <view class="bal-right">
+      <text class="bal-amount">¥<text class="bal-num">{{userBalance || '0.00'}}</text></text>
+      <text class="bal-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- ===== 功能菜单组1：核心业务 ===== -->
+  <view class="menu-group">
+    <view class="m-item" bindtap="onMenuTap" data-id="orders">
+      <view class="m-icon m-icon--orange">📦</view>
+      <text class="m-text">我的订单</text>
+      <text class="m-desc">查看全部订单</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="team">
+      <view class="m-icon m-icon--blue">👥</view>
+      <text class="m-text">我的团队</text>
+      <text class="m-desc">邀请好友一起成长</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="income">
+      <view class="m-icon m-icon--gold">💰</view>
+      <text class="m-text">收益中心</text>
+      <text class="m-desc">查看收益和提现</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="school">
+      <view class="m-icon m-icon--red">📚</view>
+      <text class="m-text">商学院</text>
+      <text class="m-desc">在线学习提升</text>
+      <text class="m-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- ===== 功能菜单组2：工具 ===== -->
+  <view class="menu-group">
+    <view class="m-item" bindtap="onMenuTap" data-id="address">
+      <view class="m-icon m-icon--pink">📍</view>
+      <text class="m-text">收货地址</text>
+      <text class="m-desc">管理收货地址</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="favorites">
+      <view class="m-icon m-icon--rose">♥</view>
+      <text class="m-text">我的收藏</text>
+      <text class="m-desc">收藏的好物</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="coupon">
+      <view class="m-icon m-icon--amber">🎫</view>
+      <text class="m-text">优惠券</text>
+      <text class="m-desc">查看可用优惠券</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="apply" wx:if="{{userInfo && userInfo.agent_level < 2}}">
+      <view class="m-icon m-icon--purple">🌟</view>
+      <text class="m-text">申请升级</text>
+      <text class="m-desc">升级代理等级</text>
+      <text class="m-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- ===== 功能菜单组3：其他 ===== -->
+  <view class="menu-group">
+    <view class="m-item" bindtap="onMenuTap" data-id="service">
+      <view class="m-icon m-icon--teal">🎧</view>
+      <text class="m-text">联系客服</text>
+      <text class="m-desc">在线客服支持</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="about">
+      <view class="m-icon m-icon--gray">ℹ</view>
+      <text class="m-text">关于静莱美</text>
+      <text class="m-desc">v2.0.0</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onMenuTap" data-id="setting">
+      <view class="m-icon m-icon--slate">⚙</view>
+      <text class="m-text">设置</text>
+      <text class="m-desc">缓存、反馈等</text>
+      <text class="m-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <view class="logout-wrap" wx:if="{{userInfo}}">
+    <view class="logout-btn" bindtap="doLogout">退出登录</view>
+  </view>
+
+  <!-- 底部安全距 -->
+  <view style="height: calc(env(safe-area-inset-bottom) + 40rpx);"></view>
+</view>

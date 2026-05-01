@@ -1,0 +1,80 @@
+<!-- 视频学习中心 -->
+<view class="page">
+  <!-- 搜索栏 -->
+  <view class="search-bar" wx:if="{{showSearch}}">
+    <view class="search-input-wrap">
+      <input class="search-input" placeholder="搜索课程名称..." value="{{keyword}}" bindinput="onSearchInput" bindconfirm="doSearch" focus="{{showSearch}}" />
+      <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">✕</text>
+    </view>
+    <view class="search-btn" bindtap="doSearch">搜索</view>
+  </view>
+
+  <!-- 分类Tab -->
+  <scroll-view class="tabs-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="tabs">
+      <view class="tab {{activeTab == item.key ? 'active' : ''}}"
+            wx:for="{{tabs}}" wx:key="key"
+            bindtap="switchTab" data-tab="{{item}}">
+        <text class="tab-icon">{{item.icon}}</text>
+        <text class="tab-name">{{item.name}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 课程列表 -->
+  <scroll-view class="course-scroll" scroll-y bindscrolltolower="onReachBottom" refresher-enabled bindrefresherrefresh="onPullDownRefresh">
+    <!-- 统计信息 -->
+    <view class="list-info" wx:if="{{loaded}}">
+      <text class="list-count">共 {{total}} 门课程</text>
+    </view>
+
+    <!-- 课程卡片 -->
+    <view class="course-card" wx:for="{{courses}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+      <!-- 封面 -->
+      <view class="card-cover">
+        <image class="cover-img" src="{{item.cover || '/images/default-course.png'}}" mode="aspectFill" lazy-load></image>
+        <view class="cover-badge" style="background:{{item.typeColor}}">
+          {{item.typeText}}
+        </view>
+        <view class="cover-duration" wx:if="{{item.required_time}}">
+          ⏱ {{item.required_time}}分钟
+        </view>
+        <view class="play-overlay">
+          <view class="play-btn">▶</view>
+        </view>
+      </view>
+      <!-- 信息 -->
+      <view class="card-body">
+        <text class="card-title line-2">{{item.title}}</text>
+        <text class="card-subtitle line-1" wx:if="{{item.subtitle}}">{{item.subtitle}}</text>
+        <view class="card-meta">
+          <text class="meta-difficulty" style="color:{{item.typeColor}}">{{item.difficultyText}}</text>
+          <text class="meta-lessons">📖 {{item.totalLessons}}节</text>
+          <text class="meta-views">👁 {{item.view_count || 0}}</text>
+          <text class="meta-credits" wx:if="{{item.credit_points}}">+{{item.credit_points}}积分</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载中 -->
+    <view class="loading-more" wx:if="{{loading}}">
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <!-- 没有更多 -->
+    <view class="no-more" wx:if="{{loaded && courses.length >= total && courses.length > 0}}">
+      <text class="no-more-text">— 已经到底了 —</text>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{courses.length == 0 && !loading && loaded}}">
+      <text class="empty-icon">🎬</text>
+      <text class="empty-text">暂无课程</text>
+      <text class="empty-hint" wx:if="{{keyword}}">换个关键词试试</text>
+      <text class="empty-hint" wx:else>该分类下暂无课程</text>
+    </view>
+  </scroll-view>
+
+  <!-- 安全底部 -->
+  <view class="safe-bottom"></view>
+</view>

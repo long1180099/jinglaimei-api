@@ -1,0 +1,286 @@
+/* AI皮肤分析 v2.0 */
+.page { min-height: 100vh; background: #f5f6fa; padding-bottom: env(safe-area-inset-bottom); }
+
+/* 合规声明 */
+.disclaimer-bar {
+  display: flex; align-items: center;
+  padding: 16rpx 24rpx; background: #fffbe6; border-bottom: 1rpx solid #ffe58f;
+}
+.disclaimer-icon { font-size: 28rpx; margin-right: 10rpx; }
+.disclaimer-text { font-size: 22rpx; color: #ad6800; flex: 1; }
+
+/* ===== 上传区域 ===== */
+.upload-area {
+  margin: 24rpx; height: 560rpx;
+  border-radius: 24rpx; overflow: hidden;
+  position: relative; background: #1a1a2e;
+}
+.preview-img { width: 100%; height: 100%; }
+.upload-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: linear-gradient(180deg, rgba(26,26,46,0.7), rgba(26,26,46,0.4));
+}
+.camera-circle {
+  width: 120rpx; height: 120rpx;
+  border-radius: 50%;
+  background: rgba(233,69,96,0.15);
+  border: 3rpx dashed rgba(233,69,96,0.4);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 28rpx;
+  animation: breathe 2s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.camera-icon { font-size: 52rpx; }
+.upload-hint { font-size: 30rpx; color: rgba(255,255,255,0.85); font-weight: 500; letter-spacing: 1rpx; }
+.upload-sub { font-size: 22rpx; color: rgba(255,255,255,0.45); margin-top: 10rpx; }
+.re-upload-btn {
+  position: absolute; bottom: 24rpx; right: 24rpx;
+  padding: 12rpx 28rpx; border-radius: 20rpx;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+}
+.re-upload-btn text { font-size: 24rpx; color: #fff; }
+
+/* 操作按钮 */
+.action-row { padding: 32rpx 24rpx; }
+.btn-analyze {
+  width: 100%; height: 96rpx; line-height: 96rpx;
+  background: linear-gradient(135deg, #e94560, #c62d47);
+  color: #fff; font-size: 32rpx; font-weight: 700;
+  border-radius: 48rpx; text-align: center;
+  box-shadow: 0 8rpx 32rpx rgba(233,69,96,0.35);
+  letter-spacing: 2rpx;
+}
+
+/* 拍摄建议 */
+.tips-box { margin: 0 24rpx; background: #fff; border-radius: 20rpx; padding: 28rpx; }
+.tips-title { font-size: 28rpx; font-weight: 700; color: #1a1a2e; display: block; margin-bottom: 18rpx; }
+.tips-list { display: flex; flex-direction: column; gap: 14rpx; }
+.tip { display: flex; align-items: center; gap: 14rpx; }
+.dot { width: 36rpx; height: 36rpx; border-radius: 50%; background: linear-gradient(135deg,#e94560,#ff6b81); color: #fff; font-size: 20rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tip text:last-child { font-size: 25rpx; color: #555d66; line-height: 1.5; }
+
+/* ===== 分析中 ===== */
+.analyzing-card { margin: 24rpx; background: #fff; border-radius: 24rpx; overflow: hidden; }
+.analyze-img-wrap { position: relative; height: 400rpx; overflow: hidden; }
+.analyze-img { width: 100%; height: 100%; }
+.analyze-mask { position: absolute; inset: 0; background: rgba(26,26,46,0.15); }
+.scanning-line {
+  position: absolute; left: 0; right: 0; top: 0; height: 4rpx;
+  background: linear-gradient(90deg, transparent, #e94560, transparent);
+  animation: scan 2s ease-in-out infinite;
+}
+@keyframes scan {
+  0% { top: 0; opacity: 0; }
+  30% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.analyze-status { display: flex; flex-direction: column; align-items: center; padding: 40rpx 24rpx; }
+.pulse-ring {
+  width: 80rpx; height: 80rpx; border-radius: 50%;
+  border: 4rpx solid #f0f0f0; border-top-color: #e94560;
+  animation: spin 0.8s linear infinite; margin-bottom: 24rpx;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.status-text { font-size: 30rpx; font-weight: 600; color: #1a1a2e; }
+.status-sub { font-size: 23rpx; color: #b0b3b8; margin-top: 8rpx; }
+
+.progress-steps {
+  display: flex; align-items: center; justify-content: center;
+  padding: 24rpx; gap: 10rpx; border-top: 1rpx solid #f0f1f3;
+}
+.ps-item { font-size: 23rpx; color: #c0c4cc; font-weight: 500; transition: color 200ms; }
+.ps-item.active { color: #e94560; font-weight: 700; }
+.ps-arrow { font-size: 22rpx; color: #d8dce3; }
+
+/* ===== 报告头部 ===== */
+.report-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 24rpx; padding: 28rpx;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border-radius: 20rpx; color: #fff;
+}
+.rh-left { display: flex; align-items: center; flex: 1; min-width: 0; }
+.rh-avatar { width: 88rpx; height: 88rpx; border-radius: 16rpx; margin-right: 20rpx; border: 2rpx solid rgba(255,255,255,0.15); flex-shrink: 0; }
+.rh-info { display: flex; flex-direction: column; }
+.rh-date { font-size: 22rpx; color: rgba(255,255,255,0.45); }
+.rh-type { font-size: 25rpx; color: rgba(255,255,255,0.85); margin-top: 6rpx; font-weight: 500; }
+.rh-confidence { font-size: 20rpx; color: rgba(255,255,255,0.35); margin-top: 4rpx; }
+.rh-badge {
+  padding: 10rpx 22rpx; border-radius: 16rpx;
+  font-size: 23rpx; font-weight: 600; color: #fff;
+  background: #52c41a !important; flex-shrink: 0; margin-left: 16rpx;
+}
+
+/* ===== 综合严重度总览 ===== */
+.severity-overview {
+  margin: 0 24rpx 20rpx; padding: 24rpx 28rpx;
+  background: #fff; border-radius: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.03);
+}
+.so-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
+.so-title { font-size: 27rpx; font-weight: 700; color: #1a1a2e; }
+.so-score { font-size: 34rpx; font-weight: 800; }
+.so-bar-bg { height: 14rpx; background: #f0f1f3; border-radius: 7rpx; overflow: hidden; }
+.so-bar-fill { height: 100%; border-radius: 7rpx; transition: width 500ms ease-out; }
+.so-desc { font-size: 22rpx; color: #8c8c8c; margin-top: 10rpx; display: block; }
+
+/* ===== 通用卡片 ===== */
+.section-card {
+  margin: 0 24rpx 20rpx; background: #fff;
+  border-radius: 20rpx; padding: 26rpx 24rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.03);
+}
+.sc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+.sc-title { font-size: 29rpx; font-weight: 700; color: #1a1a2e; }
+.copy-btn { font-size: 23rpx; color: #e94560; font-weight: 500; padding: 6rpx 16rpx; border: 1rpx solid #ffd0d6; border-radius: 12rpx; }
+
+/* 总评 */
+.overview-text { font-size: 26rpx; color: #555d66; line-height: 1.75; letter-spacing: 0.5rpx; }
+
+/* 问题计数标签 */
+.issue-count-badge {
+  font-size: 21rpx; color: #e94560; font-weight: 600;
+  padding: 4rpx 14rpx; background: #fff1f0; border-radius: 10rpx;
+}
+
+/* 问题列表 */
+.issue-list { display: flex; flex-direction: column; gap: 14rpx; }
+.issue-item {
+  padding: 18rpx 20rpx; background: #fafbfc; border-radius: 14rpx;
+  border-left: 5rpx solid #52c41a;
+}
+.issue-main { display: flex; align-items: center; justify-content: space-between; }
+.issue-left { display: flex; align-items: center; gap: 14rpx; flex: 1; min-width: 0; }
+.severity-badge {
+  width: 44rpx; height: 44rpx; border-radius: 10rpx;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.severity-badge text { font-size: 22rpx; font-weight: 800; color: #fff; }
+.issue-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.issue-top-row { display: flex; align-items: center; gap: 8rpx; }
+.issue-name { font-size: 27rpx; font-weight: 600; color: #1a1a2e; }
+.issue-sev-label { font-size: 20rpx; font-weight: 600; }
+.issue-meta { display: flex; align-items: center; gap: 6rpx; margin-top: 5rpx; flex-wrap: wrap; }
+.issue-cat {
+  font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 6rpx; font-weight: 500;
+}
+/* 9个分类标签颜色 */
+.tag-spot { background: #fff7e6; color: #d46b08; }
+.tag-acne { background: #fff1f0; color: #cf1322; }
+.tag-state { background: #e6fffb; color: #13c2c2; }
+.tag-inflammation { background: #fff2e8; color: #d4380d; }
+.tag-vascular { background: #fff1f0; color: #a8071a; }
+.tag-eye_area { background: #f9f0ff; color: #722ed1; }
+.tag-keratin { background: #e6fffb; color: #08979c; }
+.tag-aging { background: #fff7e6; color: #ad6800; }
+.tag-depigmentation { background: #f0f5ff; color: #2f54eb; }
+.tag-other { background: #f5f5f5; color: #8c8c8c; }
+
+.issue-area { font-size: 20rpx; color: #9ca3af; }
+.issue-conf { font-size: 20rpx; color: #b0b3b8; }
+.issue-arrow {
+  font-size: 36rpx; color: #d1d5db; font-weight: 300;
+  transition: transform 200ms; flex-shrink: 0; margin-left: 8rpx;
+}
+.issue-arrow.expanded { transform: rotate(90deg); }
+
+.issue-desc {
+  display: block; font-size: 23rpx; color: #8c8c8c;
+  line-height: 1.6; margin-top: 12rpx; padding-left: 58rpx;
+}
+
+/* 展开详情 */
+.issue-detail {
+  margin-top: 14rpx; margin-left: 58rpx;
+  padding: 16rpx 18rpx;
+  background: linear-gradient(135deg, #fafbfc, #f5f6fa);
+  border-radius: 12rpx;
+  border-top: 1rpx solid #f0f1f3;
+}
+.detail-section { margin-bottom: 14rpx; }
+.detail-section:last-child { margin-bottom: 0; }
+.detail-label {
+  display: block; font-size: 21rpx; font-weight: 600;
+  color: #e94560; margin-bottom: 6rpx; letter-spacing: 0.5rpx;
+}
+.detail-text { font-size: 23rpx; color: #555d66; line-height: 1.65; display: block; }
+.advice-text { color: #13c2c2; }
+.detail-copy {
+  margin-top: 12rpx; padding: 8rpx 18rpx;
+  background: #e94560; border-radius: 8rpx;
+  display: inline-block;
+}
+.detail-copy text { font-size: 20rpx; color: #fff; font-weight: 500; }
+
+/* 成因分析 */
+.cause-content {
+  background: #f8f9fc; border-radius: 14rpx; padding: 22rpx;
+  border-left: 4rpx solid #fa8c16;
+}
+.cause-text { font-size: 26rpx; color: #555d66; line-height: 1.8; letter-spacing: 0.5rpx; }
+
+/* 话术 */
+.script-bubble {
+  background: linear-gradient(135deg, #fff5f5, #ffeaea);
+  border-radius: 16rpx; padding: 24rpx;
+  border-left: 4rpx solid #e94560;
+}
+.script-text { font-size: 27rpx; color: #333; line-height: 1.75; letter-spacing: 0.5rpx; }
+
+/* 推荐产品 */
+.prod-list { display: flex; flex-direction: column; gap: 12rpx; }
+.prod-item {
+  display: flex; align-items: center; padding: 16rpx;
+  background: #fafbfc; border-radius: 14rpx; border: 1rpx solid #f0f1f3;
+}
+.prod-img { width: 80rpx; height: 80rpx; border-radius: 12rpx; margin-right: 16rpx; flex-shrink: 0; }
+.prod-info { flex: 1; display: flex; flex-direction: column; }
+.prod-name { font-size: 26rpx; font-weight: 500; color: #1a1a2e; }
+.prod-price { font-size: 26rpx; font-weight: 700; color: #e94560; margin-top: 4rpx; }
+.prod-go { font-size: 32rpx; color: #d1d5db; font-weight: 300; margin-left: 12rpx; }
+
+/* 免责声明 */
+.final-disclaimer {
+  margin: 0 24rpx 20rpx; padding: 20rpx 24rpx;
+  background: #fafafa; border-radius: 12rpx;
+}
+.final-disclaimer text { font-size: 21rpx; color: #b0b3b8; line-height: 1.6; }
+
+/* 底部操作栏 */
+.bottom-bar {
+  display: flex; gap: 12rpx; padding: 20rpx 24rpx;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+  border-top: 1rpx solid #f0f1f3;
+  z-index: 100;
+}
+.btn-secondary {
+  flex: 1; height: 84rpx; line-height: 84rpx; text-align: center;
+  font-size: 26rpx; color: #666; font-weight: 500;
+  background: #f5f6fa; border-radius: 42rpx;
+  border: 1rpx solid #e5e7eb;
+  padding: 0;
+}
+.btn-share {
+  flex: 1; height: 84rpx; line-height: 84rpx; text-align: center;
+  font-size: 26rpx; color: #e94560; font-weight: 500;
+  background: #fff1f0; border-radius: 42rpx;
+  border: 1rpx solid #ffd0d6;
+  padding: 0;
+}
+.btn-primary-skin {
+  flex: 2; height: 84rpx; line-height: 84rpx; text-align: center;
+  font-size: 28rpx; color: #fff; font-weight: 600;
+  background: linear-gradient(135deg, #e94560, #c62d47);
+  border-radius: 42rpx;
+  box-shadow: 0 4rpx 16rpx rgba(233,69,96,0.25);
+  padding: 0;
+}

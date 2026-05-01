@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+set timeout 30
+set pwd {@M3^w,uc2JFTHD}
+spawn ssh -o StrictHostKeyChecking=no root@118.195.185.6 "curl -s 'http://localhost:4000/api/mp/socratic/academy/dashboard?user_id=dev_test_openid_001' > /tmp/api_dash2.txt && wc -c /tmp/api_dash2.txt && head -c 500 /tmp/api_dash2.txt"
+expect "password:"
+send "$pwd\r"
+expect eof

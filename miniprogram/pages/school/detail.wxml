@@ -1,0 +1,152 @@
+<!-- 课程详情 - 视频播放 -->
+<view class="page">
+  <!-- 加载状态 -->
+  <view class="loading-state" wx:if="{{loading && !course}}">
+    <view class="loading-dots">
+      <view class="dot"></view>
+      <view class="dot"></view>
+      <view class="dot"></view>
+    </view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <view wx:if="{{course && !loading}}">
+    <!-- 视频播放器 -->
+    <view class="video-section" wx:if="{{videoUrl}}">
+      <video
+        id="courseVideo"
+        class="video-player"
+        src="{{videoUrl}}"
+        controls
+        show-progress
+        show-fullscreen-btn
+        show-play-btn
+        enable-progress-gesture
+        poster="{{course.cover || ''}}"
+        object-fit="contain"
+        bindplay="onVideoPlay"
+        bindpause="onVideoPause"
+        bindended="onVideoEnded"
+        bindtimeupdate="onVideoTimeUpdate"
+        binderror="onVideoError"
+        autoplay="{{currentChapter == 0 && progress == 0}}"
+      >
+      </video>
+      <!-- 当前章节指示 -->
+      <view class="current-chapter-bar" bindtap="toggleChapterList">
+        <text class="current-chapter-text">
+          正在播放：{{chapters[currentChapter].title || ('第' + (currentChapter + 1) + '节')}}
+        </text>
+        <text class="current-chapter-arrow">{{showChapterList ? '▲' : '▼'}}</text>
+      </view>
+    </view>
+
+    <!-- 无视频时的封面 -->
+    <view class="cover-section" wx:else>
+      <image class="course-cover" src="{{course.cover || '/images/default-course.png'}}" mode="aspectFill"></image>
+      <view class="cover-overlay" wx:if="{{progress >= 100}}">
+        <text class="cover-done-badge">✓ 已完成</text>
+      </view>
+    </view>
+
+    <!-- 章节快速选择浮层 -->
+    <view class="chapter-overlay" wx:if="{{showChapterList}}" bindtap="toggleChapterList">
+      <view class="chapter-popup" catchtap="">
+        <view class="popup-header">
+          <text class="popup-title">课程目录</text>
+          <text class="popup-close" bindtap="toggleChapterList">✕</text>
+        </view>
+        <scroll-view class="popup-list" scroll-y>
+          <view class="popup-item {{currentChapter == index ? 'active' : ''}}"
+                wx:for="{{chapters}}" wx:key="index"
+                bindtap="selectChapter" data-index="{{index}}">
+            <view class="popup-item-icon">
+              <text wx:if="{{index < completedLessons}}">✓</text>
+              <text wx:elif="{{currentChapter == index}}">▶</text>
+              <text wx:else>{{index + 1}}</text>
+            </view>
+            <view class="popup-item-info">
+              <text class="popup-item-title">{{item.title || ('第' + (index + 1) + '课')}}</text>
+              <text class="popup-item-dur" wx:if="{{item.duration}}">{{item.duration}}</text>
+            </view>
+            <text class="popup-item-status" wx:if="{{index < completedLessons}}">已完成</text>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- 课程信息 -->
+    <view class="info-card">
+      <text class="info-title">{{course.title}}</text>
+      <text class="info-subtitle" wx:if="{{course.subtitle}}">{{course.subtitle}}</text>
+      <view class="info-tags">
+        <text class="tag-type" style="background:{{typeColor}}">{{typeText}}</text>
+        <text class="tag-diff">{{diffText}}</text>
+        <text class="tag-meta">📖 {{totalLessons}}节</text>
+        <text class="tag-meta" wx:if="{{course.required_time}}">⏱ {{course.required_time}}分钟</text>
+        <text class="tag-meta">👁 {{course.view_count || 0}}</text>
+        <text class="tag-credits" wx:if="{{course.credit_points}}">+{{course.credit_points}}积分</text>
+      </view>
+    </view>
+
+    <!-- 学习进度条 -->
+    <view class="progress-card" wx:if="{{isLoggedIn && progress > 0}}">
+      <view class="progress-header">
+        <text class="progress-label">学习进度</text>
+        <text class="progress-percent">{{progress}}%</text>
+      </view>
+      <view class="progress-bar-wrap">
+        <view class="progress-bar-fill" style="width:{{progress}}%; background:{{progress >= 100 ? '#52c41a' : '#e94560'}}"></view>
+      </view>
+      <text class="progress-detail">已完成 {{completedLessons}}/{{totalLessons}} 节课</text>
+    </view>
+
+    <!-- Tab切换 -->
+    <view class="tab-bar">
+      <view class="tab-item {{activeTab == 'chapters' ? 'active' : ''}}" bindtap="switchTab" data-tab="chapters">
+        <text>课程目录</text>
+      </view>
+      <view class="tab-item {{activeTab == 'intro' ? 'active' : ''}}" bindtap="switchTab" data-tab="intro">
+        <text>课程介绍</text>
+      </view>
+    </view>
+
+    <!-- 课程目录 -->
+    <view class="section-card" wx:if="{{activeTab == 'chapters'}}">
+      <view class="chapter-item" wx:for="{{chapters}}" wx:key="index"
+            bindtap="selectChapter" data-index="{{index}}">
+        <view class="chapter-left">
+          <view class="chapter-icon {{currentChapter == index ? 'playing' : (index < completedLessons ? 'completed' : '')}}">
+            <text wx:if="{{index < completedLessons}}">✓</text>
+            <text wx:elif="{{currentChapter == index}}">▶</text>
+            <text wx:else>{{index + 1}}</text>
+          </view>
+          <view class="chapter-info">
+            <text class="chapter-name">{{item.title || ('第' + (index + 1) + '课')}}</text>
+            <text class="chapter-duration" wx:if="{{item.duration}}">{{item.duration}}</text>
+          </view>
+        </view>
+        <text class="chapter-status done" wx:if="{{index < completedLessons}}">已完成</text>
+        <text class="chapter-status playing" wx:elif="{{currentChapter == index}}">播放中</text>
+      </view>
+    </view>
+
+    <!-- 课程介绍 -->
+    <view class="section-card" wx:if="{{activeTab == 'intro'}}">
+      <rich-text class="intro-content" nodes="{{course.detail || course.description || course.subtitle || '暂无课程介绍'}}"></rich-text>
+    </view>
+
+    <!-- 底部操作栏 -->
+    <view class="bottom-bar">
+      <view class="bar-btn collect-btn" bindtap="collectCourse">
+        <text>♡ 收藏</text>
+      </view>
+      <view class="bar-btn start-btn" bindtap="startLearning" wx:if="{{progress == 0}}">
+        <text>开始学习</text>
+      </view>
+      <view class="bar-btn continue-btn" bindtap="continueLearning" wx:else>
+        <text>{{progress >= 100 ? '重新学习' : '继续学习'}}</text>
+      </view>
+    </view>
+  </view>
+</view>

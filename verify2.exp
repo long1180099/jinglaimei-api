@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+set timeout 30
+set host "118.195.185.6"
+set password {@M3^w,uc2JFTHD}
+spawn scp -o StrictHostKeyChecking=no /Users/apple/WorkBuddy/20260324191412/database-server/_verify.js root@$host:/root/database-server/_verify.js
+expect "password:"
+send "$password\r"
+expect eof
+
+spawn ssh -o StrictHostKeyChecking=no root@$host "cd /root/database-server && node _verify.js && rm _verify.js"
+expect "password:"
+send "$password\r"
+expect eof
+exit 0

@@ -1,0 +1,112 @@
+<!-- 商品详情 v2.0 -->
+<view class="page">
+  <!-- 商品图片 -->
+  <swiper class="product-swiper" indicator-dots indicator-color="rgba(255,255,255,0.3)" indicator-active-color="#fff" circular style="background: #1a1a2e;">
+    <swiper-item wx:for="{{images}}" wx:key="*this">
+      <image class="swiper-img" src="{{item}}" mode="aspectFill" bindtap="previewImage" data-url="{{item}}"></image>
+    </swiper-item>
+    <swiper-item wx:if="{{images.length == 0 || !images}}">
+      <view class="swiper-default">
+        <image src="/images/default-product.png" mode="aspectFit" style="width:100%;height:100%;"></image>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <!-- 价格信息 -->
+  <view class="price-section">
+    <view class="price-row">
+      <view class="price-main">
+        <text class="price-symbol">¥</text>
+        <text class="price-amount">{{currentPrice}}</text>
+      </view>
+      <view class="price-label" wx:if="{{priceLabel}}">{{priceLabel}}</view>
+    </view>
+    <view class="price-extra">
+      <view class="original-price" wx:if="{{product.retail_price > currentPrice}}">
+        <text>零售价 ¥{{product.retail_price}}</text>
+      </view>
+      <view class="sales-info">
+        <text>已售 {{product.sales_count || 0}} 件</text>
+        <text class="stock-info" wx:if="{{product.available_stock <= 10}}">库存紧张</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 数量选择 -->
+  <view class="qty-section" wx:if="{{product}}">
+    <text class="qty-label">购买数量</text>
+    <view class="qty-control">
+      <view class="qty-btn minus {{quantity <= 1 ? 'disabled' : ''}}" bindtap="minusQty">
+        <text>−</text>
+      </view>
+      <text class="qty-num">{{quantity}}</text>
+      <view class="qty-btn plus" bindtap="plusQty">
+        <text>+</text>
+      </view>
+    </view>
+    <text class="qty-stock">库存 {{product.available_stock || 0}} 件</text>
+  </view>
+
+  <!-- 商品信息 -->
+  <view class="info-section">
+    <text class="product-name">{{product.product_name}}</text>
+    <text class="product-desc" wx:if="{{product.description}}">{{product.description}}</text>
+    <view class="tags" wx:if="{{product.tags}}">
+      <text class="tag" wx:for="{{product.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+    </view>
+  </view>
+
+  <!-- 专属价格卡片（仅显示当前用户等级的拿货价） -->
+  <view class="price-card" wx:if="{{userLevel > 0 && myPriceInfo}}">
+    <view class="price-card-inner">
+      <view class="price-card-header">
+        <text class="price-card-icon">💎</text>
+        <text class="price-card-title">我的拿货价</text>
+        <view class="price-card-level" style="background: {{myPriceInfo.color}}; color: #fff;">
+          <text>{{myPriceInfo.levelName}}</text>
+        </view>
+      </view>
+      <view class="price-card-body">
+        <view class="my-price-main">
+          <text class="my-price-symbol">¥</text>
+          <text class="my-price-amount">{{currentPrice}}</text>
+        </view>
+    <view class="price-save-hint" wx:if="{{mySaveAmount > 0}}">
+      <text>比零售价省 ¥{{mySaveAmount}}</text>
+    </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 商品详情 -->
+  <view class="detail-section" wx:if="{{product.detail}}">
+    <view class="section-title-wrap">
+      <view class="title-accent"></view>
+      <text class="section-title">商品详情</text>
+    </view>
+    <rich-text class="detail-content" nodes="{{product.detail}}"></rich-text>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar safe-bottom">
+    <view class="bar-icons">
+      <view class="bar-icon" bindtap="goHome">
+        <text class="bar-icon-text">⌂</text>
+        <text class="bar-icon-label">首页</text>
+      </view>
+      <view class="bar-icon" bindtap="goCart">
+        <text class="bar-icon-text">⊡</text>
+        <text class="bar-icon-label">购物车</text>
+        <view class="cart-badge" wx:if="{{cartCount > 0}}">{{cartCount > 99 ? '99+' : cartCount}}</view>
+      </view>
+      <view class="bar-icon" bindtap="toggleFav">
+        <text class="bar-icon-text">{{isFav ? '♥' : '♡'}}</text>
+        <text class="bar-icon-label">收藏</text>
+      </view>
+    </view>
+    <view class="bar-buttons">
+      <view class="btn-add" bindtap="addToCart">加入购物车</view>
+      <view class="btn-buy" bindtap="buyNow">立即购买</view>
+    </view>
+  </view>
+</view>

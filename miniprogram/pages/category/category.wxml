@@ -1,0 +1,108 @@
+<!-- 分类页 v2.0 -->
+<view class="page">
+  <!-- 顶部分类Tab -->
+  <scroll-view class="category-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="tabs-inner">
+      <view class="tab-pill {{activeCategory == -1 ? 'active' : ''}}" bindtap="switchCategory" data-id="{{-1}}">
+        <text>全部</text>
+      </view>
+      <view class="tab-pill {{activeCategory == item.id ? 'active' : ''}}" wx:for="{{categories}}" wx:key="id" bindtap="switchCategory" data-id="{{item.id}}">
+        <text>{{item.name}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 搜索 + 排序 -->
+  <view class="search-sort-wrap">
+    <view class="search-box">
+      <text class="search-icon">⌕</text>
+      <input class="search-input" placeholder="搜索商品名称" value="{{keyword}}" bindinput="onSearchInput" bindconfirm="doSearch" confirm-type="search" />
+      <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">✕</text>
+    </view>
+    <view class="sort-bar">
+      <view class="sort-item {{sort == 'default' ? 'active' : ''}}" bindtap="setSort" data-sort="default">综合</view>
+      <view class="sort-item {{sort == 'sales' ? 'active' : ''}}" bindtap="setSort" data-sort="sales">
+        <text>销量</text>
+        <text class="sort-arrow" wx:if="{{sort == 'sales'}}">↓</text>
+      </view>
+      <view class="sort-item {{sort == 'price_asc' || sort == 'price_desc' ? 'active' : ''}}" bindtap="togglePriceSort">
+        <text>价格</text>
+        <view class="sort-arrows">
+          <text class="sort-up {{sort == 'price_asc' ? 'active' : ''}}">↑</text>
+          <text class="sort-down {{sort == 'price_desc' ? 'active' : ''}}">↓</text>
+        </view>
+      </view>
+      <view class="sort-item" bindtap="toggleView">
+        <text>{{viewMode == 'grid' ? '▦' : '☰'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 商品列表 -->
+  <scroll-view class="product-list" scroll-y refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh">
+    <!-- 网格模式 -->
+    <view class="product-grid {{viewMode == 'grid' ? '' : 'list-mode'}}" wx:if="{{viewMode == 'grid'}}">
+      <view class="product-card" wx:for="{{products}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+        <view class="product-img-wrap">
+          <image class="product-img" src="{{item.main_image || '/images/default-product.png'}}" mode="aspectFill" lazy-load></image>
+        </view>
+        <view class="product-info">
+          <text class="product-name line-2">{{item.product_name}}</text>
+          <view class="product-tags" wx:if="{{item.tags}}">
+            <text class="tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+          </view>
+          <view class="product-bottom">
+            <view>
+              <view class="price-row">
+                <text class="price-symbol">¥</text>
+                <text class="price-num">{{item.retail_price}}</text>
+              </view>
+              <text class="sales-text">已售{{item.sales_count || 0}}</text>
+            </view>
+            <view class="btn-add-cart" catchtap="addToCart" data-item="{{item}}">
+              <text>+</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 列表模式 -->
+    <view class="product-list-mode" wx:if="{{viewMode == 'list'}}">
+      <view class="product-list-card" wx:for="{{products}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+        <image class="list-img" src="{{item.main_image || '/images/default-product.png'}}" mode="aspectFill" lazy-load></image>
+        <view class="list-info">
+          <text class="list-name line-2">{{item.product_name}}</text>
+          <text class="list-desc line-1">{{item.description || ''}}</text>
+          <view class="list-bottom">
+            <view class="price-row">
+              <text class="price-symbol">¥</text>
+              <text class="price-num">{{item.retail_price}}</text>
+              <text class="sales-text">已售{{item.sales_count || 0}}</text>
+            </view>
+            <view class="btn-add-cart" catchtap="addToCart" data-item="{{item}}">
+              <text>+</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{products.length > 0}}">
+      <view class="loading-dots" wx:if="{{hasMore}}">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+      <text wx:else class="no-more">— 已经到底了 —</text>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{products.length == 0 && !loading}}">
+      <text class="empty-icon">🔍</text>
+      <text class="empty-text">暂无相关商品</text>
+      <text class="empty-hint">换个关键词试试吧</text>
+    </view>
+  </scroll-view>
+</view>

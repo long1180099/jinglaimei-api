@@ -1,0 +1,10 @@
+#!/usr/bin/expect
+set timeout 60
+set host "118.195.185.6"
+set password "@M3\^w,uc2JFTHD"
+set src "/tmp/admin_nginx.conf"
+
+spawn scp -o StrictHostKeyChecking=no $src root@$host:/tmp/admin_nginx.conf
+expect "password:"
+send "$password\r"
+expect eof

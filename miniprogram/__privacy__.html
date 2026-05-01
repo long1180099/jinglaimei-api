@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>隐私保护指引</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+      background: #f5f6fa;
+      color: #333;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px 16px;
+      background: #fff;
+      min-height: 100vh;
+    }
+    .header {
+      text-align: center;
+      padding: 30px 0 20px;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 24px;
+    }
+    .header h1 {
+      font-size: 22px;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+    .header p {
+      font-size: 14px;
+      color: #999;
+    }
+    .section { margin-bottom: 20px; }
+    .section h2 {
+      font-size: 17px;
+      color: #1a1a2e;
+      margin-bottom: 12px;
+      padding-left: 12px;
+      border-left: 4px solid #e94560;
+      line-height: 1.3;
+    }
+    .section p {
+      font-size: 14px;
+      color: #555;
+      text-align: justify;
+      margin-bottom: 10px;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .info-table th {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 10px 8px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .info-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: top;
+      line-height: 1.6;
+    }
+    .type-tag {
+      display: inline-block;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tag-phone { background: #fef3e6; color: #e67e22; }
+    .tag-wechat { background: #e8f5e9; color: #07c160; }
+    .tag-basic { background: #e3f2fd; color: #1976d2; }
+    .tag-order { background: #fce4ec; color: #c0392b; }
+    .tag-finance { background: #fff3e0; color: #f39c12; }
+    .tag-team { background: #f3e5f5; color: #8e44ad; }
+    .tag-learn { background: #e0f7fa; color: #00acc1; }
+    .tag-device { background: #eceff1; color: #546e7a; }
+
+    .highlight-box {
+      background: linear-gradient(135deg, rgba(26,26,46,.05), rgba(15,52,96,.08));
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #1a1a2e;
+      font-size: 14px !important;
+      color: #1a1a2e !important;
+      margin-bottom: 12px !important;
+    }
+    .contact-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      background: #f8f9ff;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+    .contact-label { font-size: 13px; color: #888; }
+    .contact-value { font-size: 14px; color: #1a1a2e; font-weight: 600; }
+    .protect-box {
+      display: flex;
+      gap: 14px;
+      padding: 18px;
+      background: linear-gradient(135deg, #fce4ec, #fff3e0);
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+    .protect-icon { font-size: 32px; flex-shrink: 0; }
+    .protect-content { flex: 1; font-size: 13px; color: #444; }
+    .protect-content p { font-size: 13px; margin-bottom: 6px; }
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      margin-top: 20px;
+      border-top: 1px solid #eee;
+      font-size: 12px;
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>静莱美隐私保护指引</h1>
+    <p>更新日期：2026年4月5日</p>
+  </div>
+
+  <div class="section">
+    <h2>引言</h2>
+    <p class="highlight-box">
+      「静莱美」（以下简称"我们"）非常重视用户的隐私保护。本指引将详细说明我们如何收集、使用、存储、共享和保护您的个人信息。请您在使用我们的服务前仔细阅读并充分理解本政策全部内容。
+    </p>
+  </div>
+
+  <div class="section">
+    <h2>一、我们收集的个人信息及目的</h2>
+
+    <table class="info-table">
+      <thead>
+        <tr><th style="width:20%">信息类型</th><th style="width:38%">具体内容</th><th style="width:42%">使用目的</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="type-tag tag-phone">手机号</span></td>
+          <td>注册/登录时提供的手机号码</td>
+          <td>账号唯一标识、身份验证、登录认证、订单通知</td>
+        </tr>
+        <tr>
+          <td><span class="type-tag tag-wechat">微信信息</span></td>
+          <td>微信OpenID、昵称、头像</td>
+          <td>微信快捷登录、账户关联、个人资料展示</td>
+        </tr>
+        <tr>
+          <td><span class="type-tag tag-basic">基本信息</span></td>
+          <td>真实姓名、昵称、代理等级</td>
+          <td>代理商身份认证、等级权益管理、个人中心展示</td>
+        </tr>
+        <tr>
+          <td><span class="type-tag tag-order">订单信息</span></td>
+          <td>商品名称、数量、金额、收货地址</td>
+          <td>商品交易处理、物流配送、订单管理、售后服务</td>
+        </tr>
+        <tr>
+          <td><span class="type-tag tag-finance">财务信息</span></td>
+          <td>代理收益记录、提现记录、银行账户</td>
+          <td>收益结算、提现转账、财务管理</td>
+        </tr>
+        <tr>
+          <td><span class="type-tag tag-team">团队关系</span></td>
+          <td>上级代理ID、下级团队成员信息</td>
+          <td>代理商体系管理、收益计算、团队业绩统计</td>
+        </tr>
+        <tr>
+          <td><span class="type-tag tag-learn">学习数据</span></td>
+          <td>课程学习进度、AI训练记录、行动日志</td>
+          <td>学习进度跟踪、能力评估、培训效果分析</td>
+        </tr>
+        <tr>
+          <td><span class="type-tag tag-device">设备信息</span></td>
+          <td>设备型号、操作系统版本、IP地址</td>
+          <td>保障平台正常运行、安全防护、统计分析</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>二、收集方式</h2>
+    <p><strong>主动提供：</strong>您在注册、登录、下单等过程中主动填写和提交的信息，如手机号、真实姓名、收货地址等。</p>
+    <p><strong>微信授权：</strong>通过微信开放接口获取您授权的信息（需您点击同意授权）。</p>
+    <p><strong>手机号快速验证：</strong>使用微信「手机号快速验证」组件获取您绑定的手机号（需您主动触发并授权）。</p>
+    <p><strong>自动采集：</strong>在您使用服务过程中自动采集的设备和操作日志，用于保障服务安全和优化体验。</p>
+  </div>
+
+  <div class="section">
+    <h2>三、使用您的个人信息</h2>
+    <p>1. 账号管理 — 创建和管理您的账户，进行身份验证和安全保障</p>
+    <p>2. 交易处理 — 处理商品订单、支付结算、物流配送和售后服务</p>
+    <p>3. 代理商服务 — 代理等级管理、收益结算、差价计算、团队运营</p>
+    <p>4. 学习培训 — 提供商学院课程、AI话术训练、行动日志等学习服务</p>
+    <p>5. 消息通知 — 发送订单状态、收益变动、系统公告等相关通知</p>
+    <p>6. 安全保障 — 防范欺诈行为、检测安全风险、保障账户和数据安全</p>
+    <p>7. 服务优化 — 分析数据改进产品功能、提升用户体验和服务质量</p>
+    <p>8. 法律合规 — 遵守法律法规要求，配合监管部门执法调查</p>
+  </div>
+
+  <div class="section">
+    <h2>四、存储与保护</h2>
+    <p>• 您的个人信息存储于<strong>中华人民共和国境内</strong>的服务器上。</p>
+    <p>• 我们仅在实现上述目的所需的期限内保留您的个人信息。</p>
+    <p>• 采用<strong>HTTPS/TLS传输加密</strong>、<strong>敏感数据加密存储</strong>、<strong>严格访问控制</strong>、<strong>定期安全审计</strong>等措施保护您的信息安全。</p>
+    <p>• 建立数据泄露应急响应机制，发生安全事件时及时通知用户。</p>
+  </div>
+
+  <div class="section">
+    <h2>五、共享规则</h2>
+    <p>原则上我们不会与第三方共享您的个人信息，但以下情形除外：</p>
+    <p>✓ 获得您的明确授权同意后</p>
+    <p>✓ 与关联公司必要共享（提供一致服务体验）</p>
+    <p>✓ 法律法规或执法机关强制要求时</p>
+    <p>✓ 合作伙伴必要场景（物流公司配送、支付机构结算、云服务技术支持）</p>
+  </div>
+
+  <div class="section">
+    <h2>六、您的权利</h2>
+    <p>👁️ 查阅权 — 随时查看我们持有的关于您的个人信息</p>
+    <p>✏️ 更正权 — 信息有误或不完整时可申请更正或补充</p>
+    <p>🗑️ 删除权 — 特定情形下可请求删除您的个人信息</p>
+    <p>⏸️ 撤回授权 — 可随时撤回此前对我们的授权同意</p>
+    <p>🚪 注销账户 — 可申请注销账户，停止服务并删除相关信息</p>
+  </div>
+
+  <div class="section">
+    <h2>七、未成年人保护</h2>
+    <div class="protect-box">
+      <div class="protect-icon">👶</div>
+      <div class="protect-content">
+        <p><strong>我们非常重视未成年人的个人信息保护。</strong></p>
+        <p>• 如果您是18周岁以下的未成年人，请在监护人陪同下阅读并在取得明确同意后使用。</p>
+        <p>• 如我们发现违规收集未成年人信息，将尽快删除相关数据。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>八、联系我们</h2>
+    <div class="contact-card"><span class="contact-label">运营主体</span><span class="contact-value">静莱美</span></div>
+    <div class="contact-card"><span class="contact-label">客服邮箱</span><span class="contact-value">support@jinglaimei.com</span></div>
+    <div class="contact-card"><span class="contact-label">数据保护负责人</span><span class="contact-value">privacy@jinglaimei.com</span></div>
+  </div>
+
+  <div class="footer">
+    静莱美 © 2026 版权所有
+  </div>
+
+</div>
+</body>
+</html>

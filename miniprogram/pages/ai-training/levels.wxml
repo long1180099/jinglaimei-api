@@ -1,0 +1,164 @@
+<!-- AI智能训练中心 - 统一入口 -->
+<view class="container">
+  <!-- ==== 顶部总览卡片 ==== -->
+  <view class="header-card ai-center-header">
+    <view class="header-bg"></view>
+    <view class="header-content">
+      <view class="header-title">🤖 AI智能训练</view>
+      <view class="header-subtitle">AI驱动的销售能力提升系统</view>
+      
+      <!-- 两个模块的快捷数据 -->
+      <view class="module-stats-row">
+        <view class="module-stat-item" bindtap="switchSection" data-section="coach">
+          <text class="stat-icon">💬</text>
+          <text class="stat-label">话术通关</text>
+          <text class="stat-value">{{passedCount}}/{{levels.length}}</text>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="module-stat-item" bindtap="switchSection" data-section="socratic">
+          <text class="stat-icon">🎯</text>
+          <text class="stat-label">苏格拉底</text>
+          <text class="stat-value">{{socraticStats ? socraticStats.totalSessions + '次' : '-'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ======= 模块1: AI话术通关 ======= -->
+  <view class="training-section">
+    <view class="section-header" bindtap="switchSection" data-section="coach">
+      <view class="section-title-group">
+        <text class="section-icon">💬</text>
+        <text class="section-title">AI话术通关</text>
+        <text class="section-badge">标准训练</text>
+      </view>
+      <text class="section-arrow">›</text>
+    </view>
+    
+    <view class="section-desc">掌握标准话术流程，通过关卡考核成为销售达人</view>
+
+    <!-- 进度条 -->
+    <view class="progress-bar-wrap" wx:if="{{levels.length > 0}}">
+      <view class="progress-info">
+        <text class="progress-text">通关进度</text>
+        <text class="progress-count">{{passedCount}}/{{levels.length}}</text>
+      </view>
+      <view class="progress-bar">
+        <view class="progress-fill" style="width: {{progressPercent}}%"></view>
+      </view>
+    </view>
+
+    <!-- 关卡地图（最多显示5个） -->
+    <view class="levels-map-mini">
+      <block wx:for="{{levels}}" wx:key="id" wx:if="{{index < 5}}">
+        <view class="level-node-mini {{item.status_class}}" 
+              bindtap="onLevelTap" data-level="{{item}}">
+          <view class="level-num">{{item.sort_order}}</view>
+          <view class="level-name-mini">{{item.name}}</view>
+          <view wx:if="{{item.user_passed}}" class="mini-badge passed">✓</view>
+          <view wx:elif="{{item.unlocked}}" class="mini-badge current">▶</view>
+          <view wx:else class="mini-badge locked">🔒</view>
+        </view>
+      </block>
+      <view wx:if="{{levels.length > 5}}" class="level-more"
+            bindtap="goToCoach">
+        +{{levels.length - 5}}关
+      </view>
+    </view>
+
+    <!-- 底部快捷入口 -->
+    <view class="bottom-actions">
+      <view class="action-btn" bindtap="goToCoach">
+        <text class="action-icon">🤖</text>
+        <text class="action-label">AI教练</text>
+      </view>
+      <view class="action-btn" bindtap="goToRankings">
+        <text class="action-icon">🏆</text>
+        <text class="action-label">排行榜</text>
+      </view>
+      <view class="action-btn" bindtap="goToScripts">
+        <text class="action-icon">📚</text>
+        <text class="action-label">话术库</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ======= 模块2: 苏格拉底式提问训练（AI驱动）======= -->
+  <view class="training-section socratic-section">
+    <view class="section-header" bindtap="switchSection" data-section="socratic">
+      <view class="section-title-group">
+        <text class="section-icon socratic-icon">🎯</text>
+        <text class="section-title">苏格拉底式提问</text>
+        <view class="ai-badge">✨ DeepSeek AI</view>
+      </view>
+      <text class="section-arrow">›</text>
+    </view>
+    
+    <view class="section-desc">用提问让客户自己说出"我需要"，而非推销说服</view>
+
+    <!-- 核心特色展示 -->
+    <view class="socratic-features">
+      <view class="feature-item">
+        <text class="feature-icon">🔍</text>
+        <text class="feature-text">澄清式提问</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">💭</text>
+        <text class="feature-text">假设式提问</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">🔄</text>
+        <text class="feature-text">反向式提问</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">➡️</text>
+        <text class="feature-text">引导式提问</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">✅</text>
+        <text class="feature-text">总结式提问</text>
+      </view>
+    </view>
+
+    <!-- 训练数据概览 -->
+    <view class="socratic-overview" wx:if="{{socraticStats && socraticStats.totalSessions > 0}}">
+      <view class="overview-stat">
+        <text class="overview-num">{{socraticStats.totalSessions}}</text>
+        <text class="overview-label">练习次数</text>
+      </view>
+      <view class="overview-divider"></view>
+      <view class="overview-stat">
+        <text class="overview-num">{{socraticStats.avgScore}}</text>
+        <text class="overview-label">平均分</text>
+      </view>
+      <view class="overview-divider"></view>
+      <view class="overview-stat">
+        <text class="overview-num grade-{{socraticStats.bestGrade}}">{{socraticStats.bestGrade}}</text>
+        <text class="overview-label">最佳等级</text>
+      </view>
+    </view>
+
+    <!-- 苏格拉底操作按钮 -->
+    <view class="bottom-actions socratic-actions">
+      <view class="action-btn primary-action" bindtap="goToSocraticList">
+        <text class="action-icon">🚀</text>
+        <text class="action-label">开始训练</text>
+      </view>
+      <view class="action-btn" bindtap="goToSocraticHistory">
+        <text class="action-icon">📊</text>
+        <text class="action-label">训练记录</text>
+      </view>
+    </view>
+
+    <!-- 原理提示 -->
+    <view class="socratic-tip">
+      <text class="tip-icon">💡</text>
+      <text class="tip-text">好的销售不告诉客户该买什么，而是通过提问让客户自己找到答案</text>
+    </view>
+  </view>
+
+  <!-- ==== 底部说明 ==== -->
+  <view class="footer-note">
+    <text>Powered by DeepSeek AI · 所有对话由AI实时生成与评分</text>
+  </view>
+</view>

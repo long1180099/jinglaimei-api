@@ -1,0 +1,86 @@
+/* 收益记录 v2.0 */
+.page { display: flex; flex-direction: column; height: 100vh; background: var(--bg-page); }
+
+.tabs {
+  display: flex;
+  background: var(--bg-card);
+  border-bottom: 1rpx solid var(--border-light);
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: var(--space-7) 0;
+  font-size: var(--font-md);
+  color: var(--gray-600);
+  position: relative;
+  font-weight: 500;
+}
+.tab.active { color: var(--primary); font-weight: 600; }
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 6rpx;
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
+  border-radius: 3rpx;
+}
+
+.record-list { flex: 1; padding: var(--space-5) var(--space-6); }
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-xs);
+  border: 1rpx solid var(--border-light);
+}
+.record-left { display: flex; align-items: center; flex: 1; }
+.record-icon { font-size: 36rpx; margin-right: var(--space-5); }
+.record-info { flex: 1; }
+.record-title { font-size: var(--font-base); color: var(--text-primary); font-weight: 500; display: block; }
+.record-desc { font-size: var(--font-xs); color: var(--text-muted); margin-top: var(--space-2); display: block; }
+.record-amount { font-size: var(--font-xl); font-weight: 700; color: var(--primary); }
+.record-amount.negative { color: var(--text-primary); }
+.record-right { text-align: right; }
+.record-status { font-size: var(--font-xs); margin-top: var(--space-2); display: block; color: var(--text-muted); }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-15) 0;
+  color: var(--gray-400);
+  font-size: var(--font-base);
+}
+.empty-icon { font-size: 80rpx; margin-bottom: var(--space-4); opacity: 0.4; }
+.empty-text { font-size: var(--font-base); color: var(--text-muted); }
+.empty-hint { font-size: var(--font-sm); color: var(--text-placeholder); margin-top: var(--space-2); }
+.load-more { text-align: center; padding: var(--space-8); font-size: var(--font-sm); color: var(--text-muted); }
+
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: var(--gray-400);
+  animation: dotPulse 1.2s infinite ease-in-out;
+}
+
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}

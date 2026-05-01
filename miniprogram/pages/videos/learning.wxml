@@ -1,0 +1,154 @@
+<!-- 学习中心页 · 玫小可商学院 -->
+<view class="lp">
+
+  <!-- 统计头部 -->
+  <view class="stat-header">
+    <view class="stat-card">
+      <!-- 顶部 -->
+      <view class="sc-top">
+        <text class="sc-greeting">📖 我的学习中心</text>
+        <view class="sc-avatar"><text>{{userInfo.nickname ? userInfo.nickname.substring(0,1) : '学'}}</text></view>
+      </view>
+
+      <!-- 三列统计 -->
+      <view class="sc-row">
+        <view class="sc-item">
+          <text class="sc-num">{{stats.totalWatched}}</text>
+          <text class="sc-lbl">已学课程</text>
+          <view class="sc-ico-bg sc-ico-blue">📚</view>
+        </view>
+        <view class="sc-divider"></view>
+        <view class="sc-item">
+          <text class="sc-num sc-num-green">{{stats.completedCount}}</text>
+          <text class="sc-lbl">已完成</text>
+          <view class="sc-ico-bg sc-ico-green">✅</view>
+        </view>
+        <view class="sc-divider"></view>
+        <view class="sc-item">
+          <text class="sc-num sc-num-yellow">{{stats.totalMinutes}}</text>
+          <text class="sc-lbl">学习分钟</text>
+          <view class="sc-ico-bg sc-ico-yellow">⏱</view>
+        </view>
+      </view>
+
+      <!-- 连续天数 -->
+      <view class="streak" wx:if="{{stats.streakDays > 0}}">
+        <text>🔥 已连续学习 {{stats.streakDays}} 天，继续保持！</text>
+      </view>
+
+      <!-- 平均进度 -->
+      <view class="avg-prog" wx:if="{{stats.totalWatched > 0}}">
+        <view class="ap-head">
+          <text>平均完成度</text>
+          <text class="ap-pct">{{stats.avgProgress}}%</text>
+        </view>
+        <view class="ap-bar">
+          <view class="ap-fill" style="width:{{stats.avgProgress}}%"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-box" wx:if="{{loading}}">
+    <view class="lds-ring"></view>
+    <text>加载中...</text>
+  </view>
+
+  <block wx:if="{{!loading}}">
+
+    <!-- 推荐继续 -->
+    <view class="sec" wx:if="{{recommendContinue.length > 0}}">
+      <view class="sec-hd">
+        <text class="sec-tt">🎯 继续学习</text>
+        <text class="sec-more">查看全部 ›</text>
+      </view>
+
+      <scroll-view scroll-x class="h-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="cc-card" wx:for="{{recommendContinue}}" wx:key="id"
+          data-id="{{item.id}}" bindtap="goToPlayer">
+          <image src="{{item.coverUrl}}" mode="aspectFill" class="cc-cover" lazy-load wx:if="{{item.coverUrl}}" />
+          <view wx:else class="cc-ph"><text>▶</text></view>
+
+          <view class="cc-prog"><view class="cc-pf" style="width:{{item.progressPercent}}%"></view></view>
+
+          <view class="cc-info">
+            <text class="cc-title">{{item.title}}</text>
+            <view class="cc-bot">
+              <text class="cc-tip">{{item.continueTip || '继续观看'}}</text>
+              <text class="cc-pct">{{item.progressPercent}}%</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 正在学习 -->
+    <view class="sec" wx:if="{{learning.length > 0}}">
+      <view class="sec-hd">
+        <text class="sec-tt">📚 正在学习</text>
+        <text class="sec-count">{{learning.length}}门课程</text>
+      </view>
+
+      <view class="course-list">
+        <view class="ci-item" wx:for="{{learning}}" wx:key="id"
+          data-id="{{item.id}}" bindtap="goToPlayer">
+          <view class="ci-thumb-wrap">
+            <image src="{{item.coverUrl}}" mode="aspectFill" class="ci-thumb" lazy-load wx:if="{{item.coverUrl}}" />
+            <view wx:else class="ci-thumb-ph"><text>🎬</text></view>
+            <view class="ci-corner" wx:if="{{item.progressPercent > 0 && !item.isCompleted}}">
+              <text>{{item.progressPercent}}%</text>
+            </view>
+          </view>
+
+          <view class="ci-detail">
+            <text class="ci-name">{{item.title}}</text>
+            <view class="ci-meta">
+              <text wx:if="{{item.durationStr}}">⏱ {{item.durationStr}}</text>
+              <text wx:if="{{item.instructor}}">· 👤 {{item.instructor}}</text>
+            </view>
+            <view class="ci-prog">
+              <view class="ci-pb"><view class="ci-pf" style="width:{{item.progressPercent||0}}%"></view></view>
+              <text class="ci-pct">{{item.progressPercent||0}}%</text>
+            </view>
+          </view>
+
+          <text class="ci-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 已完成 -->
+    <view class="sec" wx:if="{{completed.length > 0}}">
+      <view class="sec-hd">
+        <text class="sec-tt">✅ 已完成</text>
+        <text class="sec-count">{{completed.length}}门课程</text>
+      </view>
+
+      <view class="done-list">
+        <view class="di-item" wx:for="{{completed}}" wx:key="id" data-id="{{item.id}}" bindtap="goToPlayer">
+          <view class="di-icon">✓</view>
+          <view class="di-detail">
+            <text class="di-name">{{item.title}}</text>
+            <view class="di-meta">
+              <text class="di-done-txt">✅ 完成 · {{item.watchCount || 1}}次观看</text>
+              <text class="di-date" wx:if="{{item.completedDateStr}}">{{item.completedDateStr}}</text>
+            </view>
+          </view>
+          <text class="di-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-box" wx:if="{{learning.length === 0 && completed.length === 0 && recommendContinue.length === 0}}">
+      <view class="eb-art">
+        <text class="eb-emo">🎬</text>
+      </view>
+      <text class="eb-title">还没有学习记录哦</text>
+      <text class="eb-desc">去视频列表挑选一门喜欢的课程开始学习吧～</text>
+      <button class="eb-btn" bindtap="goToList">🎯 浏览课程</button>
+    </view>
+
+  </block>
+</view>

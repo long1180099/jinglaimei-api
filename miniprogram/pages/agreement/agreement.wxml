@@ -1,0 +1,129 @@
+<!-- 用户服务协议 -->
+<view class="page">
+  <view class="header">
+    <text class="title">用户服务协议</text>
+    <text class="subtitle">静莱美代理商平台</text>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="doc-body">
+
+      <!-- 更新日期 -->
+      <view class="update-info">最后更新日期：2026年4月5日</view>
+
+      <!-- 引言 -->
+      <view class="section">
+        <view class="section-title">引言</view>
+        <view class="section-text">
+          <text class="text-p">欢迎使用「静莱美」（以下简称"本平台"或"我们"）提供的微信小程序服务。本平台是由静莱美运营的代理商服务平台，为用户提供商品浏览、在线订购、收益管理、团队管理等服务。</text>
+          <text class="text-p">在使用本平台服务前，请您仔细阅读并充分理解本《用户服务协议》（以下简称"本协议"）及《隐私政策》的全部内容。您点击同意或使用本平台服务，即表示您已阅读、理解并接受本协议的全部条款。</text>
+          <text class="text-p highlight">如您不同意本协议的任何内容，请您立即停止使用本平台服务。</text>
+        </view>
+      </view>
+
+      <!-- 第一条 -->
+      <view class="section">
+        <view class="section-title">一、定义与解释</view>
+        <view class="section-text">
+          <text class="text-p"><text class="bold">1.1 本平台：</text>指由静莱美运营的微信小程序及其关联的服务平台，域名为小程序内嵌网页地址。</text>
+          <text class="text-p"><text class="bold">1.2 用户/您：</text>指注册、登录或使用本平台服务的自然人。</text>
+          <text class="text-p"><text class="bold">1.3 代理商：</text>指经本平台审核通过，获得相应代理等级资格的用户。</text>
+          <text class="text-p"><text class="bold">1.4 服务：</text>指本平台通过小程序向用户提供的各项功能和服务，包括但不限于商品展示、订单管理、收益查看、团队管理等。</text>
+        </view>
+      </view>
+
+      <!-- 第二条 -->
+      <view class="section">
+        <view class="section-title">二、账户注册与使用</view>
+        <view class="section-text">
+          <text class="text-p"><text class="bold">2.1 注册资格：</text>您应具备完全民事行为能力。若您不具备该等资格，请在监护人的陪同下阅读和判断是否同意本协议，并在取得监护人同意后使用本平台服务。</text>
+          <text class="text-p"><text class="bold">2.2 注册方式：</text>您可通过微信授权登录或手机号验证方式完成账户注册。您应对账户信息的安全负责，因保管不当造成的损失由您自行承担。</text>
+          <text class="text-p"><text class="bold">2.3 账户规范：</text>您承诺所提供的资料真实、准确、完整、有效。如资料有变动，应及时更新。如提供虚假信息，本平台有权暂停或终止向您提供服务。</text>
+          <text class="text-p"><text class="bold">2.4 代理申请：</text>您可通过本平台提交代理申请，经审核通过后成为相应等级的代理商，享受对应的代理权益。</text>
+        </view>
+      </view>
+
+      <!-- 第三条 -->
+      <view class="section">
+        <view class="section-title">三、平台服务内容</view>
+        <view class="section-text">
+          <text class="text-p"><text class="bold">3.1 商品浏览：</text>您可在本平台浏览商品信息、价格、规格等详情。</text>
+          <text class="text-p"><text class="bold">3.2 在线下单：</text>您可通过本平台提交商品订单，选择支付方式完成购买。</text>
+          <text class="text-p"><text class="bold">3.3 订单管理：</text>您可以查看订单状态、物流信息，进行确认收货等操作。</text>
+          <text class="text-p"><text class="bold">3.4 收益管理：</text>代理商可查看收益记录、收益明细、提现记录等信息。</text>
+          <text class="text-p"><text class="bold">3.5 团队管理：</text>代理商可查看团队成员信息及团队结构。</text>
+          <text class="text-p"><text class="bold">3.6 商学院学习：</text>您可访问商学院模块，学习产品知识、销售话术、经营方法等内容。</text>
+          <text class="text-p"><text class="bold">3.7 行动日志：</text>您可使用行动日志工具进行目标管理、日常追踪和个人成长记录。</text>
+        </view>
+      </view>
+
+      <!-- 第四条 -->
+      <view class="section">
+        <view class="section-title">四、用户行为规范</view>
+        <view class="section-text">
+          <text class="text-p">在使用本平台服务时，您承诺遵守以下规定：</text>
+          <text class="text-p">（1）不得利用本平台从事违法活动或损害他人合法权益的行为；</text>
+          <text class="text-p">（2）不得干扰或破坏平台的正常运行；</text>
+          <text class="text-p">（3）不得利用平台漏洞获取不正当利益；</text>
+          <text class="text-p">（4）不得传播虚假信息或恶意诋毁平台及其他用户；</text>
+          <text class="text-p">（5）不得将账户转让、出借或授权第三方使用；</text>
+          <text class="text-p">（6）遵守所有与本平台服务相关的法律法规。</text>
+        </view>
+      </view>
+
+      <!-- 第五条 -->
+      <view class="section">
+        <view class="section-title">五、知识产权</view>
+        <view class="section-text">
+          <text class="text-p"><text class="bold">5.1 平台权利：</text>本平台的所有内容包括但不限于文字、图片、音频、视频、软件、程序、版面架构、页面设计等均归静莱美所有，受中华人民共和国著作权法、商标法、专利法等相关法律保护。</text>
+          <text class="text-p"><text class="bold">5.2 授权限制：</text>未经我们书面许可，您不得以任何形式复制、传播、展示、修改本平台的任何内容。</text>
+        </view>
+      </view>
+
+      <!-- 第六条 -->
+      <view class="section">
+        <view class="section-title">六、免责声明</view>
+        <view class="section-text">
+          <text class="text-p">6.1 本平台对因不可抗力（包括但不限于自然灾害、政府行为、战争、罢工、网络故障等）导致的服务中断或延迟不承担责任。</text>
+          <text class="text-p">6.2 您理解并同意，本平台服务按"现状"和"可用"状态提供，我们对服务的及时性、安全性、准确性不作任何明示或暗示的保证。</text>
+          <text class="text-p">6.3 因您自身原因（如密码泄露、设备丢失等）导致的损失，由您自行承担。</text>
+        </view>
+      </view>
+
+      <!-- 第七条 -->
+      <view class="section">
+        <view class="section-title">七、协议变更与终止</view>
+        <view class="section-text">
+          <text class="text-p"><text class="bold">7.1 协议变更：</text>我们有权根据业务需要修改本协议内容。修改后的协议将通过本平台公告等方式通知您，如您继续使用即视为同意修改后的协议。</text>
+          <text class="text-p"><text class="bold">7.2 终止权：</text>如您违反本协议约定，我们有权随时终止向您提供服务，并保留追究相关法律责任的权利。</text>
+          <text class="text-p"><text class="bold">7.3 注销账户：</text>您可联系客服申请注销账户，注销后您的数据将被删除且无法恢复。</text>
+        </view>
+      </view>
+
+      <!-- 第八条 -->
+      <view class="section">
+        <view class="section-title">八、争议解决</view>
+        <view class="section-text">
+          <text class="text-p">8.1 本协议的订立、效力、解释、履行及争议解决均适用中华人民共和国法律。</text>
+          <text class="text-p">8.2 因本协议引起的或与本协议有关的任何争议，双方应友好协商解决；协商不成的，任何一方均可向本平台运营方所在地有管辖权的人民法院提起诉讼。</text>
+        </view>
+      </view>
+
+      <!-- 第九条 -->
+      <view class="section">
+        <view class="section-title">九、联系我们</view>
+        <view class="section-text">
+          <text class="text-p">如果您对本协议有任何疑问、意见或建议，请通过以下方式联系我们：</text>
+          <text class="text-p contact">客服邮箱：support@jinglaimei.com</text>
+          <text class="text-p contact">联系地址：广东省深圳市福田区</text>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+
+  <view class="footer">
+    <text class="footer-text">静莱美 © 2026 版权所有</text>
+    <text class="footer-icp">鲁ICP备2026019556号</text>
+  </view>
+</view>

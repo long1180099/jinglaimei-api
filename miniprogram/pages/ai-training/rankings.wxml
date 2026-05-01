@@ -1,0 +1,58 @@
+<!-- pages/ai-training/rankings.wxml -->
+<view class="container">
+  <view class="tabs">
+    <view class="tab {{type == 'level' ? 'active' : ''}}" bindtap="switchType" data-type="level">🔥 通关排行</view>
+    <view class="tab {{type == 'coach' ? 'active' : ''}}" bindtap="switchType" data-type="coach">🤖 教练排行</view>
+  </view>
+
+  <view class="rank-list">
+    <!-- 前三名 -->
+    <view wx:if="{{rankList.length >= 1}}" class="top-three">
+      <!-- 第二名 -->
+      <view wx:if="{{rankList.length >= 2}}" class="top-item second">
+        <view class="medal">🥈</view>
+        <view class="top-avatar">{{rankList[1].nickname ? rankList[1].nickname[0] : '?'}}</view>
+        <view class="top-name">{{rankList[1].nickname || '匿名'}}</view>
+        <view class="top-score">{{type == 'level' ? rankList[1].levels_passed + '关' : rankList[1].avg_score + '分'}}</view>
+      </view>
+
+      <!-- 第一名 -->
+      <view class="top-item first">
+        <view class="medal">🥇</view>
+        <view class="top-avatar">{{rankList[0].nickname ? rankList[0].nickname[0] : '?'}}</view>
+        <view class="top-name">{{rankList[0].nickname || '匿名'}}</view>
+        <view class="top-score">{{type == 'level' ? rankList[0].levels_passed + '关' : rankList[0].avg_score + '分'}}</view>
+      </view>
+
+      <!-- 第三名 -->
+      <view wx:if="{{rankList.length >= 3}}" class="top-item third">
+        <view class="medal">🥉</view>
+        <view class="top-avatar">{{rankList[2].nickname ? rankList[2].nickname[0] : '?'}}</view>
+        <view class="top-name">{{rankList[2].nickname || '匿名'}}</view>
+        <view class="top-score">{{type == 'level' ? rankList[2].levels_passed + '关' : rankList[2].avg_score + '分'}}</view>
+      </view>
+    </view>
+
+    <!-- 其他排名 -->
+    <view wx:for="{{rankList}}" wx:key="user_id" wx:if="{{index >= 3}}" class="rank-item">
+      <view class="rank-num">{{index + 1}}</view>
+      <view class="rank-avatar">{{item.nickname ? item.nickname[0] : '?'}}</view>
+      <view class="rank-info">
+        <view class="rank-name">{{item.nickname || '匿名'}}</view>
+        <view class="rank-detail">
+          <text wx:if="{{type == 'level'}}">通关 {{item.levels_passed}} 关 | 总分 {{item.total_score}}</text>
+          <text wx:else>练习 {{item.sessions}} 次 | 平均 {{item.avg_score}} 分</text>
+        </view>
+      </view>
+      <view class="rank-score">
+        <text wx:if="{{type == 'level'}}">{{item.levels_passed}}关</text>
+        <text wx:else>{{item.avg_score}}分</text>
+      </view>
+    </view>
+
+    <view wx:if="{{rankList.length == 0}}" class="empty-state">
+      <text>暂无排行数据</text>
+      <text class="empty-hint">快去练习，争取上榜吧！</text>
+    </view>
+  </view>
+</view>

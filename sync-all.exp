@@ -1,0 +1,109 @@
+#!/usr/bin/expect -f
+# 全面检查并同步所有后端改动到云服务器
+set timeout 300
+set host "118.195.185.6"
+set password "@M3^w,uc2JFTHD"
+set local "/Users/apple/WorkBuddy/20260324191412"
+set remote "/root/database-server"
+
+puts "\n========================================"
+puts "🔍 第一步: 检查服务器当前状态"
+puts "========================================\n"
+
+# 检查服务器文件状态
+spawn ssh -o StrictHostKeyChecking=no root@$host {
+    echo "=== A. 路由文件列表 ==="
+    ls /root/database-server/src/routes/
+    echo ""
+    echo "=== B. app.js路由注册 ==="
+    grep "app.use" /root/database-server/src/app.js
+    echo ""
+    echo "=== C. migrations目录 ==="
+    ls /root/database-server/migrations/ 2>/dev/null || echo "(不存在)"
+    echo ""
+    echo "=== D. 数据库inventory表 ==="
+    cd /root/database-server && node -e 'var db=require("better-sqlite3")("data/jinglaimei.db");var t=db.prepare("SELECT name FROM sqlite_master WHERE type=\"table\" AND name LIKE \"inventory%\"").all();console.log("表:",t.length?t.map(function(x){return x.name}).join(", "):"无");db.close()'
+}
+expect "password:"
+send "$password\r"
+expect eof
+
+puts "\n========================================"
+puts "📤 第二步: 上传/覆盖所有需要的文件"
+puts "========================================\n"
+
+# 1) inventory.js 路由
+puts "--- [1/5] inventory.js ---"
+spawn scp -o StrictHostKeyChecking=no $local/database-server/src/routes/inventory.js root@$host:$remote/src/routes/inventory.js
+expect "password:"
+send "$password\r"
+expect eof
+puts "✅"
+
+# 2) 迁移脚本
+puts "--- [2/5] 迁移脚本 ---"
+spawn scp -o StrictHostKeyChecking=no $local/database-server/migrations/002_create_inventory_tables.js root@$host:$remote/migrations/002_create_inventory_tables.js
+expect "password:"
+send "$password\r"
+expect eof
+puts "✅"
+
+# 3) mpExt.js (小程序扩展路由，可能有改动)
+puts "--- [3/5] mpExt.js ---"
+spawn scp -o StrictHostKeyChecking=no $local/database-server/src/routes/mpExt.js root@$host:$remote/src/routes/mpExt.js
+expect "password:"
+send "$password\r"
+expect eof
+puts "✅"
+
+# 4) app.js (主入口，需要注册路由)
+puts "--- [4/5] app.js ---"
+spawn scp -o StrictHostKeyChecking=no $local/database-server/src/app.js root@$host:$remote/src/app.js
+expect "password:"
+send "$password\r"
+expect eof
+puts "✅"
+
+# 5) 检查是否有其他新增的路由文件需要上传
+puts "--- [5/5] 检查其他路由差异 ---"
+spawn ssh -o StrictHostKeyChecking=no root@$host {echo "本地路由:";ls /root/database-server/src/routes/}
+expect "password:"
+send "$password\r"
+expect eof
+
+puts "\n========================================"
+puts "🔧 第三步: 确保路由注册 + 建表 + 重启"
+puts "========================================\n"
+
+# 在服务器上执行: 检查app.js中是否有inventory路由，没有就加; 执行建表; 重启PM2
+spawn ssh -o StrictHostKeyChecking=no root@$host "
+cd $remote
+
+echo '--- 检查路由注册 ---'
+grep -q 'api/inventory' src/app.js && echo '✅ inventory路由已注册' || (echo '⚠️ 缺少路由，正在添加...' && sed -i \"/\\/api\/mp.*mpAITraining/a app.use('/api/inventory',   authMiddleware, require('./routes/inventory')); // 库存管理\" src/app.js && echo '✅ 已添加')
+
+echo ''
+echo '--- 执行建表(幂等) ---'
+node migrations/002_create_inventory_tables.js 2>&1
+
+echo ''
+echo '--- 重启PM2服务 ---'
+pm2 restart jinglaimei-api 2>&1
+sleep 3
+pm2 status 2>&1 | head -15
+
+echo ''
+echo '--- 验证API可访问性 ---'
+curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/inventory/stats && echo ' (stats端点返回状态码)'
+"
+expect "password:"
+send "$password\r"
+expect {
+    eof {}
+    timeout { puts "\n(等待完成...)" }
+}
+
+puts "\n========================================"
+puts "✅ 全部同步完成！"
+puts "========================================\n"
+exit 0

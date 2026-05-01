@@ -1,0 +1,73 @@
+<!-- 新增/编辑收货地址 -->
+<view class="page">
+  <view class="form-card">
+    <!-- 收货人 -->
+    <view class="form-item">
+      <text class="form-label"><text class="required">*</text>收货人</text>
+      <input
+        class="form-input"
+        placeholder="请输入收货人姓名"
+        value="{{formData.name}}"
+        bindinput="onNameInput"
+        maxlength="20"
+      />
+    </view>
+
+    <!-- 手机号 -->
+    <view class="form-item">
+      <text class="form-label"><text class="required">*</text>手机号</text>
+      <input
+        class="form-input"
+        type="number"
+        placeholder="请输入手机号"
+        value="{{formData.phone}}"
+        bindinput="onPhoneInput"
+        maxlength="11"
+      />
+    </view>
+
+    <!-- 省市区 -->
+    <view class="form-item">
+      <text class="form-label"><text class="required">*</text>所在地区</text>
+      <picker mode="region" value="{{regionCode}}" custom-item="全部" bindchange="onRegionChange" bindcancel="onRegionCancel">
+        <view class="form-input region-value {{!regionText ? 'placeholder' : ''}}">
+          {{regionText || '请选择省/市/区'}}
+        </view>
+        <text class="picker-arrow">›</text>
+      </picker>
+    </view>
+
+    <!-- 详细地址 -->
+    <view class="form-item detail-item">
+      <text class="form-label"><text class="required">*</text>详细地址</text>
+      <textarea
+        class="form-textarea"
+        placeholder="请输入详细地址（街道、门牌号等）"
+        value="{{formData.detail}}"
+        bindinput="onDetailInput"
+        maxlength="100"
+        auto-height
+      />
+    </view>
+
+    <!-- 设为默认 -->
+    <view class="form-item switch-item">
+      <text class="form-label">设为默认地址</text>
+      <switch checked="{{formData.isDefault}}" bindchange="onDefaultChange" color="#e94560" />
+    </view>
+  </view>
+
+  <!-- 微信地址导入 -->
+  <view class="wx-import" bindtap="importWxAddress">
+    <text class="import-icon">📱</text>
+    <text class="import-text">从微信地址簿导入</text>
+    <text class="import-arrow">›</text>
+  </view>
+
+  <!-- 保存按钮 -->
+  <view class="bottom-bar safe-bottom">
+    <view class="btn-save {{saving ? 'disabled' : ''}}" bindtap="saveAddress">
+      {{saving ? '保存中...' : '保存'}}
+    </view>
+  </view>
+</view>

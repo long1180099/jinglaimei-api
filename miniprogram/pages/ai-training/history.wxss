@@ -1,0 +1,27 @@
+/* pages/ai-training/history.wxss */
+.container { min-height: 100vh; background: #0f0f1a; padding: 30rpx; }
+.session-list { display: flex; flex-direction: column; gap: 16rpx; }
+.session-card {
+  background: #1a1a2e; border-radius: 16rpx; padding: 24rpx;
+  border: 2rpx solid rgba(255,255,255,0.06);
+}
+.session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.session-name { font-size: 30rpx; color: #fff; font-weight: 600; }
+.session-personality {
+  font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 20rpx;
+  background: rgba(233,69,96,0.15); color: #e94560;
+}
+.session-body { display: flex; gap: 30rpx; margin-bottom: 12rpx; }
+.session-stat { display: flex; flex-direction: column; gap: 4rpx; }
+.stat-label { font-size: 22rpx; color: rgba(255,255,255,0.35); }
+.stat-value { font-size: 28rpx; color: rgba(255,255,255,0.8); font-weight: 600; }
+.stat-value.good { color: #00C896; }
+.stat-value.mid { color: #ffc107; }
+.stat-value.low { color: #ff4757; }
+.session-time { font-size: 22rpx; color: rgba(255,255,255,0.25); }
+.empty {
+  text-align: center; padding: 200rpx 0;
+}
+.empty-icon { display: block; font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-text { display: block; font-size: 30rpx; color: rgba(255,255,255,0.4); margin-bottom: 10rpx; }
+.empty-hint { display: block; font-size: 24rpx; color: rgba(255,255,255,0.25); }

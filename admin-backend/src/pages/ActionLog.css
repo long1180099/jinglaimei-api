@@ -1,0 +1,973 @@
+/* ═══════════════════════════════════════════════════
+   ACTION LOG - 行动日志页面样式
+   ═══════════════════════════════════════════════════ */
+
+/* ── 页面容器 ─────────────────────────────────────── */
+.action-log-page {
+  min-height: 100%;
+  background: #f5f7fa;
+}
+
+/* ── 顶部 Banner ──────────────────────────────────── */
+.al-page-banner {
+  background: linear-gradient(135deg, #00C896 0%, #00a876 50%, #007a56 100%);
+  padding: 28px 32px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.al-page-banner::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 220px;
+  height: 220px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+}
+
+.al-page-banner::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  right: 120px;
+  width: 160px;
+  height: 160px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+}
+
+.al-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.al-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.al-banner-icon {
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #fff;
+  backdrop-filter: blur(10px);
+}
+
+.al-banner-right .al-banner-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 12px 24px;
+  backdrop-filter: blur(10px);
+}
+
+.al-banner-stat {
+  text-align: center;
+  padding: 0 20px;
+}
+
+.al-bstat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.al-bstat-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 2px;
+}
+
+.al-banner-divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Tabs 容器 ────────────────────────────────────── */
+.al-tabs-container {
+  background: #fff;
+}
+
+.al-main-tabs .ant-tabs-nav {
+  margin-bottom: 0 !important;
+}
+
+.al-main-tabs .ant-tabs-tab {
+  font-size: 14px;
+  padding: 14px 20px;
+  transition: all 0.2s;
+}
+
+.al-main-tabs .ant-tabs-tab-active {
+  font-weight: 600;
+}
+
+.al-main-tabs .ant-tabs-ink-bar {
+  background: #00C896;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.al-main-tabs .ant-tabs-tab:hover {
+  color: #00C896;
+}
+
+.al-main-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #00C896;
+}
+
+/* ── 通用 Panel 内容区 ────────────────────────────── */
+.panel-content {
+  padding: 24px;
+  min-height: 500px;
+}
+
+/* ── 通用内嵌卡片 ─────────────────────────────────── */
+.al-inner-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.al-inner-card .ant-card-head {
+  border-bottom: 1px solid #f5f5f5;
+  padding: 0 20px;
+  min-height: 48px;
+  font-weight: 600;
+}
+
+/* ── 添加按钮 ─────────────────────────────────────── */
+.al-add-btn {
+  margin-top: 16px;
+  height: 44px;
+  border-radius: 12px;
+  border: 2px dashed #d9d9d9;
+  color: #aaa;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.al-add-btn:hover {
+  border-color: #00C896;
+  color: #00C896;
+}
+
+/* ── 主按钮样式 ───────────────────────────────────── */
+.al-primary-btn {
+  background: linear-gradient(135deg, #00C896, #00a876) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 600;
+}
+
+.al-primary-btn:hover {
+  background: linear-gradient(135deg, #00b886, #009966) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 200, 150, 0.4) !important;
+}
+
+/* ═══════════════════════════════════════════════════
+   年度目标
+   ═══════════════════════════════════════════════════ */
+
+.al-summary-card {
+  background: linear-gradient(135deg, #f6fffc 0%, #f0faf6 100%);
+  border-radius: 16px;
+  border: 1px solid #e8f8f0;
+  margin-bottom: 24px;
+}
+
+.al-ring-progress {
+  display: flex;
+  justify-content: center;
+}
+
+.ring-pct {
+  font-size: 22px;
+  font-weight: 800;
+  color: #00C896;
+  line-height: 1.2;
+}
+
+.ring-label {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.al-mini-stat {
+  text-align: center;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 16px 8px !important;
+}
+
+.al-mini-icon {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.al-mini-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.2;
+}
+
+.al-mini-label {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.al-goal-group {
+  margin-bottom: 24px;
+}
+
+.al-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.al-group-icon {
+  font-size: 20px;
+}
+
+.al-goal-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s;
+  border: 1px solid transparent;
+  overflow: hidden;
+}
+
+.al-goal-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 200, 150, 0.15);
+  border-color: #00C896;
+}
+
+.al-goal-card.completed {
+  background: linear-gradient(135deg, #f6fffc, #edfaf4);
+}
+
+.al-goal-top {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.al-goal-content {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.al-goal-method,
+.al-goal-time {
+  margin-bottom: 6px;
+}
+
+.al-goal-progress {
+  margin-top: 12px;
+}
+
+.al-progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* ═══════════════════════════════════════════════════
+   月度目标
+   ═══════════════════════════════════════════════════ */
+
+.al-month-header {
+  background: linear-gradient(135deg, #fff9f0 0%, #fff5e8 100%);
+  border-radius: 16px;
+  border: 1px solid #ffe8cc;
+  margin-bottom: 20px;
+}
+
+.al-month-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #fa8c16, #e07800);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.al-monthly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.al-monthly-item {
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s;
+}
+
+.al-monthly-item:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateX(2px);
+}
+
+.al-priority-tag {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  margin: auto;
+}
+
+.al-monthly-content {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+/* ═══════════════════════════════════════════════════
+   周目标
+   ═══════════════════════════════════════════════════ */
+
+.al-week-header {
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f0ff 100%);
+  border-radius: 16px;
+  border: 1px solid #d0e4ff;
+  margin-bottom: 0;
+}
+
+.al-week-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1890ff, #0066cc);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.al-week-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.al-week-item:last-child {
+  border-bottom: none;
+}
+
+.al-week-item:hover {
+  background: #f9fffe;
+  margin: 0 -12px;
+  padding: 12px 12px;
+  border-radius: 8px;
+}
+
+.al-week-item.done .al-week-content {
+  color: #aaa;
+  text-decoration: line-through;
+}
+
+.al-week-check {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.al-week-circle {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d9d9d9;
+  border-radius: 50%;
+}
+
+.al-week-content {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.al-summary-inner {
+  height: 100%;
+}
+
+.al-sum-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.al-mindset-score-big {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.al-score-num {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.al-score-total {
+  font-size: 16px;
+  color: #aaa;
+}
+
+/* ═══════════════════════════════════════════════════
+   日目标
+   ═══════════════════════════════════════════════════ */
+
+.al-today-header {
+  background: linear-gradient(135deg, #fff8f0 0%, #fff3e0 100%);
+  border-radius: 16px;
+  border: 1px solid #ffd8a0;
+}
+
+.al-today-date {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.al-date-day {
+  font-size: 48px;
+  font-weight: 900;
+  color: #fa8c16;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.al-date-info {
+  font-size: 13px;
+  color: #888;
+  line-height: 1.8;
+}
+
+.al-daily-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 4px;
+}
+
+.al-daily-task:hover {
+  background: #f9fffe;
+}
+
+.al-daily-task.done {
+  opacity: 0.6;
+}
+
+.al-task-check {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.al-task-circle {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d9d9d9;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.al-daily-task:hover .al-task-circle {
+  border-color: #00C896;
+}
+
+.al-task-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+}
+
+.al-task-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.al-abc-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 18px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.al-abc-label {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.al-learning-item {
+  margin-bottom: 12px;
+}
+
+.al-learning-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #00C896;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── 心态管理 ─────────────────────────────────────── */
+.al-mindset-card {
+  height: 100%;
+}
+
+.al-mindset-total-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.al-mindset-total-badge.good {
+  background: #e8fff8;
+  color: #00C896;
+}
+
+.al-mindset-total-badge.warn {
+  background: #fff8e8;
+  color: #fa8c16;
+}
+
+.al-mindset-total-badge.danger {
+  background: #fff2f2;
+  color: #ff4d4f;
+}
+
+.al-mindset-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.al-mindset-icon {
+  font-size: 18px;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.al-mindset-name {
+  width: 64px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+  flex-shrink: 0;
+}
+
+.al-mindset-bar {
+  flex: 1;
+}
+
+.al-mindset-score {
+  width: 20px;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.al-mindset-footer {
+  margin-top: 4px;
+}
+
+.al-mindset-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.al-total-score {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.al-total-score.good { color: #00C896; }
+.al-total-score.warn { color: #fa8c16; }
+.al-total-score.danger { color: #ff4d4f; }
+
+.al-mindset-tip {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.al-mindset-tip.good {
+  background: #e8fff8;
+  color: #00a876;
+}
+
+.al-mindset-tip.warn {
+  background: #fff8e8;
+  color: #d46b08;
+}
+
+.al-mindset-tip.danger {
+  background: #fff2f2;
+  color: #cf1322;
+}
+
+/* ═══════════════════════════════════════════════════
+   月度达成追踪
+   ═══════════════════════════════════════════════════ */
+
+.al-tracking-header {
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f0ff 100%);
+  border-radius: 16px;
+  border: 1px solid #cce0ff;
+}
+
+.al-tracking-grid {
+  margin-top: 16px;
+}
+
+.al-month-card {
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s;
+  text-align: center;
+  min-height: 140px;
+  padding: 16px !important;
+}
+
+.al-month-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.al-month-card.excellent {
+  background: linear-gradient(135deg, #f6fffc, #edfaf4);
+  border-top: 3px solid #52c41a;
+}
+
+.al-month-card.good {
+  background: linear-gradient(135deg, #fff9f0, #fff5e8);
+  border-top: 3px solid #fa8c16;
+}
+
+.al-month-card.poor {
+  background: linear-gradient(135deg, #fff2f2, #ffebeb);
+  border-top: 3px solid #ff4d4f;
+}
+
+.al-month-card.pending {
+  background: #fafafa;
+  border-top: 3px solid #d9d9d9;
+}
+
+.al-month-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.al-month-rate {
+  font-size: 26px;
+  font-weight: 900;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.al-month-nums {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #888;
+  margin-top: 6px;
+}
+
+.al-month-note {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.al-month-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+}
+
+/* ═══════════════════════════════════════════════════
+   承诺书
+   ═══════════════════════════════════════════════════ */
+
+.al-commitment-card {
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.al-commitment-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.al-crown-icon {
+  font-size: 24px;
+  color: #f5c518;
+}
+
+.al-commitment-body {
+  padding: 20px 24px;
+  background: #fff;
+}
+
+.al-commit-field {
+  margin-bottom: 4px;
+}
+
+.al-commit-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.al-commit-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.al-commit-content {
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 16px 0;
+  border-left: 3px solid #00C896;
+}
+
+.al-commit-text {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.7;
+}
+
+.al-commit-date {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.al-commitment-footer {
+  padding: 16px 24px;
+  background: #f9fffe;
+  border-top: 1px solid #e8f8f0;
+  text-align: center;
+}
+
+/* ── 打卡统计 ─────────────────────────────────────── */
+.al-streak-card {
+  background: linear-gradient(135deg, #fff9f0, #fff3e0);
+  border-radius: 14px;
+  border: 1px solid #ffe0a0;
+}
+
+.al-streak-flame {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.al-streak-num {
+  font-size: 42px;
+  font-weight: 900;
+  color: #fa8c16;
+  line-height: 1;
+}
+
+.al-streak-label {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 4px;
+}
+
+.al-checkin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.al-checkin-row:last-child {
+  border-bottom: none;
+}
+
+.al-checkin-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.al-checkin-icon.done {
+  background: #e8fff8;
+  color: #00C896;
+}
+
+.al-checkin-icon.partial {
+  background: #fff8e8;
+  color: #fa8c16;
+}
+
+.al-checkin-icon.pending {
+  background: #f5f5f5;
+  color: #ccc;
+}
+
+.al-checkin-date {
+  font-size: 12px;
+  color: #888;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.al-checkin-note {
+  flex: 1;
+  font-size: 12px;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════
+   响应式适配
+   ═══════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .al-page-banner {
+    padding: 20px 20px 16px;
+  }
+
+  .al-banner-content {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .al-banner-stats {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .panel-content {
+    padding: 16px;
+  }
+
+  .al-bstat-value {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 576px) {
+  .al-main-tabs .ant-tabs-tab {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+}
+
+/* ── 用户详情弹窗样式 ─────────────────────────────── */
+.udm-header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 20px 24px; background: linear-gradient(135deg, #f0f5ff, #e6f7ff);
+  border-radius: 12px; margin-bottom: 20px;
+}
+.udm-info { flex: 1; }
+.udm-quick-stats {
+  display: flex; gap: 24px;
+}
+.udm-quick-stats .ant-statistic-title {
+  font-size: 12px; color: #999;
+}
+.udm-quick-stats .ant-statistic-content {
+  font-size: 18px;
+}

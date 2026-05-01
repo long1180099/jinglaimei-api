@@ -1,0 +1,150 @@
+/* 新增/编辑地址 */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f5f6fa;
+  padding-bottom: 140rpx;
+}
+
+/* ==================== 表单卡片 ==================== */
+.form-card {
+  background: #fff;
+  margin: 20rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 24rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+  position: relative;
+}
+
+.form-item:last-child {
+  border-bottom: none;
+}
+
+.form-label {
+  width: 180rpx;
+  font-size: 28rpx;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.required {
+  color: #e94560;
+  margin-right: 4rpx;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1a1a2e;
+  text-align: right;
+}
+
+.region-value {
+  color: #999;
+}
+
+.region-value.placeholder {
+  color: #ccc;
+}
+
+.picker-arrow {
+  font-size: 32rpx;
+  color: #ccc;
+  margin-left: 12rpx;
+}
+
+.detail-item {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.detail-item .form-label {
+  margin-bottom: 16rpx;
+  width: auto;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 120rpx;
+  font-size: 28rpx;
+  color: #1a1a2e;
+  background: #fafafa;
+  border-radius: 10rpx;
+  padding: 16rpx;
+  box-sizing: border-box;
+}
+
+.switch-item {
+  justify-content: space-between;
+}
+
+/* ==================== 微信导入 ==================== */
+.wx-import {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 24rpx;
+  margin: 0 20rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.wx-import:active {
+  opacity: 0.8;
+}
+
+.import-icon {
+  font-size: 36rpx;
+  margin-right: 16rpx;
+}
+
+.import-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #e94560;
+  font-weight: 500;
+}
+
+.import-arrow {
+  font-size: 32rpx;
+  color: #ccc;
+}
+
+/* ==================== 保存按钮 ==================== */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  padding: 20rpx 24rpx;
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.btn-save {
+  height: 88rpx;
+  background: linear-gradient(135deg, #e94560 0%, #c0392b 100%);
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+.btn-save:active {
+  opacity: 0.85;
+}
+
+.btn-save.disabled {
+  opacity: 0.5;
+}

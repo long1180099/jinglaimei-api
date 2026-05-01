@@ -1,0 +1,59 @@
+<!-- 余额明细 -->
+<view class="page">
+  <!-- 余额概览卡片 -->
+  <view class="balance-header">
+    <view class="balance-label">当前余额（元）</view>
+    <view class="balance-amount">¥{{balance.toFixed(2)}}</view>
+    <view class="balance-hint">可用于余额支付下单</view>
+  </view>
+
+  <!-- 筛选Tab -->
+  <view class="filter-tabs">
+    <view class="filter-tab {{currentType == '' ? 'active' : ''}}" bindtap="switchType" data-type="">全部</view>
+    <view class="filter-tab {{currentType == 'recharge' ? 'active' : ''}}" bindtap="switchType" data-type="recharge">充值</view>
+    <view class="filter-tab {{currentType == 'payment' ? 'active' : ''}}" bindtap="switchType" data-type="payment">消费</view>
+    <view class="filter-tab {{currentType == 'commission' ? 'active' : ''}}" bindtap="switchType" data-type="commission">佣金</view>
+    <view class="filter-tab {{currentType == 'refund' ? 'active' : ''}}" bindtap="switchType" data-type="refund">退款</view>
+  </view>
+
+  <!-- 明细列表 -->
+  <scroll-view class="log-list" scroll-y bindscrolltolower="loadMore">
+    <block wx:if="{{logs.length > 0}}">
+      <view class="log-item" wx:for="{{logs}}" wx:key="id">
+        <view class="log-left">
+          <view class="log-icon {{item.isPlus ? 'icon-plus' : 'icon-minus'}}">{{item.icon}}</view>
+          <view class="log-info">
+            <text class="log-title">{{item.typeLabel}}</text>
+            <text class="log-desc">{{item.remark || item.change_type}} · {{item.created_at}}</text>
+          </view>
+        </view>
+        <view class="log-right">
+          <text class="log-amount {{item.isPlus ? 'amount-plus' : 'amount-minus'}}">{{item.isPlus ? '+' : '-'}}¥{{item.absAmount}}</text>
+          <text class="log-after">余额 ¥{{item.balance_after || '0.00'}}</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{logs.length == 0 && !loading}}">
+      <text class="empty-icon">💰</text>
+      <text class="empty-text">暂无{{currentTypeName}}</text>
+      <text class="empty-hint">余额变动记录将显示在这里</text>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{logs.length > 0}}">
+      <text class="load-text" wx:if="{{hasMore}}">加载中...</text>
+      <text class="load-text no-more" wx:else>— 已经到底了 —</text>
+    </view>
+
+    <!-- 骨架屏 -->
+    <view class="loading-skeleton" wx:if="{{loading && logs.length == 0}}">
+      <view class="skeleton-item" wx:for="{{3}}" wx:key="*this">
+        <view class="sk-circle"></view>
+        <view class="sk-lines"><view class="sk-line"></view><view class="sk-line short"></view></view>
+        <view class="sk-amount"></view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

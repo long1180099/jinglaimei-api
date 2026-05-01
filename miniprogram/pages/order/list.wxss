@@ -1,0 +1,254 @@
+/* 订单列表 v2.0 */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-page);
+}
+
+/* ==================== Tab ==================== */
+.order-tabs {
+  display: flex;
+  background: var(--bg-card);
+  padding: 0 var(--space-4);
+  border-bottom: 1rpx solid var(--border-light);
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: var(--space-6) 0;
+  font-size: var(--font-base);
+  color: var(--gray-600);
+  position: relative;
+  font-weight: 500;
+}
+
+.tab.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 6rpx;
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
+  border-radius: 3rpx;
+}
+
+/* ==================== 订单列表 ==================== */
+.order-list {
+  flex: 1;
+  padding: var(--space-5) var(--space-6);
+}
+
+.order-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+  border: 1rpx solid var(--border-light);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1rpx solid var(--border-light);
+}
+
+.order-no {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+
+.order-status {
+  font-size: var(--font-base);
+  font-weight: 600;
+}
+
+/* ==================== 订单商品 ==================== */
+.order-items {
+  padding: var(--space-5) var(--space-6);
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) 0;
+}
+
+.item-img {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background: var(--gray-50);
+}
+
+.item-info {
+  flex: 1;
+  margin-left: var(--space-5);
+}
+
+.item-name {
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  font-weight: 500;
+  display: block;
+  line-height: 1.4;
+}
+
+.item-spec {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+  display: block;
+}
+
+.item-bottom {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+.item-price {
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.item-qty {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+
+/* ==================== 订单底部 ==================== */
+.order-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-5) var(--space-6);
+  border-top: 1rpx solid var(--border-light);
+  background: var(--gray-50);
+}
+
+.order-total {
+  font-size: var(--font-sm);
+  color: var(--gray-600);
+}
+
+.total-amount {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.order-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.action-btn {
+  padding: 14rpx 36rpx;
+  border-radius: var(--radius-xl);
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+.action-btn.cancel {
+  border: 1rpx solid var(--gray-300);
+  color: var(--gray-600);
+  background: var(--bg-card);
+}
+
+.action-btn.confirm {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 4rpx 12rpx rgba(233, 69, 96, 0.2);
+}
+
+/* ==================== 加载 ==================== */
+.load-more {
+  text-align: center;
+  padding: var(--space-8);
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: var(--gray-400);
+  animation: dotPulse 1.2s infinite ease-in-out;
+}
+
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.no-more {
+  color: var(--gray-400);
+  letter-spacing: 2rpx;
+}
+
+.line-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-15) 0;
+  color: var(--gray-400);
+  font-size: var(--font-base);
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: var(--space-4);
+  opacity: 0.4;
+}
+
+.empty-text {
+  font-size: var(--font-base);
+  color: var(--text-muted);
+}
+
+.empty-hint {
+  font-size: var(--font-sm);
+  color: var(--text-placeholder);
+  margin-top: var(--space-2);
+}
+
+.btn-go-shop {
+  margin-top: var(--space-8);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  padding: 20rpx 72rpx;
+  border-radius: var(--radius-2xl);
+  font-size: var(--font-base);
+  font-weight: 600;
+  box-shadow: var(--shadow-primary);
+}

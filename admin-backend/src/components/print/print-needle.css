@@ -1,0 +1,276 @@
+/**
+ * 静莱美 - 打印专用样式
+ * A4宽 × 半张高: 210mm × 148mm
+ * 针式打印机兼容：纯文字+简单线条
+ */
+
+/* ========== 打印页面容器 ========== */
+.print-page {
+  padding: 0;
+  font-family: 'SimSun', '宋体', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #000;
+  background: #fff;
+}
+
+/* ========== A4竖版纸张尺寸 ========== */
+@page {
+  size: 210mm 297mm;        /* A4竖版 */
+  margin: 10mm 15mm;         /* 边距 */
+}
+
+@media print {
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print,
+  .ant-modal-wrap,
+  .ant-modal-mask,
+  button,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  .print-content {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    z-index: 99999;
+  }
+
+  .print-content * {
+    visibility: visible !important;
+  }
+}
+
+/* ========== 打印内容区域（隐藏，仅打印时显示）========== */
+.print-content {
+  /* 不再设固定宽度，由外层容器控制 */
+  padding: 4mm 6mm;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+/* ========== 表头标题区 ========== */
+.print-header {
+  text-align: center;
+  border-bottom: 2px dashed #000;
+  padding-bottom: 3mm;
+  margin-bottom: 3mm;
+}
+
+.print-header h1 {
+  font-family: 'SimHei', '黑体', 'Microsoft YaHei', sans-serif;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+.print-header .sub-title {
+  font-size: 10px;
+  color: #333;
+  margin-top: 2px;
+  letter-spacing: 1px;
+}
+
+/* ========== 信息网格 ========== */
+.print-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1mm 4mm;
+  margin-bottom: 3mm;
+  font-size: 10.5px;
+}
+
+.print-info-grid.full-width {
+  grid-template-columns: 1fr;
+}
+
+.print-info-row {
+  display: flex;
+  white-space: nowrap;
+}
+
+.print-info-row span:first-child {
+  flex-shrink: 0;
+  color: #333;
+}
+
+.print-info-row .value {
+  font-weight: normal;
+  word-break: break-all;
+}
+
+.print-label {
+  font-weight: bold;
+  color: #000;
+}
+
+.print-divider {
+  border-top: 1px dashed #666;
+  margin: 2mm 0;
+}
+
+.print-divider-thick {
+  border-top: 1.5px solid #000;
+  margin: 2.5mm 0;
+}
+
+/* ========== 商品表格（针式兼容）========== */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  margin: 2mm 0;
+}
+
+.print-table th {
+  background: #f0f0f0 !important;
+  border: 1px solid #333;
+  padding: 1.5mm 1mm;
+  text-align: center;
+  font-weight: bold;
+  font-size: 10px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.print-table td {
+  border: 1px solid #666;
+  padding: 1.5mm 1mm;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 10px;
+}
+
+.print-table td.text-left {
+  text-align: left;
+  padding-left: 1.5mm;
+}
+
+.print-table td.text-right {
+  text-align: right;
+  padding-right: 1.5mm;
+}
+
+.print-table .product-name-cell {
+  max-width: 80mm;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========== 汇总区 ========== */
+.print-summary {
+  margin-top: 2mm;
+  font-size: 10.5px;
+}
+
+.print-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 1mm 0;
+  border-bottom: 1px dotted #999;
+}
+
+.print-summary-row.total {
+  border-top: 1.5px double #000;
+  border-bottom: none;
+  margin-top: 1mm;
+  padding-top: 2mm;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.print-total-amount {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 15px;
+  color: #000;
+}
+
+/* ========== 签字栏（底部三栏分布）========== */
+.print-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4mm;
+  padding-top: 3mm;
+  border-top: 1px dashed #666;
+  font-size: 10px;
+}
+
+.print-sign-item {
+  text-align: center;
+  width: 30%;
+}
+
+.print-sign-line {
+  display: inline-block;
+  width: 35mm;
+  border-bottom: 1px solid #333;
+  margin-left: 2mm;
+}
+
+/* ========== 三联分割虚线（可选，用于视觉区分联次）========== */
+.print-copy-divider {
+  border-left: 1px dashed #ccc;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+
+/* ========== 联次标签（第一联/第二联/第三联）========== */
+.print-copy-tag {
+  position: absolute;
+  left: 50%;
+  top: 2mm;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: #999;
+  writing-mode: horizontal-tb;
+}
+
+/* ========== 备注区 ========== */
+.print-remark {
+  margin-top: 2mm;
+  font-size: 9.5px;
+  color: #444;
+}
+
+.print-remark-label {
+  font-weight: bold;
+}
+
+/* ========== 二维码/条码占位 ========== */
+.print-barcode {
+  text-align: center;
+  margin: 2mm auto;
+  font-family: 'Libre Barcode 39', 'Code39Extended', cursive;
+  font-size: 28px;
+  letter-spacing: 2px;
+}
+
+/* ========== 特殊标记 ========== */
+.print-status-paid {
+  display: inline-block;
+  padding: 0 2mm;
+  border: 1px solid #333;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.print-status-unpaid {
+  border-style: dashed;
+  opacity: 0.7;
+}

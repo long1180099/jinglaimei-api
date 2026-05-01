@@ -1,0 +1,64 @@
+/* 公告管理页面样式 */
+.announcement-management {
+  padding: 0;
+}
+
+.announcement-management .table-card {
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.filter-bar {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 12px;
+}
+
+/* 预览样式 */
+.preview-content {
+  padding: 8px;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+}
+
+.preview-body {
+  padding: 20px;
+  background: #f9f9fb;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+  font-size: 14px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* 表格优化 */
+.announcement-management .ant-table {
+  border-radius: 10px;
+}
+
+.announcement-management .ant-table-thead > tr > th {
+  background: #fafbfc;
+  font-weight: 600;
+  font-size: 13px;
+  color: #555;
+}
+
+.announcement-management .ant-table-tbody > tr:hover > td {
+  background: #f0f7ff;
+}

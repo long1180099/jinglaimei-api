@@ -1,0 +1,178 @@
+<!-- 苏格拉底式提问训练 - 对话界面 -->
+<view class="chat-page">
+  <!-- 场景信息头部 -->
+  <view class="chat-top-bar" wx:if="{{!sessionId}}">
+    <view class="top-scenario-info">
+      <text class="top-name">{{scenarioName}}</text>
+      <view class="top-tags">
+        <text class="tag personality {{personalityType || 'default'}}">{{personalityName}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ==== 阶段1: 选择客户性格（可选）==== -->
+  <view wx:if="{{step == 'personality'}}" class="select-personality">
+    <view class="sp-title">选择客户性格类型</view>
+    <view class="sp-subtitle">不同性格的客户反应模式不同，训练难度也会变化</view>
+
+    <view class="p-card" wx:for="{{personalities}}" wx:key="key"
+          bindtap="selectPersonality" data-key="{{item.key}}"
+          style="border-color:{{selectedPerson == item.key ? item.color : 'rgba(255,255,255,0.06)'}}; background:{{selectedPerson == item.key ? (item.color + '10') : '#1a1a2e'}}">
+      <view class="pc-header">
+        <text class="pc-icon">{{item.icon}}</text>
+        <view class="pc-name-wrap">
+          <text class="pc-name" style="color:{{item.color}}">{{item.name}}</text>
+          <text class="pc-traits">{{item.traits}}</text>
+        </view>
+        <text wx:if="{{selectedPerson == item.key}}" class="pc-check">✓</text>
+      </view>
+      <view class="pc-style">反应风格：{{item.style}}</view>
+      <view wx:if="{{selectedPerson == item.key}}" class="pc-selected-hint">已选择</view>
+    </view>
+
+    <view class="sp-start-btn {{selectedPerson ? '' : 'disabled'}}" bindtap="confirmStart">
+      开始对话训练 ▶
+    </view>
+  </view>
+
+  <!-- ==== 阶段2: 对话中 ==== -->
+  <block wx:if="{{sessionId && step == 'chatting'}}">
+    <!-- 对话顶部栏 -->
+    <view class="chat-header-bar">
+      <view class="ch-left">
+        <text class="ch-round">第 {{chatRound}} 轮</text>
+        <text class="ch-personality" style="background:{{currentPersonalityColor}}20; color:{{currentPersonalityColor}}">
+          {{currentPersonalityName}}
+        </text>
+      </view>
+      <!-- 实时质量预估（AI学院新增） -->
+      <view class="quality-preview" wx:if="{{chatRound >= 2}}">
+        <text class="q-est-grade {{qualityIndicator.estimatedGrade == 'A' ? 'grade-a' : qualityIndicator.estimatedGrade == 'B' ? 'grade-b' : qualityIndicator.estimatedGrade == 'C' || qualityIndicator.estimatedGrade == '-' ? 'grade-c' : ''}}">
+          预估: {{qualityIndicator.estimatedGrade}}级
+        </text>
+        <text class="q-est-xp">+{{qualityIndicator.xpEstimate}}XP</text>
+      </view>
+      <view wx:if="{{chatRound >= 3}}" class="ch-end-btn" bindtap="confirmEnd">结束评分</view>
+    </view>
+
+    <!-- ====== AI学院新增：实时质量指标面板 ====== -->
+    <view class="quality-panel" wx:if="{{chatRound >= 2 && !showHints}}">
+      <view class="qp-row">
+        <text class="qp-label">📊 实时评估</text>
+        <text class="qp-detail">{{qualityIndicator.totalQuestions}}轮 · {{qualityIndicator.typeDiversity}}种提问技巧</text>
+      </view>
+      <view class="type-usage-row">
+        <view class="type-dot" style="background:#1890ff" wx:if="{{qualityIndicator.usedTypes.clarification}}"></view>
+        <view class="type-dot active" style="background:#1890ff40" wx:else></view>
+        <text class="type-dot-label">澄清</text>
+
+        <view class="type-dot" style="background:#722ed1" wx:if="{{qualityIndicator.usedTypes.hypothesis}}"></view>
+        <view class="type-dot active" style="background:#722ed140" wx:else></view>
+        <text class="type-dot-label">假设</text>
+
+        <view class="type-dot" style="background:#e94560" wx:if="{{qualityIndicator.usedTypes.reverse}}"></view>
+        <view class="type-dot active" style="background:#e9456040" wx:else></view>
+        <text class="type-dot-label">反向</text>
+
+        <view class="type-dot" style="background:#52c41a" wx:if="{{qualityIndicator.usedTypes.guiding}}"></view>
+        <view class="type-dot active" style="background:#52c41a40" wx:else></view>
+        <text class="type-dot-label">引导</text>
+
+        <view class="type-dot" style="background:#faad14" wx:if="{{qualityIndicator.usedTypes.summary}}"></view>
+        <view class="type-dot active" style="background:#faad1440" wx:else></view>
+        <text class="type-dot-label">总结</text>
+      </view>
+      
+      <!-- 智能提示列表 -->
+      <scroll-view scroll-x class="smart-hints-scroll" enable-flex wx:if="{{smartHints.length > 0}}">
+        <view class="hint-chip {{item.priority == 'warning' ? 'warn' : item.priority == 'high' ? 'info' : ''}}" 
+              wx:for="{{smartHints}}" wx:key="index">
+          <text class="hc-icon">{{item.icon}}</text>
+          <text class="hc-text">{{item.text}}</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 消息列表 -->
+    <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation enhanced show-scrollbar="{{false}}">
+      <block wx:for="{{messages}}" wx:key="id">
+        <!-- AI消息(客户) -->
+        <view wx:if="{{item.role == 'ai'}}" class="msg-row ai-msg-row" id="msg-{{item.id}}">
+          <view class="avatar ai-avatar">👤</view>
+          <view class="bubble ai-bubble">
+            <text class="bubble-text">{{item.content}}</text>
+            <!-- 提示标签 -->
+            <view wx:if="{{item.hint && showHints}}" class="ai-hint-tag">
+              💡 {{item.hint}}
+            </view>
+            <!-- 问题类型识别标签 -->
+            <view wx:if="{{item.questionTypeInfo}}" class="q-type-badge" style="background:{{item.questionTypeInfo.color}}15; color:{{item.questionTypeInfo.color}}">
+              {{item.questionTypeInfo.icon}} {{item.questionTypeInfo.name}}
+            </view>
+          </view>
+        </view>
+
+        <!-- 用户消息(代理商) -->
+        <view wx:if="{{item.role == 'user'}}" class="msg-row user-msg-row" id="msg-{{item.id}}">
+          <view class="bubble user-bubble">
+            <text class="bubble-text">{{item.content}}</text>
+            <!-- 提问检测 -->
+            <view wx:if="{{item.detected_type}}" class="q-detect-badge" style="border-color:{{item.typeColor || '#e94560'}}">
+              {{item.typeIcon || '❓'}} {{item.typeName || '已识别'}}
+            </view>
+            <!-- 说教警告 -->
+            <view wx:if="{{!item.isQuestion}}" class="warning-tag">⚠️ 尝试用提问方式</view>
+          </view>
+          <view class="avatar user-avatar">我</view>
+        </view>
+      </block>
+
+      <!-- 加载状态 -->
+      <view wx:if="{{isLoading}}" class="loading-msg">
+        <view class="dot-bounce"><view></view><view></view><view></view></view>
+      </view>
+      
+      <view class="scroll-anchor" id="msg-bottom"></view>
+    </scroll-view>
+
+    <!-- 提示开关 + 提问检测提示 -->
+    <view class="input-toolbar">
+      <view class="hint-switch" bindtap="toggleHints">
+        {{showHints ? '🔒 收起提示' : '💡 显示提示'}}
+      </view>
+      <view class="question-tip" wx:if="{{!lastWasQuestion}}">
+        💬 建议使用<span class="highlight">提问</span>式话术
+      </view>
+    </view>
+
+    <!-- 输入区域 -->
+    <view class="input-area">
+      <view class="input-inner">
+        <input class="msg-input" 
+               value="{{inputText}}" 
+               bindinput="onInput" 
+               placeholder="请用提问的方式回复..." 
+               placeholder-class="input-placeholder"
+               confirm-type="send"
+               bindconfirm="sendMessage"
+               maxlength="500" />
+        <view class="send-btn {{canSend ? 'active' : ''}}" bindtap="sendMessage">
+          发送
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- ==== 结束确认弹窗 ==== -->
+  <view class="modal-mask" wx:if="{{showEndConfirm}}" bindtap="cancelEnd">
+    <view class="modal-content end-confirm-modal" catchtap="">
+      <view class="ec-icon">📊</view>
+      <text class="ec-title">结束本次训练？</text>
+      <text class="ec-desc">AI将对你的对话进行多维度评分，包括提问密度、问题质量、引导逻辑等</text>
+      <view class="ec-buttons">
+        <view class="ec-cancel" bindtap="cancelEnd">继续对话</view>
+        <view class="ec-confirm" bindtap="doEndSession">确认结束</view>
+      </view>
+    </view>
+  </view>
+</view>

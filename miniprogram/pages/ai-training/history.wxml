@@ -1,0 +1,32 @@
+<!-- pages/ai-training/history.wxml -->
+<view class="container">
+  <view wx:if="{{sessions.length > 0}}" class="session-list">
+    <view wx:for="{{sessions}}" wx:key="id" class="session-card" bindtap="viewDetail" data-id="{{item.id}}">
+      <view class="session-header">
+        <view class="session-name">{{item.scenario_name}}</view>
+        <view class="session-personality">{{item.personality_name}}</view>
+      </view>
+      <view class="session-body">
+        <view class="session-stat">
+          <text class="stat-label">轮次</text>
+          <text class="stat-value">{{item.total_rounds}}轮</text>
+        </view>
+        <view class="session-stat">
+          <text class="stat-label">评分</text>
+          <text class="stat-value {{item.overall_score >= 80 ? 'good' : item.overall_score >= 60 ? 'mid' : 'low'}}">{{item.overall_score || '-'}}分</text>
+        </view>
+        <view class="session-stat">
+          <text class="stat-label">结果</text>
+          <text class="stat-value">{{item.result || '进行中'}}</text>
+        </view>
+      </view>
+      <view class="session-time">{{item.created_at}}</view>
+    </view>
+  </view>
+
+  <view wx:else class="empty">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无练习记录</text>
+    <text class="empty-hint">去AI教练模块开始你的第一次练习吧！</text>
+  </view>
+</view>

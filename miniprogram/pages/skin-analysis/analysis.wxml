@@ -1,0 +1,215 @@
+<!-- AI皮肤分析 v2.0 -->
+<view class="page">
+  <!-- 合规声明 -->
+  <view class="disclaimer-bar" wx:if="{{!report}}">
+    <text class="disclaimer-icon">⚠️</text>
+    <text class="disclaimer-text">本功能仅作护肤参考，不涉及医疗诊断</text>
+  </view>
+
+  <!-- ===== 阶段1：拍照/上传 ===== -->
+  <block wx:if="{{!analyzing && !report}}">
+    <view class="upload-area" bindtap="chooseImage">
+      <image
+        class="preview-img"
+        src="{{tempImagePath || '/images/default-product.png'}}"
+        mode="aspectFit"
+      ></image>
+      <view class="upload-overlay" wx:if="{{!tempImagePath}}">
+        <view class="camera-circle">
+          <text class="camera-icon">📷</text>
+        </view>
+        <text class="upload-hint">点击拍摄或上传面部照片</text>
+        <text class="upload-sub">支持实时拍照 / 相册选择</text>
+      </view>
+      <view class="re-upload-btn" wx:if="{{tempImagePath}}" bindtap="chooseImage" catchtap="">
+        <text>重新选择</text>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-row" wx:if="{{tempImagePath}}">
+      <button class="btn-analyze" bindtap="startAnalysis" loading="{{analyzing}}">
+        {{analyzing ? 'AI分析中...' : '开始AI分析'}}
+      </button>
+    </view>
+
+    <!-- 使用提示 -->
+    <view class="tips-box" wx:if="{{!tempImagePath}}">
+      <text class="tips-title">拍摄建议</text>
+      <view class="tips-list">
+        <view class="tip"><text class="dot">1</text><text>在光线充足的地方正面拍摄</text></view>
+        <view class="tip"><text class="dot">2</text><text>保持面部清晰，不要遮挡</text></view>
+        <view class="tip"><text class="dot">3</text><text>素颜或淡妆状态效果最佳</text></view>
+        <view class="tip"><text class="dot">4</text><text>距离面部约30cm为宜</text></view>
+      </view>
+    </view>
+  </block>
+
+  <!-- ===== 阶段2：分析中 ===== -->
+  <block wx:if="{{analyzing && !report}}">
+    <view class="analyzing-card">
+      <view class="analyze-img-wrap">
+        <image class="analyze-img" src="{{tempImagePath}}" mode="aspectFit"></image>
+        <view class="analyze-mask"></view>
+        <view class="scanning-line"></view>
+      </view>
+
+      <view class="analyze-status">
+        <view class="pulse-ring"></view>
+        <text class="status-text">{{analyzeStep}}</text>
+        <text class="status-sub">{{analyzeSubStep}}</text>
+      </view>
+
+      <view class="progress-steps">
+        <view class="ps-item {{step >= 1 ? 'active' : ''}}">① 上传图片</view>
+        <view class="ps-arrow">→</view>
+        <view class="ps-item {{step >= 2 ? 'active' : ''}}">② AI识别</view>
+        <view class="ps-arrow">→</view>
+        <view class="ps-item {{step >= 3 ? 'active' : ''}}">③ 生成报告</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- ===== 阶段3：分析结果 ===== -->
+  <block wx:if="{{report}}">
+    <!-- 报告头部 -->
+    <view class="report-header">
+      <view class="rh-left">
+        <image class="rh-avatar" src="{{tempImagePath}}" mode="aspectFill" bindtap="previewReportImage"></image>
+        <view class="rh-info">
+          <text class="rh-date">{{report.created_at}}</text>
+          <text class="rh-type">检测到 {{report.issue_count || reportIssues.length}} 项皮肤问题</text>
+          <view class="rh-confidence" wx:if="{{report.skin_type_confidence}}">
+            <text>置信度 {{report.skin_type_confidence}}%</text>
+          </view>
+        </view>
+      </view>
+      <view class="rh-badge" style="background:{{skinTypeColor[report.skin_type] || '#52c41a'}}">
+        {{skinTypeName[report.skin_type] || '待分析'}}
+      </view>
+    </view>
+
+    <!-- 严重度总览 -->
+    <view class="severity-overview" wx:if="{{report.total_severity > 0}}">
+      <view class="so-header">
+        <text class="so-title">综合严重度</text>
+        <text class="so-score" style="color:{{report.total_severity > 15 ? '#e94560' : report.total_severity > 8 ? '#fa8c16' : '#52c41a'}}">{{report.total_severity}}分</text>
+      </view>
+      <view class="so-bar-bg">
+        <view class="so-bar-fill" style="width:{{Math.min(100, report.total_severity * 5)}}%; background:{{report.total_severity > 15 ? '#e94560' : report.total_severity > 8 ? '#fa8c16' : '#52c41a'}}"></view>
+      </view>
+      <text class="so-desc">{{report.total_severity > 15 ? '需要重点关注，建议尽快制定护理方案' : report.total_severity > 8 ? '存在一定问题，建议科学护肤调理' : '整体状态尚可，日常保养即可'}}</text>
+    </view>
+
+    <!-- AI总评 -->
+    <view class="section-card overview-card" wx:if="{{report.ai_overview}}">
+      <view class="sc-head"><text class="sc-title">AI分析总评</text></view>
+      <text class="overview-text">{{report.ai_overview}}</text>
+    </view>
+
+    <!-- 检测到的问题列表 -->
+    <view class="section-card issues-card" wx:if="{{reportIssues.length > 0}}">
+      <view class="sc-head">
+        <text class="sc-title">检测到的问题</text>
+        <text class="issue-count-badge">{{reportIssues.length}}项</text>
+      </view>
+      <view class="issue-list">
+        <view class="issue-item" wx:for="{{reportIssues}}" wx:key="id" style="border-left-color: {{severityColor[item.severity] || '#52c41a'}}">
+          <!-- 问题头部（始终显示） -->
+          <view class="issue-main" bindtap="toggleIssueDetail" data-idx="{{item._idx}}">
+            <view class="issue-left">
+              <view class="severity-badge" style="background:{{severityColor[item.severity] || '#52c41a'}}">
+                {{item.severity}}
+              </view>
+              <view class="issue-info">
+                <view class="issue-top-row">
+                  <text class="issue-name">{{item.issue_name}}</text>
+                  <text class="issue-sev-label" style="color:{{severityColor[item.severity] || '#52c41a'}}">{{severityLabel[item.severity] || ''}}</text>
+                </view>
+                <view class="issue-meta">
+                  <text class="issue-cat tag-{{item.category}}">{{categoryName[item.category] || item.category}}</text>
+                  <text class="issue-area" wx:if="{{item.area}}">· {{item.area}}</text>
+                  <text class="issue-conf" wx:if="{{item.confidencePercent > 0}}">· {{item.confidencePercent}}%</text>
+                </view>
+              </view>
+            </view>
+            <view class="issue-arrow {{expandedIssueId === item._idx ? 'expanded' : ''}}">›</view>
+          </view>
+
+          <!-- 问题描述（始终显示） -->
+          <text class="issue-desc" wx:if="{{item.description}}">{{item.description}}</text>
+
+          <!-- 展开详情 -->
+          <view class="issue-detail" wx:if="{{expandedIssueId === item._idx}}">
+            <!-- 成因 -->
+            <view class="detail-section" wx:if="{{item.cause_text}}">
+              <text class="detail-label">形成原因</text>
+              <text class="detail-text">{{item.cause_text}}</text>
+            </view>
+            <!-- 建议 -->
+            <view class="detail-section" wx:if="{{item.advice_text}}">
+              <text class="detail-label">专业建议</text>
+              <text class="detail-text advice-text">{{item.advice_text}}</text>
+            </view>
+            <!-- 复制建议按钮 -->
+            <view class="detail-copy" wx:if="{{item.advice_text}}" catchtap="copyText" data-text="{{item.advice_text}}">
+              <text>复制建议</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 成因分析 -->
+    <view class="section-card cause-card" wx:if="{{report.ai_cause_analysis}}">
+      <view class="sc-head">
+        <text class="sc-title">成因分析</text>
+        <text class="copy-btn" data-text="{{report.ai_cause_analysis}}" catchtap="copyText">复制</text>
+      </view>
+      <view class="cause-content">
+        <text class="cause-text">{{report.ai_cause_analysis}}</text>
+      </view>
+    </view>
+
+    <!-- 专业话术 -->
+    <view class="section-card script-card" wx:if="{{report.ai_script}}">
+      <view class="sc-head">
+        <text class="sc-title">专业话术</text>
+        <text class="copy-btn" data-text="{{report.ai_script}}" catchtap="copyText">复制</text>
+      </view>
+      <view class="script-bubble">
+        <text class="script-text">{{report.ai_script}}</text>
+      </view>
+    </view>
+
+    <!-- 推荐产品 -->
+    <view class="section-card product-card" wx:if="{{matchedProducts.length > 0}}">
+      <view class="sc-head"><text class="sc-title">推荐产品</text></view>
+      <view class="prod-list">
+        <view class="prod-item" wx:for="{{matchedProducts}}" wx:key="id" bindtap="goProductDetail" data-id="{{item.id}}">
+          <image class="prod-img" src="{{item.main_image || item.product_image || '/images/default-product.png'}}" mode="aspectFill"></image>
+          <view class="prod-info">
+            <text class="prod-name line-1">{{item.product_name}}</text>
+            <text class="prod-price">¥{{item.retail_price}}</text>
+          </view>
+          <text class="prod-go">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 免责声明 -->
+    <view class="final-disclaimer">
+      <text>{{report.disclaimer || '本分析结果仅供参考，具体护肤方案建议咨询专业美容顾问。'}}</text>
+    </view>
+
+    <!-- 底部操作栏 -->
+    <view class="bottom-bar">
+      <button class="btn-secondary" bindtap="viewHistory">历史记录</button>
+      <button class="btn-share" open-type="share">分享报告</button>
+      <button class="btn-primary-skin" bindtap="reAnalysis">重新检测</button>
+    </view>
+  </block>
+
+  <!-- 安全底部 -->
+  <view style="height: calc(env(safe-area-inset-bottom) + 140rpx);"></view>
+</view>

@@ -1,0 +1,11 @@
+#!/usr/bin/expect
+set timeout 600
+set host "118.195.185.6"
+set password "@M3\^w,uc2JFTHD"
+set src "/Users/apple/WorkBuddy/20260324191412/admin-backend/build"
+set dest "/var/www/admin"
+
+spawn scp -o StrictHostKeyChecking=no -r $src/ root@$host:$dest/
+expect "password:"
+send "$password\r"
+expect eof
