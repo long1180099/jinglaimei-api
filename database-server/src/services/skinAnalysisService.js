@@ -1,5 +1,5 @@
 // AI Skin Analysis Service
-// Uses Qwen VL vision model for real image analysis
+// Uses 腾讯混元 Vision model for real image analysis
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
@@ -286,14 +286,14 @@ async function analyzeSkin(options) {
       { role: 'system', content: SKIN_ANALYSIS_SYSTEM_PROMPT },
       { role: 'user', content: userContent }
     ];
-    console.log('[SkinAnalysis] Sending to QwenVL... imgSize=' + imageData.base64.length + ' chars');
+    console.log('[SkinAnalysis] Sending to HunyuanVision... imgSize=' + imageData.base64.length + ' chars');
     const rawResponse = await callQwenVL(messages, {
       temperature: 0.6,
       max_tokens: 3000,
-      model: 'qwen-vl-max',
+      model: 'hunyuan-vision',
       timeout: 120000,
     });
-    console.log('[SkinAnalysis] QwenVL response, len=' + rawResponse.length);
+    console.log('[SkinAnalysis] HunyuanVision response, len=' + rawResponse.length);
     const result = parseJSON(rawResponse);
     return normalizeAnalysisResult(result, userId, agentId, imageUrl);
   } catch (err) {
