@@ -1234,7 +1234,7 @@ router.get('/income', (req, res) => {
 
   const db = getDB();
   const user = db.prepare('SELECT COALESCE(balance,0) as balance, COALESCE(frozen_balance,0) as frozen_balance, COALESCE(total_income,0) as total_income FROM users WHERE id = ?').get(decoded.id);
-  if (!user) return error(res, '用户不存在', 404);
+  if (!user) return error(res, '用户不存在，请重新登录', 401);
 
   const todayIncome = db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE user_id = ? AND date(created_at) = date('now') AND commission_status = 1")
     .get(decoded.id).val;
@@ -1402,7 +1402,7 @@ router.get('/team', (req, res) => {
     WHERE u.id = ? AND (u.is_deleted = 0 OR u.is_deleted IS NULL)
   `).get(decoded.id);
 
-  if (!user) return error(res, '用户不存在', 404);
+  if (!user) return error(res, '用户不存在，请重新登录', 401);
 
   // 直属下级数量
   const directCount = db.prepare('SELECT COUNT(*) as cnt FROM users WHERE parent_id = ? AND is_deleted = 0').get(decoded.id).cnt;
