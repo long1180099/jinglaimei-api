@@ -95,6 +95,139 @@ function initSocraticDB() {
     );
   `);
 
+  // 5. AI学院 - users表新增字段（ALTER TABLE ADD COLUMN IF NOT EXISTS 在SQLite中需要安全处理）
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN socratic_xp INTEGER DEFAULT 0`);
+  } catch(e) { /* 字段已存在，忽略 */ }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN socratic_level INTEGER DEFAULT 1`);
+  } catch(e) {}
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN socratic_title TEXT DEFAULT ''`);
+  } catch(e) {}
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN total_training_minutes INTEGER DEFAULT 0`);
+  } catch(e) {}
+
+  // 6. 经验值日志表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS socratic_xp_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      xp_amount INTEGER NOT NULL DEFAULT 0,
+      source TEXT DEFAULT '',
+      source_id INTEGER,
+      description TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // 7. 成就定义表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS achievements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      icon TEXT DEFAULT '',
+      category TEXT DEFAULT '',
+      condition_type TEXT DEFAULT 'count',
+      condition_field TEXT DEFAULT '',
+      condition_target INTEGER DEFAULT 1,
+      xp_reward INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      status INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // 8. 用户成就解锁记录
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_achievements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      achievement_id INTEGER NOT NULL,
+      session_id INTEGER,
+      notified INTEGER DEFAULT 0,
+      unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, achievement_id)
+    );
+  `);
+
+  // 9. 学习路径表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS learning_paths (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      scenario_ids TEXT DEFAULT '[]',
+      difficulty TEXT DEFAULT 'medium',
+      xp_reward INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      status INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // 10. 用户学习路径进度
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_path_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      path_id INTEGER NOT NULL,
+      current_step INTEGER DEFAULT 0,
+      completed_scenario_ids TEXT DEFAULT '[]',
+      status TEXT DEFAULT 'in_progress',
+      score_summary TEXT DEFAULT '{}',
+      started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      completed_at DATETIME,
+      UNIQUE(user_id, path_id)
+    );
+  `);
+
+  // 11. 每日任务定义表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS daily_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      target_count INTEGER DEFAULT 1,
+      xp_reward INTEGER DEFAULT 10,
+      sort_order INTEGER DEFAULT 0,
+      status INTEGER DEFAULT 1
+    );
+  `);
+
+  // 12. 每日任务完成记录
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS daily_task_completions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      task_id INTEGER NOT NULL,
+      completion_date TEXT NOT NULL,
+      current_count INTEGER DEFAULT 0,
+      completed INTEGER DEFAULT 0,
+      UNIQUE(user_id, task_id, completion_date)
+    );
+  `);
+
+  // 13. 训练快照表（历史对比趋势）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS session_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      session_id INTEGER NOT NULL UNIQUE,
+      snapshot_date TEXT DEFAULT '',
+      scores_json TEXT DEFAULT '{}',
+      grade TEXT DEFAULT '',
+      overall_score INTEGER DEFAULT 0,
+      scenario_category TEXT DEFAULT '',
+      personality_type TEXT DEFAULT '',
+      duration INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // 创建索引
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_socratic_sessions_user ON socratic_sessions(user_id);
@@ -109,6 +242,7 @@ function initSocraticDB() {
   // 导入种子数据
   seedSocraticScenarios(db);
   seedSocraticQuestions(db);
+  seedAcademyData(db);
 
   console.log('✅ 苏格拉底式提问训练系统种子数据已导入');
 }
@@ -402,6 +536,48 @@ function seedSocraticQuestions(db) {
   }
 
   console.log(`✅ 已导入 ${questionsByScenario.reduce((sum, sq) => sum + sq.questions.length, 0)} 条苏格拉底标准问题`);
+}
+
+// ==================== 种子数据：AI学院（每日任务+成就） ====================
+
+function seedAcademyData(db) {
+  // 每日任务
+  const taskCount = db.prepare('SELECT COUNT(*) as cnt FROM daily_tasks').get().cnt;
+  if (taskCount === 0) {
+    const tasks = [
+      { key: 'complete_1_session', name: '完成一次训练', description: '完成任意一次苏格拉底提问训练', target_count: 1, xp_reward: 20, sort_order: 1 },
+      { key: 'complete_3_sessions', name: '训练达人', description: '完成3次训练对话', target_count: 3, xp_reward: 50, sort_order: 2 },
+      { key: 'get_score_80', name: '高分挑战', description: '获得一次80分以上的训练评分', target_count: 1, xp_reward: 30, sort_order: 3 },
+      { key: 'try_all_types', name: '全能提问', description: '使用至少3种不同类型的提问', target_count: 3, xp_reward: 40, sort_order: 4 },
+    ];
+    const insertTask = db.prepare(`INSERT INTO daily_tasks (key, name, description, target_count, xp_reward, sort_order) VALUES (?, ?, ?, ?, ?, ?)`);
+    for (const t of tasks) {
+      insertTask.run(t.key, t.name, t.description, t.target_count, t.xp_reward, t.sort_order);
+    }
+    console.log('✅ 已导入每日任务种子数据');
+  }
+
+  // 成就
+  const achCount = db.prepare('SELECT COUNT(*) as cnt FROM achievements').get().cnt;
+  if (achCount === 0) {
+    const achievements = [
+      { name: '初次训练', description: '完成第一次苏格拉底训练', icon: '🎯', category: 'training', condition_type: 'count', condition_field: 'total_sessions', condition_target: 1, xp_reward: 20, sort_order: 1 },
+      { name: '训练新手', description: '完成5次训练', icon: '📝', category: 'training', condition_type: 'count', condition_field: 'total_sessions', condition_target: 5, xp_reward: 50, sort_order: 2 },
+      { name: '训练达人', description: '完成20次训练', icon: '⭐', category: 'training', condition_type: 'count', condition_field: 'total_sessions', condition_target: 20, xp_reward: 150, sort_order: 3 },
+      { name: '训练大师', description: '完成50次训练', icon: '💎', category: 'training', condition_type: 'count', condition_field: 'total_sessions', condition_target: 50, xp_reward: 300, sort_order: 4 },
+      { name: '破冰专家', description: '完成5次破冰类场景训练', icon: '🧊', category: 'category', condition_type: 'count', condition_field: 'unique_categories', condition_target: 3, xp_reward: 40, sort_order: 5 },
+      { name: '提问多面手', description: '在训练中使用过5种不同的提问类型', icon: '🔄', category: 'skill', condition_type: 'count', condition_field: 'unique_question_types', condition_target: 5, xp_reward: 60, sort_order: 6 },
+      { name: 'A级表现', description: '获得一次A级评分', icon: '🅰️', category: 'score', condition_type: 'score', condition_field: 'overall_score', condition_target: 80, xp_reward: 80, sort_order: 7 },
+      { name: 'S级大师', description: '获得一次S级评分', icon: '👑', category: 'score', condition_type: 'score', condition_field: 'overall_score', condition_target: 90, xp_reward: 200, sort_order: 8 },
+      { name: '连续3天', description: '连续3天完成训练', icon: '🔥', category: 'streak', condition_type: 'streak', condition_field: 'daily_streak', condition_target: 3, xp_reward: 60, sort_order: 9 },
+      { name: '连续7天', description: '连续7天完成训练', icon: '💪', category: 'streak', condition_type: 'streak', condition_field: 'daily_streak', condition_target: 7, xp_reward: 200, sort_order: 10 },
+    ];
+    const insertAch = db.prepare(`INSERT INTO achievements (name, description, icon, category, condition_type, condition_field, condition_target, xp_reward, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    for (const a of achievements) {
+      insertAch.run(a.name, a.description, a.icon, a.category, a.condition_type, a.condition_field, a.condition_target, a.xp_reward, a.sort_order);
+    }
+    console.log('✅ 已导入成就种子数据');
+  }
 }
 
 module.exports = { initSocraticDB };
