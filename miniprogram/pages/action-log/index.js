@@ -243,7 +243,7 @@ Page({
       var checkinInfo = this.data.checkedDates[dateStr] || null;
       weekDays.push({
         day: d.getDate(),
-        weekday: this.weekdaysFull[i],
+        weekday: this.data.weekdaysFull[i],
         dateStr: dateStr,
         isToday: dateStr === todayStr,
         isSelected: dateStr === selStr,
