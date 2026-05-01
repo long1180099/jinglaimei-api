@@ -410,7 +410,13 @@ router.post('/wx-phone-login', async (req, res) => {
 
     // 查找或创建用户（支持账号合并）
     const db = getDB();
-    let user = db.prepare('SELECT * FROM users WHERE phone = ? AND is_deleted = 0').get(phone);
+    let user = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
+    // 如果用户被软删除，恢复账号
+    if (user && user.is_deleted === 1) {
+      db.prepare("UPDATE users SET is_deleted = 0, status = 1, updated_at = datetime('now','localtime') WHERE id = ?").run(user.id);
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      console.log(`[微信一键登录] 恢复已删除用户: ${user.id}`);
+    }
 
     if (!user) {
       const inviteCode = generateInviteCode(db);
