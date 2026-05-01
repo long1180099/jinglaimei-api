@@ -294,7 +294,14 @@ async function analyzeSkin(options) {
       timeout: 120000,
     });
     console.log('[SkinAnalysis] HunyuanVision response, len=' + rawResponse.length);
+    console.log('[SkinAnalysis] Raw response preview: ' + rawResponse.substring(0, 500));
     const result = parseJSON(rawResponse);
+    console.log('[SkinAnalysis] Parsed JSON keys:', Object.keys(result));
+    if (result.issues && Array.isArray(result.issues)) {
+      console.log('[SkinAnalysis] Issues count:', result.issues.length);
+    } else {
+      console.warn('[SkinAnalysis] No issues array found in result!');
+    }
     return normalizeAnalysisResult(result, userId, agentId, imageUrl);
   } catch (err) {
     console.error('[SkinAnalysis] Analysis failed:', err.message);
