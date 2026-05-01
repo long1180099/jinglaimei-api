@@ -3,7 +3,8 @@ const api = require('../../utils/api');
 const BASE_URL = api.BASE_URL.replace('/api', '');
 
 function getUserId() {
-  return wx.getStorageSync('userId') || (wx.getStorageSync('userInfo') || {}).id;
+  var uid = wx.getStorageSync('userId') || (wx.getStorageSync('userInfo') || {}).id;
+  return uid ? String(Number(uid)) : '';
 }
 
 const PERSONALITY_LABELS = {

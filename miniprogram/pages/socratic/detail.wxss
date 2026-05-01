@@ -1,0 +1,196 @@
+/* 苏格拉底训练详情页 */
+.detail-page {
+  min-height: 100vh;
+  background: #0f0f1a;
+  padding: 0 0 env(safe-area-inset-bottom);
+}
+
+.loading-wrap {
+  text-align: center;
+  padding: 120rpx 0;
+  color: rgba(255,255,255,0.4);
+  font-size: 28rpx;
+}
+
+/* 顶部信息 */
+.session-header {
+  padding: 30rpx 28rpx 20rpx;
+}
+.sh-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+.sh-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.sh-time, .sh-rounds {
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.35);
+}
+.sh-divider {
+  color: rgba(255,255,255,0.15);
+}
+
+/* 评分卡片 */
+.score-card {
+  margin: 0 28rpx 24rpx;
+  padding: 28rpx;
+  background: rgba(255,255,255,0.04);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
+}
+.sc-grade {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.sc-score {
+  text-align: center;
+  min-width: 100rpx;
+}
+.sc-num {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #fff;
+  display: block;
+  line-height: 1.1;
+}
+.sc-unit {
+  font-size: 22rpx;
+  color: rgba(255,255,255,0.4);
+}
+.sc-dims {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+.sc-dim {
+  width: 50%;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  font-size: 22rpx;
+  padding: 4rpx 0;
+}
+.sc-dim text:first-child {
+  font-weight: 700;
+  font-size: 26rpx;
+}
+.sc-dim text:last-child {
+  color: rgba(255,255,255,0.35);
+}
+
+/* 对话记录 */
+.chat-section {
+  margin: 0 28rpx 24rpx;
+}
+.cs-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 16rpx;
+}
+.msg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+.msg-item {
+  display: flex;
+  gap: 16rpx;
+}
+.msg-item.customer {
+  flex-direction: row;
+}
+.msg-item.user {
+  flex-direction: row-reverse;
+}
+.msg-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  color: rgba(255,255,255,0.5);
+  flex-shrink: 0;
+}
+.msg-item.user .msg-avatar {
+  background: linear-gradient(135deg, #e94560, #ff6b81);
+  color: #fff;
+}
+.msg-body {
+  max-width: 75%;
+}
+.msg-tag {
+  display: inline-block;
+  font-size: 18rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 10rpx;
+  margin-bottom: 8rpx;
+}
+.msg-content {
+  background: rgba(255,255,255,0.06);
+  border-radius: 16rpx;
+  border-top-left-radius: 4rpx;
+  padding: 16rpx 20rpx;
+  font-size: 26rpx;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.7;
+  word-break: break-all;
+}
+.msg-item.user .msg-content {
+  border-radius: 16rpx;
+  border-top-right-radius: 4rpx;
+  background: rgba(233,69,96,0.1);
+  border: 1rpx solid rgba(233,69,96,0.15);
+}
+.msg-round {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.2);
+  margin-top: 6rpx;
+}
+.msg-item.user .msg-round {
+  text-align: right;
+}
+
+/* AI反馈 */
+.feedback-section {
+  margin: 0 28rpx 40rpx;
+  padding: 24rpx;
+  background: rgba(255,215,0,0.04);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(255,215,0,0.1);
+}
+.fb-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #ffd700;
+  margin-bottom: 12rpx;
+}
+.fb-content {
+  font-size: 26rpx;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom) + 30rpx);
+}

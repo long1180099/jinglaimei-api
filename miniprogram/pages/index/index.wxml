@@ -318,4 +318,11 @@
       <text class="empty-hint">更多优质好品正在准备中</text>
     </view>
   </view>
+
+  <!-- 底部备案信息 -->
+  <view class="icp-footer">
+    <text>静莱美 © 2026 版权所有</text>
+    <text>鲁ICP备2026019556号-1X</text>
+  </view>
+  <view style="height: calc(env(safe-area-inset-bottom) + 20rpx);"></view>
 </view>

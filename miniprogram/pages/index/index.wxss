@@ -943,3 +943,16 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+
+/* ==================== 底部备案信息 ==================== */
+.icp-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30rpx 0 20rpx;
+}
+.icp-footer text {
+  font-size: 22rpx;
+  color: #ccc;
+  line-height: 1.8;
+}

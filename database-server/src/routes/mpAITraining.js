@@ -745,7 +745,7 @@ function generateMockEvaluation(session, messages) {
   if (personality >= 75) feedback.strengths.push('能够较好地运用针对该性格的沟通策略');
   else feedback.improvements.push('建议多学习该性格类型的沟通技巧，注意调整语速和用词');
 
-  if (need_discovery >= 75) feedback.strengths.push('需求挖掘做得不错，通过提问了解了客户真实需求');
+  if (needDiscovery >= 75) feedback.strengths.push('需求挖掘做得不错，通过提问了解了客户真实需求');
   else feedback.improvements.push('需要加强需求挖掘环节，建议使用"时问、因问、果问、期问、预问"五步法');
 
   if (empathy >= 75) feedback.strengths.push('共情能力较好，让客户感到被理解和关怀');

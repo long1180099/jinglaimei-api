@@ -193,7 +193,7 @@ Page({
       case 'about':
         wx.showModal({
           title: '关于静莱美',
-          content: '静莱美 — 品质美妆代理商平台\n\n版本: 2.0.0\n\n提供优质美妆产品，\n助力每一位代理商成长。\n\n客服邮箱：support@jinglaimei.com',
+          content: '静莱美 — 品质美妆代理商平台\n\n版本: 2.0.0\n\n提供优质美妆产品，\n助力每一位代理商成长。\n\n客服邮箱：support@jinglaimei.com\n\nICP备案：鲁ICP备2026019556号-1X\n主办单位：静莱美（山东）美业有限公司',
           showCancel: false,
           confirmText: '知道了'
         });

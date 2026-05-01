@@ -48,7 +48,13 @@ Page({
   onLoad(options) {
     if (options.data) {
       try {
-        const d = JSON.parse(decodeURIComponent(options.data));
+        let d;
+        if (options.data) {
+          d = JSON.parse(decodeURIComponent(options.data));
+        } else {
+          d = getApp().socraticResultData || {};
+          getApp().socraticResultData = null;
+        }
         this.initResult(d);
         
         // 播放成就解锁动画（延迟显示）

@@ -32,6 +32,7 @@ Page({
     messages: [],
     chatRound: 0,
     inputText: '',
+    canSend: false,
     scrollToId: '',
     showHints: true,
     isLoading: false,
@@ -152,7 +153,7 @@ Page({
   // ===== 消息收发 =====
 
   onInput(e) {
-    this.setData({ inputText: e.detail.value });
+    this.setData({ inputText: e.detail.value, canSend: e.detail.value.trim().length > 0 });
   },
 
   sendMessage() {
@@ -167,9 +168,10 @@ Page({
       typeIcon: null, typeName: null, typeColor: null
     };
     
-    this.setData({ 
-      messages: [...this.data.messages, userMsg], 
-      inputText: '', 
+    this.setData({
+      messages: [...this.data.messages, userMsg],
+      inputText: '',
+      canSend: false,
       isLoading: true,
       lastWasQuestion: isQuestion
     });
@@ -329,9 +331,9 @@ Page({
       success: (res) => {
         wx.hideLoading();
         if (res.data.code === 0) {
-          // 跳转到结果页，携带完整数据
-          const resultData = encodeURIComponent(JSON.stringify(res.data.data));
-          wx.redirectTo({ url: `/pages/socratic/result?data=${resultData}` });
+          // 用全局存储传递数据，避免URL超长
+          getApp().socraticResultData = res.data.data;
+          wx.redirectTo({ url: '/pages/socratic/result' });
         } else {
           wx.showToast({ title: res.data.message || '评分失败', icon: 'none' });
         }

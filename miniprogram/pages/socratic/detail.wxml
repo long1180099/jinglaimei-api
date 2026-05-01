@@ -1,0 +1,76 @@
+<!-- 苏格拉底训练详情页 -->
+<view class="detail-page">
+  <view class="loading-wrap" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:if="{{!loading && session}}">
+    <!-- 顶部信息 -->
+    <view class="session-header">
+      <view class="sh-title">{{session.scenario_name || '未知场景'}}</view>
+      <view class="sh-meta">
+        <text class="sh-time">{{session.created_at}}</text>
+        <text class="sh-divider">|</text>
+        <text class="sh-rounds">{{messages.length}}轮对话</text>
+      </view>
+    </view>
+
+    <!-- 评分卡片 -->
+    <view class="score-card">
+      <view class="sc-grade {{session.grade}}" style="background:{{session.grade == 'S' ? '#ffd700' : session.grade == 'A' ? '#667eea' : session.grade == 'B' ? '#52c41a' : '#999'}}; color:#fff;">
+        {{session.grade}}
+      </view>
+      <view class="sc-score">
+        <text class="sc-num">{{session.overall_score || 0}}</text>
+        <text class="sc-unit">分</text>
+      </view>
+      <view class="sc-dims">
+        <view class="sc-dim">
+          <text style="color:#1890ff">{{session.question_score || '-'}}</text>
+          <text>提问</text>
+        </view>
+        <view class="sc-dim">
+          <text style="color:#722ed1">{{session.listening_score || '-'}}</text>
+          <text>倾听</text>
+        </view>
+        <view class="sc-dim">
+          <text style="color:#52c41a">{{session.guiding_score || '-'}}</text>
+          <text>引导</text>
+        </view>
+        <view class="sc-dim">
+          <text style="color:#faad14">{{session.timing_score || '-'}}</text>
+          <text>时机</text>
+        </view>
+        <view class="sc-dim">
+          <text style="color:#e94560">{{session.depth_score || '-'}}</text>
+          <text>深度</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 对话记录 -->
+    <view class="chat-section">
+      <view class="cs-title">对话记录</view>
+      <view class="msg-list">
+        <view class="msg-item {{item.role === 'customer' ? 'customer' : 'user'}}" wx:for="{{messages}}" wx:key="id">
+          <view class="msg-avatar">{{item.role === 'customer' ? '客' : '我'}}</view>
+          <view class="msg-body">
+            <view class="msg-tag" wx:if="{{item.role === 'user' && item.question_type}}" style="background:{{item.question_type_color}}20; color:{{item.question_type_color}}; border:1rpx solid {{item.question_type_color}}40;">
+              {{item.question_type_name}}
+            </view>
+            <view class="msg-content">{{item.content}}</view>
+            <view class="msg-round">第{{item.round_num || 0}}轮</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- AI反馈 -->
+    <view class="feedback-section" wx:if="{{session.ai_feedback}}">
+      <view class="fb-title">AI评价反馈</view>
+      <view class="fb-content">{{session.ai_feedback}}</view>
+    </view>
+  </block>
+
+  <view class="safe-bottom"></view>
+</view>

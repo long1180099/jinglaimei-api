@@ -186,3 +186,16 @@
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.02);
   letter-spacing: 2rpx;
 }
+
+/* ========== 底部备案信息 ========== */
+.icp-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 0 10rpx;
+}
+.icp-footer text {
+  font-size: 22rpx;
+  color: #ccc;
+  line-height: 1.8;
+}

@@ -38,6 +38,7 @@
     "pages/socratic/chat",
     "pages/socratic/result",
     "pages/socratic/history",
+    "pages/socratic/detail",
     "pages/address/address",
     "pages/address/edit",
     "pages/balance/detail",

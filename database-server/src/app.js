@@ -123,6 +123,14 @@ try {
   console.warn('AI话术系统初始化警告:', err.message);
 }
 
+// 苏格拉底系统数据库初始化
+try {
+  const { initSocraticDB } = require('./routes/socraticInit');
+  initSocraticDB();
+} catch (err) {
+  console.warn('苏格拉底系统初始化警告:', err.message);
+}
+
 // 皮肤分析系统数据库初始化
 try {
   require('../migrations/004_init_skin_analysis');

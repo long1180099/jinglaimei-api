@@ -618,7 +618,7 @@ function generateRecommendation(userId, recentSnapshots) {
 
   // 推荐一个针对弱项的场景
   const scenarios = db.prepare(
-    'SELECT id, name, category FROM socratic_scenarios WHERE is_active = 1 ORDER BY RANDOM() LIMIT 3'
+    'SELECT id, name, category FROM socratic_scenarios WHERE status = 1 ORDER BY RANDOM() LIMIT 3'
   ).all();
 
   return {

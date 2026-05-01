@@ -2,9 +2,10 @@
 const api = require('../../utils/api');
 const BASE_URL = api.BASE_URL.replace(/\/api\/?$/, '');
 
-// 获取当前登录用户ID（兼容 userInfo.id 和 userId）
+// 获取当前登录用户ID（兼容 userInfo.id 和 userId，规范化防浮点字符串）
 function getUserId() {
-  return wx.getStorageSync('userId') || (wx.getStorageSync('userInfo') || {}).id;
+  var uid = wx.getStorageSync('userId') || (wx.getStorageSync('userInfo') || {}).id;
+  return uid ? String(Number(uid)) : '';
 }
 
 Page({

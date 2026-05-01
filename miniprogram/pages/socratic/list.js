@@ -328,6 +328,33 @@ Page({
     wx.navigateTo({ url: '/pages/socratic/history' });
   },
 
+  goRecommendedChat(e) {
+    var scenarioId = e.currentTarget.dataset.id;
+    if (!scenarioId) {
+      wx.showToast({ title: '暂无推荐场景', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/socratic/chat?scenario_id=' + scenarioId
+    });
+  },
+
+  goPathTraining(e) {
+    var pathItem = e.currentTarget.dataset.path;
+    if (!pathItem || !pathItem.scenarios) {
+      wx.showToast({ title: '学习路径数据加载中', icon: 'none' });
+      return;
+    }
+    var firstScenario = pathItem.scenarios[0];
+    if (firstScenario) {
+      wx.navigateTo({
+        url: '/pages/socratic/chat?scenario_id=' + firstScenario.scenario_id
+      });
+    } else {
+      wx.showToast({ title: '暂无训练场景', icon: 'none' });
+    }
+  },
+
   goAchievementList() {
     wx.showToast({ title: '成就详情开发中...', icon: 'none' });
   },

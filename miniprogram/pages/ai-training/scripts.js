@@ -25,8 +25,10 @@ Page({
   },
 
   loadScripts() {
+    var token = wx.getStorageSync('token') || '';
     wx.request({
       url: `${BASE_URL}/api/ai-training/scripts`,
+      header: { 'Authorization': 'Bearer ' + token },
       success: (res) => {
         if (res.data.code === 0) {
           this.setData({ scripts: res.data.data, filteredScripts: res.data.data });

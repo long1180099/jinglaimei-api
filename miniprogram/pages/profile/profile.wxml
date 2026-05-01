@@ -151,6 +151,12 @@
     <view class="logout-btn" bindtap="doLogout">退出登录</view>
   </view>
 
+  <!-- 底部备案信息 -->
+  <view class="icp-footer">
+    <text>静莱美 © 2026 版权所有</text>
+    <text>鲁ICP备2026019556号-1X</text>
+  </view>
+
   <!-- 底部安全距 -->
   <view style="height: calc(env(safe-area-inset-bottom) + 40rpx);"></view>
 </view>
