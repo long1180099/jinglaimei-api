@@ -14,6 +14,9 @@ COPY database-server/ ./
 # 删除可能被复制的数据库文件（使用持久化存储中的数据）
 RUN rm -f /app/data/jinglaimei.db /app/data/jinglaimei.db-shm /app/data/jinglaimei.db-wal
 
+# 复制种子数据库（数据库为空时自动初始化）
+RUN if [ -f /app/jinglaimei.db.migrate ]; then cp /app/jinglaimei.db.migrate /app/data/jinglaimei.db.preseed; fi
+
 # 创建数据目录并设置权限（关键！）
 RUN mkdir -p /app/data/uploads/ebooks && chmod -R 777 /app/data
 
