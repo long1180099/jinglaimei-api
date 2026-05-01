@@ -1,149 +1,535 @@
 /* 学习积分页面样式 */
+
 .page {
-  min-height: 100vh;
-  background: #f5f7fa;
-  padding-bottom: 40rpx;
-}
-
-/* 顶部信息卡 */
-.points-header {
-  padding: 30rpx;
-}
-
-.points-card {
-  background: linear-gradient(135deg, #e94560, #c23a51);
-  border-radius: 24rpx;
-  padding: 50rpx 40rpx;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #fff;
-  box-shadow: 0 8rpx 32rpx rgba(233, 69, 96, 0.3);
-}
-
-.points-main {
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  background: #f5f6fa;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.points-num {
-  font-size: 72rpx;
-  font-weight: bold;
-  line-height: 1.1;
+/* ========== 加载状态 ========== */
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
 }
 
-.points-label {
-  font-size: 26rpx;
-  opacity: 0.85;
-  margin-top: 4rpx;
+.loading-spinner {
+  width: 56rpx;
+  height: 56rpx;
+  border: 4rpx solid #eee;
+  border-top-color: #e94560;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
-.level-badge {
-  text-align: right;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 16rpx;
-  padding: 16rpx 28rpx;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.level-text {
-  font-size: 36rpx;
-  font-weight: bold;
-  display: block;
-}
-
-.level-name {
-  font-size: 22rpx;
-  opacity: 0.85;
-  margin-top: 2rpx;
-  display: block;
-}
-
-.points-desc {
-  text-align: center;
-  color: #999;
+.loading-text {
   font-size: 24rpx;
+  color: #999;
   margin-top: 20rpx;
 }
 
-/* 区块 */
-.section {
-  margin: 0 30rpx 24rpx;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 30rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-}
-
-.section-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 24rpx;
+/* ========== 顶部积分卡片 ========== */
+.header-card {
   position: relative;
-  padding-left: 16rpx;
+  overflow: hidden;
+  margin-bottom: 24rpx;
 }
 
-.section-title::before {
+.header-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(160deg, #e94560 0%, #c62d47 50%, #a82338 100%);
+}
+
+.header-bg::after {
   content: '';
   position: absolute;
-  left: 0;
-  top: 4rpx;
-  bottom: 4rpx;
-  width: 6rpx;
-  background: #e94560;
-  border-radius: 3rpx;
+  width: 300rpx;
+  height: 300rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  top: -100rpx;
+  right: -60rpx;
 }
 
-/* 规则列表 */
-.rule-list {
-  padding: 0;
+.header-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 32rpx 40rpx;
 }
 
-.rule-item {
+.level-badge {
   display: flex;
   align-items: center;
-  padding: 18rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
+  background: rgba(255,255,255,0.18);
+  border-radius: 30rpx;
+  padding: 8rpx 24rpx;
+  margin-bottom: 20rpx;
+  backdrop-filter: blur(8px);
 }
 
-.rule-item:last-child {
-  border-bottom: none;
+.level-icon {
+  font-size: 28rpx;
+  margin-right: 8rpx;
 }
 
-.rule-icon {
-  font-size: 36rpx;
-  margin-right: 20rpx;
-  width: 48rpx;
-  text-align: center;
+.level-text {
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 500;
 }
 
-.rule-text {
-  font-size: 27rpx;
-  color: #555;
+.total-points {
+  font-size: 72rpx;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
 }
 
-/* 等级进度 */
-.level-progress {
-  padding: 10rpx 0;
+.total-label {
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.6);
+  margin-top: 8rpx;
+  margin-bottom: 24rpx;
+}
+
+.progress-wrap {
+  width: 100%;
+  max-width: 500rpx;
 }
 
 .progress-bar {
-  height: 20rpx;
-  background: #eee;
-  border-radius: 10rpx;
+  height: 14rpx;
+  background: rgba(255,255,255,0.2);
+  border-radius: 7rpx;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #e94560, #ff6b81);
-  border-radius: 10rpx;
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, #ffc53d, #ffec3d);
+  border-radius: 7rpx;
+  transition: width 0.5s ease;
 }
 
-.progress-info {
-  text-align: right;
+.progress-hint {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.5);
+  margin-top: 10rpx;
+  display: block;
+  text-align: center;
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 32rpx;
+  background: rgba(255,255,255,0.1);
+  border-radius: 16rpx;
+  padding: 20rpx 0;
+  width: 100%;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-num {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #fff;
+}
+
+.stat-label {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.5);
+  margin-top: 4rpx;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 40rpx;
+  background: rgba(255,255,255,0.15);
+}
+
+/* ========== Tab 切换 ========== */
+.tab-bar {
+  display: flex;
+  margin: 0 24rpx 20rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 6rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 28rpx;
+  color: #999;
+  font-weight: 500;
+  border-radius: 12rpx;
+  transition: all 0.25s ease;
+}
+
+.tab-item.active {
+  background: #e94560;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ========== 内容区域 ========== */
+.section {
+  margin: 0 24rpx 20rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+/* ========== 积分明细列表 ========== */
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-bottom: 20rpx;
+}
+
+.detail-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.detail-icon-box {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 18rpx;
+  flex-shrink: 0;
+  font-size: 32rpx;
+}
+
+.detail-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.detail-desc {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+}
+
+.detail-points {
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+/* ========== 积分规则 ========== */
+.rules-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.rules-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.rule-item {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.rule-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rule-text {
+  font-size: 25rpx;
+  color: #555d66;
+  line-height: 1.5;
+}
+
+.rule-pts {
+  font-weight: 700;
+  color: #e94560;
+}
+
+/* ========== 学习动态 ========== */
+.activity-section {
+  margin-bottom: 20rpx;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 24rpx;
+  border-bottom: 1rpx solid #f7f8fa;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-type {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #1a1a2e;
+}
+
+.activity-date {
+  font-size: 21rpx;
+  color: #9ca3af;
+  margin-top: 2rpx;
+}
+
+.activity-count {
+  font-size: 24rpx;
+  color: #e94560;
+  font-weight: 600;
+}
+
+/* ========== 排行榜 ========== */
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 40rpx 24rpx 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.podium-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 12rpx;
+}
+
+.podium-1 { order: 2; }
+.podium-2 { order: 1; margin-bottom: 20rpx; }
+.podium-3 { order: 3; margin-bottom: 20rpx; }
+
+.podium-crown {
+  font-size: 36rpx;
+  margin-bottom: 8rpx;
+}
+
+.podium-avatar-wrap {
+  position: relative;
+  margin-bottom: 10rpx;
+}
+
+.podium-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  border: 3rpx solid #eee;
+}
+
+.podium-avatar-lg {
+  width: 100rpx;
+  height: 100rpx;
+  border-color: #ffc53d;
+  box-shadow: 0 4rpx 16rpx rgba(255,197,61,0.3);
+}
+
+.podium-medal {
+  position: absolute;
+  bottom: -6rpx;
+  right: -6rpx;
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18rpx;
+  font-weight: 800;
+  color: #fff;
+}
+
+.medal-1 { background: linear-gradient(135deg, #ffc53d, #faad14); }
+.medal-2 { background: linear-gradient(135deg, #d9d9d9, #bfbfbf); }
+.medal-3 { background: linear-gradient(135deg, #d48806, #ad6800); }
+
+.podium-name {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  max-width: 120rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podium-score {
+  font-size: 22rpx;
+  color: #e94560;
+  font-weight: 700;
+  margin-top: 4rpx;
+}
+
+/* 排行列表（4名及以后） */
+.rank-list {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f7f8fa;
+}
+
+.rank-item:last-child {
+  border-bottom: none;
+}
+
+.rank-num {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #999;
+  width: 48rpx;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.rank-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.rank-info {
+  flex: 1;
+}
+
+.rank-name {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #1a1a2e;
+}
+
+.rank-score {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #e94560;
+}
+
+/* ========== 空状态 ========== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.empty-icon {
+  font-size: 64rpx;
+  margin-bottom: 16rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
+  font-weight: 500;
+}
+
+.empty-hint {
+  font-size: 22rpx;
+  color: #c0c0c0;
+  margin-top: 8rpx;
+}
+
+.ranking-loading {
+  text-align: center;
+  padding: 60rpx;
   font-size: 24rpx;
   color: #999;
-  margin-top: 12rpx;
 }

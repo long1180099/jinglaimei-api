@@ -437,7 +437,8 @@ const poster = {
     return request('/mp/poster/generate', 'POST', params);
   },
   randomGenerate(style) {
-    return request('/mp/poster/random', 'POST', {}, false, false, style ? '?style=' + style : '');
+    var url = '/mp/poster/random' + (style ? '?style=' + style : '');
+    return request(url, 'POST', {}, false, false);
   }
 };
 

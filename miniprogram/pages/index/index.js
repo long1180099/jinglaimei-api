@@ -187,7 +187,7 @@ Page({
 
     // 加载业绩排行榜（公开接口，无需登录）
     api.team.getPublicRanking(8).then(function(rankRes) {
-      var rankData = rankData || (rankRes.list || []);
+      var rankData = rankRes.list || [];
       if (!Array.isArray(rankData)) { rankData = []; }
       var list = rankData.map(function(r, idx) {
         return {

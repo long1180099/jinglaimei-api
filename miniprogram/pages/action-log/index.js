@@ -160,7 +160,6 @@ Page({
       selectedDate: today,
       currentYear: year,
       currentMonth: month,
-      currentMonth: year + '-' + String(month).padStart(2, '0'),
       trackingMonth: year + '-' + String(month).padStart(2, '0'),
       motivationText: MOTIVATIONS[0].text,
       motivationColor: MOTIVATIONS[0].color
@@ -685,13 +684,6 @@ Page({
     }).catch(function () { wx.showToast({ title: '保存失败', icon: 'none' }); });
   },
 
-  onProgressChange: function (e) {
-    var id = e.currentTarget.dataset.id; var progress = parseInt(e.detail.value);
-    var goals = this.data.annualGoals;
-    for (var i = 0; i < goals.length; i++) { if (goals[i].id === id) { goals[i].progress = progress; break; } }
-    this.setData({ annualGoals: goals }); api.actionLog.updateGoal(id, { progress: progress });
-  },
-
   deleteGoal: function (e) {
     var that = this; var id = e.currentTarget.dataset.id;
     wx.showModal({ title: '确认删除', content: '确定删除？', success: function (res) {
@@ -891,7 +883,7 @@ Page({
     // 重算分组统计
     this.recalcAnnualStats(goals);
     // 异步保存到后端
-    api.actionLog.updateGoal(id, { progress: progress });
+    api.actionLog.updateGoal(id, { progress: progress }).catch(function() {});
   },
 
   // 重算年度目标统计

@@ -302,7 +302,7 @@ Page({
   // 跳转同系列集
   goToEpisode(e) {
     var id = e.currentTarget.dataset.id;
-    if (id == that.data.videoId) return;
+    if (id == this.data.videoId) return;
     this.saveProgress();
     wx.redirectTo({ url: '/pages/videos/player?id=' + id });
   },

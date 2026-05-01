@@ -1,53 +1,177 @@
 <!-- 学习积分页面 -->
 <view class="page">
-  <!-- 顶部信息卡 -->
-  <view class="points-header">
-    <view class="points-card">
-      <view class="points-main">
-        <text class="points-num">{{points}}</text>
-        <text class="points-label">学习积分</text>
-      </view>
-      <view class="level-badge">
-        <text class="level-text">Lv.{{level}}</text>
-        <text class="level-name">{{levelName}}</text>
-      </view>
-    </view>
-    <view class="points-desc">完成课程、参与互动即可获得学习积分</view>
+
+  <!-- 加载中 -->
+  <view class="loading-wrap" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
   </view>
 
-  <!-- 积分说明 -->
-  <view class="section">
-    <view class="section-title">积分规则</view>
-    <view class="rule-list">
-      <view class="rule-item">
-        <text class="rule-icon">📖</text>
-        <text class="rule-text">完成课程学习 +10积分</text>
-      </view>
-      <view class="rule-item">
-        <text class="rule-icon">✍️</text>
-        <text class="rule-text">通过课程考核 +20积分</text>
-      </view>
-      <view class="rule-item">
-        <text class="rule-icon">💬</text>
-        <text class="rule-text">参与AI对话练习 +5积分/次</text>
-      </view>
-      <view class="rule-item">
-        <text class="rule-icon">🏆</text>
-        <text class="rule-text">完成每日任务 +15积分</text>
-      </view>
-    </view>
-  </view>
+  <block wx:else>
 
-  <!-- 等级进度 -->
-  <view class="section">
-    <view class="section-title">等级进度</view>
-    <view class="level-progress">
-      <view class="progress-bar">
-        <view class="progress-fill" style="width: {{Math.min(points / 100 * 100, 100)}}%"></view>
-      </view>
-      <view class="progress-info">
-        <text>{{points}} / {{(Math.floor(points/100)+1)*100}} 升级</text>
+    <!-- 顶部积分卡片 -->
+    <view class="header-card">
+      <view class="header-bg"></view>
+      <view class="header-content">
+        <view class="level-badge">
+          <text class="level-icon">{{levelIcon}}</text>
+          <text class="level-text">{{level}}</text>
+        </view>
+        <text class="total-points">{{totalPoints}}</text>
+        <text class="total-label">学习积分</text>
+        <view class="progress-wrap">
+          <view class="progress-bar">
+            <view class="progress-fill" style="width: {{progressPercent}}%"></view>
+          </view>
+          <text class="progress-hint">
+            {{nextLevelPoints ? '距下一等级还需 ' + (nextLevelPoints - totalPoints) + ' 积分' : '已达到最高等级'}}
+          </text>
+        </view>
+        <view class="stats-row">
+          <view class="stat-item">
+            <text class="stat-num">{{studyDays}}</text>
+            <text class="stat-label">学习天数</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-num">{{details.length > 0 ? details[0].count + details[1].count : 0}}</text>
+            <text class="stat-label">完成课程</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-num">{{details.length > 2 ? details[2].count : 0}}</text>
+            <text class="stat-label">日志记录</text>
+          </view>
+        </view>
       </view>
     </view>
-  </view>
+
+    <!-- Tab 切换 -->
+    <view class="tab-bar">
+      <view class="tab-item {{activeTab === 'overview' ? 'active' : ''}}" data-tab="overview" bindtap="switchTab">
+        <text>积分明细</text>
+      </view>
+      <view class="tab-item {{activeTab === 'ranking' ? 'active' : ''}}" data-tab="ranking" bindtap="switchTab">
+        <text>学习排行</text>
+      </view>
+    </view>
+
+    <!-- 积分明细 -->
+    <view class="section" wx:if="{{activeTab === 'overview'}}">
+      <view class="section-title">积分来源</view>
+      <view class="detail-list">
+        <view class="detail-card" wx:for="{{details}}" wx:key="type">
+          <view class="detail-icon-box" style="background: {{index === 0 ? 'rgba(233,69,96,0.1)' : index === 1 ? 'rgba(114,46,209,0.1)' : index === 2 ? 'rgba(82,196,26,0.1)' : 'rgba(250,140,22,0.1)'}}">
+            <text>{{item.icon}}</text>
+          </view>
+          <view class="detail-info">
+            <text class="detail-name">{{item.type}}</text>
+            <text class="detail-desc">已{{item.type === '视频学习' ? '完成' : item.type === '电子书阅读' ? '阅读' : item.type === '行动日志' ? '记录' : '打卡'}} {{item.count}} {{item.unit}}</text>
+          </view>
+          <text class="detail-points" style="color: {{index === 0 ? '#e94560' : index === 1 ? '#722ed1' : index === 2 ? '#52c41a' : '#fa8c16'}}">+{{item.points}}</text>
+        </view>
+      </view>
+
+      <!-- 积分规则说明 -->
+      <view class="rules-card">
+        <text class="rules-title">积分规则</text>
+        <view class="rules-list">
+          <view class="rule-item">
+            <view class="rule-dot" style="background: #e94560;"></view>
+            <text class="rule-text">每完成一门视频课程（进度≥80%）得 <text class="rule-pts">10</text> 积分</text>
+          </view>
+          <view class="rule-item">
+            <view class="rule-dot" style="background: #722ed1;"></view>
+            <text class="rule-text">每阅读一本电子书（进度≥50%）得 <text class="rule-pts">5</text> 积分</text>
+          </view>
+          <view class="rule-item">
+            <view class="rule-dot" style="background: #52c41a;"></view>
+            <text class="rule-text">每记录一篇行动日志得 <text class="rule-pts">3</text> 积分</text>
+          </view>
+          <view class="rule-item">
+            <view class="rule-dot" style="background: #fa8c16;"></view>
+            <text class="rule-text">每次承诺打卡得 <text class="rule-pts">2</text> 积分</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 最近学习动态 -->
+      <view class="activity-section" wx:if="{{recentActivity.length > 0}}">
+        <text class="section-title">最近学习动态</text>
+        <view class="activity-list">
+          <view class="activity-item" wx:for="{{recentActivity}}" wx:key="index">
+            <view class="activity-dot" style="background: {{item.type === 'course' ? '#e94560' : '#52c41a'}};"></view>
+            <view class="activity-content">
+              <text class="activity-type">{{item.typeLabel}}</text>
+              <text class="activity-date">{{item.dateStr}}</text>
+            </view>
+            <text class="activity-count">{{item.count}}次</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 排行榜 -->
+    <view class="section" wx:if="{{activeTab === 'ranking'}}">
+      <view class="ranking-loading" wx:if="{{rankingLoading}}">
+        <text>加载排行数据...</text>
+      </view>
+      <view wx:elif="{{ranking.length === 0}}">
+        <view class="empty-state">
+          <text class="empty-icon">📊</text>
+          <text class="empty-text">暂无排行数据</text>
+          <text class="empty-hint">开始学习即可上榜</text>
+        </view>
+      </view>
+      <view wx:else>
+        <!-- 前三名 -->
+        <view class="podium">
+          <!-- 第二名 -->
+          <view class="podium-item podium-2" wx:if="{{ranking.length >= 2}}">
+            <view class="podium-avatar-wrap">
+              <image class="podium-avatar" src="{{ranking[1].avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+              <view class="podium-medal medal-2">2</view>
+            </view>
+            <text class="podium-name">{{ranking[1].nickname}}</text>
+            <text class="podium-score">{{ranking[1].total_points}}分</text>
+          </view>
+          <!-- 第一名 -->
+          <view class="podium-item podium-1" wx:if="{{ranking.length >= 1}}">
+            <view class="podium-crown">👑</view>
+            <view class="podium-avatar-wrap">
+              <image class="podium-avatar podium-avatar-lg" src="{{ranking[0].avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+              <view class="podium-medal medal-1">1</view>
+            </view>
+            <text class="podium-name">{{ranking[0].nickname}}</text>
+            <text class="podium-score">{{ranking[0].total_points}}分</text>
+          </view>
+          <!-- 第三名 -->
+          <view class="podium-item podium-3" wx:if="{{ranking.length >= 3}}">
+            <view class="podium-avatar-wrap">
+              <image class="podium-avatar" src="{{ranking[2].avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+              <view class="podium-medal medal-3">3</view>
+            </view>
+            <text class="podium-name">{{ranking[2].nickname}}</text>
+            <text class="podium-score">{{ranking[2].total_points}}分</text>
+          </view>
+        </view>
+
+        <!-- 4名及以后列表 -->
+        <view class="rank-list">
+          <view class="rank-item" wx:for="{{ranking}}" wx:key="id" wx:if="{{index >= 3}}">
+            <text class="rank-num">{{index + 1}}</text>
+            <image class="rank-avatar" src="{{item.avatar_url || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+            <view class="rank-info">
+              <text class="rank-name">{{item.nickname}}</text>
+            </view>
+            <text class="rank-score">{{item.total_points}}分</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+  </block>
+
+  <!-- 安全底部 -->
+  <view style="height: calc(env(safe-area-inset-bottom) + 30rpx);"></view>
 </view>
