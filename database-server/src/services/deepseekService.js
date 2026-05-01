@@ -1,29 +1,31 @@
 /**
- * DeepSeek AI 服务层
- * 负责与 DeepSeek API 通信，为话术通关系统提供 AI 对话和评分能力
+ * AI 服务层 — 腾讯混元大模型
+ * 负责与混元 API 通信，为话术通关系统提供 AI 对话和评分能力
  * 同时支持通义千问VL视觉模型（用于皮肤分析等图片场景）
+ *
+ * 混元 API 兼容 OpenAI 接口规范，支持 temperature/max_tokens/stream 等参数
+ * API 文档：https://cloud.tencent.com/document/product/1729/111007
+ * 算法备案号：网信算备440305295988701230071号
  */
 const https = require('https');
 
-const API_KEY = process.env.DEEPSEEK_API_KEY || '';
-const API_BASE = 'api.deepseek.com';
-const MODEL = 'deepseek-chat';
-
-// 通义千问 VL 配置
-const QWEN_API_KEY = process.env.QWEN_API_KEY || 'sk-7dd97fec3aef4c62a866e7294e167646';
-const QWEN_BASE = 'dashscope.aliyuncs.com';
+// 腾讯混元配置
+const API_KEY = process.env.HUNYUAN_API_KEY || '';
+const API_BASE = 'api.hunyuan.cloud.tencent.com';
+const API_PATH = '/v1/chat/completions';
+const MODEL = 'hunyuan-turbos-latest';
 
 /**
- * 通用 DeepSeek API 调用
+ * 通用 AI API 调用（腾讯混元，OpenAI 兼容接口）
  * 三重超时保障: 1)https原生timeout 2)Promise.race硬性超时 3)连接层socket超时
  */
 function callDeepSeek(messages, options = {}) {
   if (!API_KEY) {
-    return Promise.reject(new Error('DeepSeek API Key 未配置'));
+    return Promise.reject(new Error('混元 API Key 未配置'));
   }
 
   const TIMEOUT_MS = options.timeout || 25000; // 默认25秒
-  const MODEL_NAME = options.model || MODEL;    // 支持覆盖模型(如 deepseek-vl)
+  const MODEL_NAME = options.model || MODEL;    // 支持覆盖模型(如 hunyuan-vision)
 
   // 内部实际调用函数
   function doRequest() {
@@ -36,11 +38,11 @@ function callDeepSeek(messages, options = {}) {
         stream: false,
       });
 
-      console.log(`[DeepSeek] 开始请求... 消息数:${messages.length} body长度:${body.length}`);
+      console.log(`[混元AI] 开始请求... 消息数:${messages.length} body长度:${body.length}`);
 
       const reqOptions = {
         hostname: API_BASE,
-        path: '/chat/completions',
+        path: API_PATH,
         method: 'POST',
         timeout: TIMEOUT_MS,
         headers: {
@@ -54,46 +56,46 @@ function callDeepSeek(messages, options = {}) {
 
       const req = https.request(reqOptions, (res) => {
         const elapsed = Date.now() - startTime;
-        console.log(`[DeepSeek] 收到响应! 状态码:${res.statusCode} 耗时:${elapsed}ms`);
-        
+        console.log(`[混元AI] 收到响应! 状态码:${res.statusCode} 耗时:${elapsed}ms`);
+
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
           try {
             const parsed = JSON.parse(data);
             if (parsed.error) {
-              console.error('[DeepSeek] API返回错误:', parsed.error.message);
-              reject(new Error(parsed.error.message || 'DeepSeek API 错误'));
+              console.error('[混元AI] API返回错误:', parsed.error.message);
+              reject(new Error(parsed.error.message || '混元 API 错误'));
             } else {
               const content = parsed.choices?.[0]?.message?.content || '';
-              console.log(`[DeepSeek] 成功! 回复长度:${content.length} 总耗时:${Date.now()-startTime}ms`);
+              console.log(`[混元AI] 成功! 回复长度:${content.length} 总耗时:${Date.now()-startTime}ms`);
               resolve(content);
             }
           } catch (e) {
-            console.error('[DeepSeek] 解析响应失败:', e.message, '原始数据前200字:', data.substring(0, 200));
-            reject(new Error('解析 DeepSeek 响应失败: ' + e.message));
+            console.error('[混元AI] 解析响应失败:', e.message, '原始数据前200字:', data.substring(0, 200));
+            reject(new Error('解析混元响应失败: ' + e.message));
           }
         });
       });
 
       // 保障1: 原生超时
       req.on('timeout', () => {
-        console.warn(`[DeepSeek] ⚠️ HTTPS请求超时(${TIMEOUT_MS}ms), destroy连接`);
+        console.warn(`[混元AI] ⚠️ HTTPS请求超时(${TIMEOUT_MS}ms), destroy连接`);
         try { req.destroy(); } catch(e) {}
-        reject(new Error('DeepSeek API 请求超时'));
+        reject(new Error('混元 API 请求超时'));
       });
 
       // 保障2: socket层面超时（防止DNS卡死）
       req.on('socket', (socket) => {
         socket.setTimeout(TIMEOUT_MS + 5000, () => {
-          console.warn(`[DeepSeek] ⚠️ Socket级别超时, 强制销毁`);
+          console.warn(`[混元AI] ⚠️ Socket级别超时, 强制销毁`);
           try { req.destroy(); } catch(e) {}
           reject(new Error('Socket 连接超时'));
         });
       });
 
       req.on('error', (err) => {
-        console.error('[DeepSeek] ❌ 请求错误:', err.message);
+        console.error('[混元AI] ❌ 请求错误:', err.message);
         reject(err);
       });
 
@@ -104,29 +106,29 @@ function callDeepSeek(messages, options = {}) {
 
   // 保障3: Promise.race 硬性超时兜底
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`DeepSeek 超时(${TIMEOUT_MS}ms), 触发降级`)), TIMEOUT_MS + 5000)
+    setTimeout(() => reject(new Error(`混元 超时(${TIMEOUT_MS}ms), 触发降级`)), TIMEOUT_MS + 5000)
   );
 
   return Promise.race([doRequest(), timeoutPromise]);
 }
 
-// ==================== 通义千问 VL（视觉模型） ====================
+// ==================== 腾讯混元 Vision（视觉模型） ====================
 
 /**
- * 调用通义千问 VL 模型 — 支持图片输入
- * 完全兼容 OpenAI 接口规范，支持多模态（text + image_url）
+ * 调用腾讯混元 Vision 模型 — 支持图片输入
+ * 兼容 OpenAI 接口规范，支持多模态（text + image_url）
  *
  * @param {Array} messages - 对话消息，content 支持数组格式 [{type:'text', text:'...'}, {type:'image_url', image_url:{url:'data:...'}}]
  * @param {Object} options - 可选参数 { temperature, max_tokens, model, timeout }
  * @returns {Promise<string>} AI 回复文本
  */
 function callQwenVL(messages, options = {}) {
-  if (!QWEN_API_KEY) {
-    return Promise.reject(new Error('通义千问 API Key 未配置'));
+  if (!API_KEY) {
+    return Promise.reject(new Error('混元 API Key 未配置'));
   }
 
   const TIMEOUT_MS = options.timeout || 60000; // 图片分析默认60秒
-  const MODEL_NAME = options.model || 'qwen-vl-max'; // 默认用最强版
+  const MODEL_NAME = options.model || 'hunyuan-vision'; // 混元视觉模型
 
   function doRequest() {
     return new Promise((resolve, reject) => {
@@ -138,16 +140,16 @@ function callQwenVL(messages, options = {}) {
         stream: false,
       });
 
-      console.log(`[通义VL] 开始请求... 模型:${MODEL_NAME} 消息数:${messages.length} body长度:${body.length}`);
+      console.log(`[混元Vision] 开始请求... 模型:${MODEL_NAME} 消息数:${messages.length} body长度:${body.length}`);
 
       const reqOptions = {
-        hostname: QWEN_BASE,
-        path: '/compatible-mode/v1/chat/completions',
+        hostname: API_BASE,
+        path: API_PATH,
         method: 'POST',
         timeout: TIMEOUT_MS,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${QWEN_API_KEY}`,
+          'Authorization': `Bearer ${API_KEY}`,
           'Accept': 'application/json',
         },
       };
@@ -156,7 +158,7 @@ function callQwenVL(messages, options = {}) {
 
       const req = https.request(reqOptions, (res) => {
         const elapsed = Date.now() - startTime;
-        console.log(`[通义VL] 收到响应! 状态码:${res.statusCode} 耗时:${elapsed}ms`);
+        console.log(`[混元Vision] 收到响应! 状态码:${res.statusCode} 耗时:${elapsed}ms`);
 
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
@@ -164,36 +166,36 @@ function callQwenVL(messages, options = {}) {
           try {
             const parsed = JSON.parse(data);
             if (parsed.error) {
-              console.error('[通义VL] API返回错误:', JSON.stringify(parsed.error));
-              reject(new Error(parsed.error.message || '通义VL API 错误'));
+              console.error('[混元Vision] API返回错误:', JSON.stringify(parsed.error));
+              reject(new Error(parsed.error.message || '混元Vision API 错误'));
             } else {
               const content = parsed.choices?.[0]?.message?.content || '';
-              console.log(`[通义VL] ✅ 成功! 回复长度:${content.length} 总耗时:${Date.now()-startTime}ms`);
+              console.log(`[混元Vision] ✅ 成功! 回复长度:${content.length} 总耗时:${Date.now()-startTime}ms`);
               resolve(content);
             }
           } catch (e) {
-            console.error('[通义VL] 解析响应失败:', e.message, '原始数据前300字:', data.substring(0, 300));
-            reject(new Error('解析通义VL响应失败: ' + e.message));
+            console.error('[混元Vision] 解析响应失败:', e.message, '原始数据前300字:', data.substring(0, 300));
+            reject(new Error('解析混元Vision响应失败: ' + e.message));
           }
         });
       });
 
       req.on('timeout', () => {
-        console.warn(`[通义VL] ⚠️ 请求超时(${TIMEOUT_MS}ms), destroy连接`);
+        console.warn(`[混元Vision] ⚠️ 请求超时(${TIMEOUT_MS}ms), destroy连接`);
         try { req.destroy(); } catch(e) {}
-        reject(new Error('通义VL API 请求超时'));
+        reject(new Error('混元Vision API 请求超时'));
       });
 
       req.on('socket', (socket) => {
         socket.setTimeout(TIMEOUT_MS + 10000, () => {
-          console.warn('[通义VL] ⚠️ Socket级别超时, 强制销毁');
+          console.warn('[混元Vision] ⚠️ Socket级别超时, 强制销毁');
           try { req.destroy(); } catch(e) {}
           reject(new Error('Socket 连接超时'));
         });
       });
 
       req.on('error', (err) => {
-        console.error('[通义VL] ❌ 请求错误:', err.message);
+        console.error('[混元Vision] ❌ 请求错误:', err.message);
         reject(err);
       });
 
@@ -204,7 +206,7 @@ function callQwenVL(messages, options = {}) {
 
   // 硬性超时兜底
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`通义VL 超时(${TIMEOUT_MS}ms)`)), TIMEOUT_MS + 10000)
+    setTimeout(() => reject(new Error(`混元Vision 超时(${TIMEOUT_MS}ms)`)), TIMEOUT_MS + 10000)
   );
 
   return Promise.race([doRequest(), timeoutPromise]);
@@ -366,7 +368,7 @@ async function generateCoachReply(personality, scenarioName, personalityName, ti
     });
     return { reply: reply.trim(), hint: null };
   } catch (err) {
-    console.error('DeepSeek 对话调用失败:', err.message);
+    console.error('AI 对话调用失败:', err.message);
     // 降级到模拟回复
     return null;
   }
@@ -462,7 +464,7 @@ ${dialogText}
       feedback: evaluation.feedback || { strengths: [], improvements: [], summary: '评估完成' },
     };
   } catch (err) {
-    console.error('DeepSeek 评估调用失败:', err.message);
+    console.error('AI 评估调用失败:', err.message);
     // 降级到模拟评分
     return null;
   }
@@ -617,7 +619,7 @@ async function generateSocraticReply(personality, scenarioInfo, history, userMes
       hint: null, // hint将在路由层根据questionType生成
     };
   } catch (err) {
-    console.error('DeepSeek 苏格拉底对话调用失败:', err.message);
+    console.error('AI 苏格拉底对话调用失败:', err.message);
     return null; // 返回null让路由层降级到规则引擎
   }
 }
@@ -667,7 +669,7 @@ async function detectQuestionTypeAI(userMessage) {
       confidence: result.confidence || 0.7,
     };
   } catch (err) {
-    console.error('DeepSeek 问题类型识别失败:', err.message);
+    console.error('AI 问题类型识别失败:', err.message);
     return defaultType;
   }
 }
@@ -748,7 +750,7 @@ ${userMessageText}
       feedback: evaluation.feedback || { strengths: [], improvements: [], summary: '评估完成' },
     };
   } catch (err) {
-    console.error('DeepSeek 苏格拉底评分失败:', err.message);
+    console.error('AI 苏格拉底评分失败:', err.message);
     return null;
   }
 }
@@ -779,7 +781,7 @@ async function generateSocraticOpening(personality, scenarioInfo) {
     });
     return opening.trim();
   } catch (err) {
-    console.error('DeepSeek 开场白生成失败:', err.message);
+    console.error('AI 开场白生成失败:', err.message);
     // 降级到硬编码开场白
     const fallbacks = {
       red: '你好呀！我听朋友说你们这边不错，就过来啦~你是？',
@@ -827,7 +829,7 @@ async function generateCoachOpening(personality, scenarioInfo) {
     });
     return opening.trim();
   } catch (err) {
-    console.error('DeepSeek 教练开场白生成失败:', err.message);
+    console.error('AI 教练开场白生成失败:', err.message);
     // 降级到数据库预设或硬编码
     return scenarioInfo?.opening_line || null; // null让路由层使用默认值
   }
@@ -893,7 +895,7 @@ ${questionsText}
       is_ai_evaluated: true,
     };
   } catch (err) {
-    console.error('DeepSeek 关卡评估调用失败:', err.message);
+    console.error('AI 关卡评估调用失败:', err.message);
     return null;
   }
 }
@@ -956,7 +958,7 @@ async function generatePersonalityScript(personality, scene, keyword) {
       is_ai_generated: true,
     };
   } catch (err) {
-    console.error('DeepSeek 性格话术生成失败:', err.message);
+    console.error('AI 性格话术生成失败:', err.message);
     return null;
   }
 }
@@ -1011,7 +1013,7 @@ ${contextInfo}
 
     return parseJSON(raw);
   } catch (err) {
-    console.error('DeepSeek 性格解读失败:', err.message);
+    console.error('AI 性格解读失败:', err.message);
     return null;
   }
 }
