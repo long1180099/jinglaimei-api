@@ -1,11 +1,10 @@
 /**
- * AI 服务层 — 腾讯混元大模型
- * 负责与混元 API 通信，为话术通关系统提供 AI 对话和评分能力
- * 同时支持通义千问VL视觉模型（用于皮肤分析等图片场景）
+ * AI 服务层 — 腾讯混元大模型 + 通义千问VL
+ * 混元：负责话术通关系统（AI对话和评分）
+ * 通义千问VL：负责皮肤分析等图片识别场景
  *
- * 混元 API 兼容 OpenAI 接口规范，支持 temperature/max_tokens/stream 等参数
- * API 文档：https://cloud.tencent.com/document/product/1729/111007
- * 算法备案号：网信算备440305295988701230071号
+ * 混元 API 兼容 OpenAI 接口规范
+ * 通义千问VL 使用 DashScope OpenAI 兼容接口
  */
 const https = require('https');
 
@@ -112,23 +111,27 @@ function callDeepSeek(messages, options = {}) {
   return Promise.race([doRequest(), timeoutPromise]);
 }
 
-// ==================== 腾讯混元 Vision（视觉模型） ====================
+// ==================== 通义千问 VL（视觉模型，皮肤分析专用） ====================
 
 /**
- * 调用腾讯混元 Vision 模型 — 支持图片输入
- * 兼容 OpenAI 接口规范，支持多模态（text + image_url）
+ * 调用通义千问 VL 模型 — 支持图片输入
+ * 使用 DashScope OpenAI 兼容接口
+ * 文档：https://help.aliyun.com/zh/model-studio/developer-reference/vl-plus-api
  *
  * @param {Array} messages - 对话消息，content 支持数组格式 [{type:'text', text:'...'}, {type:'image_url', image_url:{url:'data:...'}}]
  * @param {Object} options - 可选参数 { temperature, max_tokens, model, timeout }
  * @returns {Promise<string>} AI 回复文本
  */
 function callQwenVL(messages, options = {}) {
-  if (!API_KEY) {
-    return Promise.reject(new Error('混元 API Key 未配置'));
+  const DASHSCOPE_KEY = process.env.DASHSCOPE_API_KEY || '';
+  if (!DASHSCOPE_KEY) {
+    return Promise.reject(new Error('通义千问 API Key 未配置'));
   }
 
   const TIMEOUT_MS = options.timeout || 60000; // 图片分析默认60秒
-  const MODEL_NAME = options.model || 'hunyuan-vision'; // 混元视觉模型
+  const MODEL_NAME = options.model || 'qwen-vl-max';
+  const API_BASE = 'dashscope.aliyuncs.com';
+  const API_PATH = '/compatible-mode/v1/chat/completions';
 
   function doRequest() {
     return new Promise((resolve, reject) => {
@@ -136,11 +139,11 @@ function callQwenVL(messages, options = {}) {
         model: MODEL_NAME,
         messages,
         temperature: options.temperature ?? 0.6,
-        max_tokens: options.max_tokens ?? 2500,
+        max_tokens: options.max_tokens ?? 3000,
         stream: false,
       });
 
-      console.log(`[混元Vision] 开始请求... 模型:${MODEL_NAME} 消息数:${messages.length} body长度:${body.length}`);
+      console.log(`[通义千问VL] 开始请求... 模型:${MODEL_NAME} 消息数:${messages.length} body长度:${body.length}`);
 
       const reqOptions = {
         hostname: API_BASE,
@@ -149,7 +152,7 @@ function callQwenVL(messages, options = {}) {
         timeout: TIMEOUT_MS,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`,
+          'Authorization': `Bearer ${DASHSCOPE_KEY}`,
           'Accept': 'application/json',
         },
       };
@@ -158,7 +161,7 @@ function callQwenVL(messages, options = {}) {
 
       const req = https.request(reqOptions, (res) => {
         const elapsed = Date.now() - startTime;
-        console.log(`[混元Vision] 收到响应! 状态码:${res.statusCode} 耗时:${elapsed}ms`);
+        console.log(`[通义千问VL] 收到响应! 状态码:${res.statusCode} 耗时:${elapsed}ms`);
 
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
@@ -166,36 +169,36 @@ function callQwenVL(messages, options = {}) {
           try {
             const parsed = JSON.parse(data);
             if (parsed.error) {
-              console.error('[混元Vision] API返回错误:', JSON.stringify(parsed.error));
-              reject(new Error(parsed.error.message || '混元Vision API 错误'));
+              console.error('[通义千问VL] API返回错误:', JSON.stringify(parsed.error));
+              reject(new Error(parsed.error.message || '通义千问VL API 错误'));
             } else {
               const content = parsed.choices?.[0]?.message?.content || '';
-              console.log(`[混元Vision] ✅ 成功! 回复长度:${content.length} 总耗时:${Date.now()-startTime}ms`);
+              console.log(`[通义千问VL] ✅ 成功! 回复长度:${content.length} 总耗时:${Date.now()-startTime}ms`);
               resolve(content);
             }
           } catch (e) {
-            console.error('[混元Vision] 解析响应失败:', e.message, '原始数据前300字:', data.substring(0, 300));
-            reject(new Error('解析混元Vision响应失败: ' + e.message));
+            console.error('[通义千问VL] 解析响应失败:', e.message, '原始数据前300字:', data.substring(0, 300));
+            reject(new Error('解析通义千问VL响应失败: ' + e.message));
           }
         });
       });
 
       req.on('timeout', () => {
-        console.warn(`[混元Vision] ⚠️ 请求超时(${TIMEOUT_MS}ms), destroy连接`);
+        console.warn(`[通义千问VL] ⚠️ 请求超时(${TIMEOUT_MS}ms), destroy连接`);
         try { req.destroy(); } catch(e) {}
-        reject(new Error('混元Vision API 请求超时'));
+        reject(new Error('通义千问VL API 请求超时'));
       });
 
       req.on('socket', (socket) => {
         socket.setTimeout(TIMEOUT_MS + 10000, () => {
-          console.warn('[混元Vision] ⚠️ Socket级别超时, 强制销毁');
+          console.warn('[通义千问VL] ⚠️ Socket级别超时, 强制销毁');
           try { req.destroy(); } catch(e) {}
           reject(new Error('Socket 连接超时'));
         });
       });
 
       req.on('error', (err) => {
-        console.error('[混元Vision] ❌ 请求错误:', err.message);
+        console.error('[通义千问VL] ❌ 请求错误:', err.message);
         reject(err);
       });
 
@@ -206,7 +209,7 @@ function callQwenVL(messages, options = {}) {
 
   // 硬性超时兜底
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`混元Vision 超时(${TIMEOUT_MS}ms)`)), TIMEOUT_MS + 10000)
+    setTimeout(() => reject(new Error(`通义千问VL 超时(${TIMEOUT_MS}ms)`)), TIMEOUT_MS + 10000)
   );
 
   return Promise.race([doRequest(), timeoutPromise]);

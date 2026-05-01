@@ -1,5 +1,5 @@
 // AI Skin Analysis Service
-// Uses 腾讯混元 Vision model for real image analysis
+// Uses 通义千问 VL (Qwen VL Max) model for real image analysis
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
@@ -61,18 +61,8 @@ function imageToBase64(imagePath) {
   }
 }
 
-// Build multimodal message — 优先使用URL方式，兼容base64
-function buildMultimodalMessage(imageData, publicImageUrl) {
-  // 优先使用公网URL（混元Vision对URL图片识别更稳定）
-  if (publicImageUrl) {
-    console.log('[SkinAnalysis] Using public URL mode: ' + publicImageUrl.substring(0, 80));
-    return [
-      { type: 'text', text: '这是一张高清正面面部照片。你现在是Visia皮肤检测仪的专业模式。' },
-      { type: 'image_url', image_url: { url: publicImageUrl } },
-      { type: 'text', text: '[60种问题全扫描指令]请严格按A-I共9组顺序逐一检查：[A色素]颜色差异/斑块/痣类；[B痘痘]毛孔/硬块/囊肿/痘坑/疤痕；[C肤质]光泽/缺水/出油/泛红/毛孔/细纹；[D炎症]泛红/血管；[E血管]红血丝/蜘蛛痣/面色；[F眼周]黑眼圈/脂肪粒/汗管瘤；[G角质]鸡皮/鳞屑/隆起；[H衰老]皱纹/下垂/浮肿/眼袋；[I脱失]白斑。目标8-15个问题，重度4-5级。禁止医疗词汇！返回JSON格式报告。' }
-    ];
-  }
-  // 降级：base64方式
+// Build multimodal message — 通义千问VL使用base64方式（对大图识别更稳定）
+function buildMultimodalMessage(imageData) {
   if (!imageData || !imageData.base64) {
     console.warn('[SkinAnalysis] No image data, skipping real analysis');
     return null;
@@ -289,11 +279,7 @@ async function analyzeSkin(options) {
       throw new Error('Image file read failed');
     }
 
-    // 构建公网URL（混元Vision通过URL识别图片更稳定）
-    const PUBLIC_URL = process.env.PUBLIC_URL || 'https://api.jinglaimei.com';
-    const publicImageUrl = imageUrl ? (PUBLIC_URL + imageUrl) : null;
-
-    const userContent = buildMultimodalMessage(imageData, publicImageUrl);
+    const userContent = buildMultimodalMessage(imageData);
     if (!userContent) {
       throw new Error('Cannot build analysis request');
     }
@@ -301,14 +287,14 @@ async function analyzeSkin(options) {
       { role: 'system', content: SKIN_ANALYSIS_SYSTEM_PROMPT },
       { role: 'user', content: userContent }
     ];
-    console.log('[SkinAnalysis] Sending to HunyuanVision... imgSize=' + imageData.base64.length + ' chars publicUrl=' + !!publicImageUrl);
+    console.log('[SkinAnalysis] Sending to QwenVL... imgSize=' + imageData.base64.length + ' chars');
     const rawResponse = await callQwenVL(messages, {
       temperature: 0.6,
       max_tokens: 3000,
-      model: 'hunyuan-vision',
+      model: 'qwen-vl-max',
       timeout: 120000,
     });
-    console.log('[SkinAnalysis] HunyuanVision response, len=' + rawResponse.length);
+    console.log('[SkinAnalysis] QwenVL response, len=' + rawResponse.length);
     console.log('[SkinAnalysis] Raw response preview: ' + rawResponse.substring(0, 500));
     const result = parseJSON(rawResponse);
     console.log('[SkinAnalysis] Parsed JSON keys:', Object.keys(result));

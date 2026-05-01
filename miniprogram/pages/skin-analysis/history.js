@@ -31,7 +31,7 @@ Page({
     this.setData({ loading: true, empty: false, page });
 
     try {
-      const res = await api.get('/mp/skin-analysis/reports?user_id=' + userInfo.id + '&page=' + page + '&pageSize=10');
+      const res = await api.request('/mp/skin-analysis/reports?user_id=' + userInfo.id + '&page=' + page + '&pageSize=10', 'GET', {}, true, true);
       const d = res.data || res;
       const list = Array.isArray(d.list) ? d.list : [];
 
