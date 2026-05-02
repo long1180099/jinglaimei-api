@@ -2,19 +2,12 @@
 // Uses 通义千问 VL (Qwen VL Max) model for real image analysis
 const fs = require('fs');
 const path = require('path');
-const Database = require('better-sqlite3');
+const { getDB } = require('../utils/db');
 const { callQwenVL, parseJSON } = require('./deepseekService');
 
-// 数据库路径（与 db.js 保持一致）
-const DB_PATH = path.join(__dirname, '../../data/jinglaimei.db');
-
-// 获取新的数据库连接（每次调用创建新连接，避免共享连接问题）
+// 获取数据库连接（复用 db.js 单例）
 function getDb() {
-  const db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-  // 明确关闭外键检查，避免 issue_id/agent_id 边界值触发外键错误
-  db.pragma('foreign_keys = OFF');
-  return db;
+  return getDB();
 }
 
 // System prompt - 严格要求返回包含 overview/cause_analysis/script 的JSON
@@ -79,8 +72,7 @@ function buildMultimodalMessage(imageData) {
 // Normalize and save analysis result
 function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
   const db = getDb();
-  try {
-    // 兼容中英文 AI 返回字段
+  // 兼容中英文 AI 返回字段
     const _ = (key, cnKey, fallback) => result[key] ?? result[cnKey] ?? fallback;
 
     const skinType = _('skin_type', '肤质类型', '未知');
@@ -249,9 +241,6 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       issues: formattedIssues,
       ...result
     };
-  } finally {
-    db.close();
-  }
 }
 
 // Fallback when AI fails
@@ -313,115 +302,87 @@ async function analyzeSkin(options) {
 // DB helper functions
 function getSkinIssues() {
   const db = getDb();
-  try {
-    return db.prepare('SELECT * FROM skin_issues WHERE status = 1 ORDER BY category, id').all() || [];
-  } finally {
-    db.close();
-  }
+  return db.prepare('SELECT * FROM skin_issues WHERE status = 1 ORDER BY category, id').all() || [];
 }
 
 function getMatchedProducts(issueId) {
   if (!issueId) return [];
   const db = getDb();
-  try {
-    return db.prepare(
-      'SELECT sp.*, p.product_name, p.retail_price, p.main_image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ? ORDER BY sp.priority DESC'
-    ).all(issueId) || [];
-  } finally {
-    db.close();
-  }
+  return db.prepare(
+    'SELECT sp.*, p.product_name, p.retail_price, p.main_image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ? ORDER BY sp.priority DESC'
+  ).all(issueId) || [];
 }
 
 function saveSkinReport(report) {
   const db = getDb();
-  try {
-    const insertReport = db.prepare(
-      `INSERT INTO skin_reports (user_id, agent_id, image_url, skin_type, skin_type_confidence, ai_overview, ai_cause_analysis, ai_script, ai_raw_response, issue_count, total_severity, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+  const insertReport = db.prepare(
+    `INSERT INTO skin_reports (user_id, agent_id, image_url, skin_type, skin_type_confidence, ai_overview, ai_cause_analysis, ai_script, ai_raw_response, issue_count, total_severity, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+  );
+  const stmtResult = insertReport.run(
+    report.userId, report.agentId, report.imageUrl || '', report.skinType || 'unknown',
+    report.skinTypeConfidence || 0,
+    report.summary || '',
+    report.causeAnalysis || '',
+    JSON.stringify(report.recommendations || []),
+    JSON.stringify(report),
+    (report.issues || []).length,
+    report.overallScore || 0,
+    'completed'
+  );
+  const reportId = stmtResult.lastInsertRowid;
+  if (report.issues && report.issues.length > 0) {
+    const insertIssue = db.prepare(
+      'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
     );
-    const stmtResult = insertReport.run(
-      report.userId, report.agentId, report.imageUrl || '', report.skinType || 'unknown',
-      report.skinTypeConfidence || 0,
-      report.summary || '',
-      report.causeAnalysis || '',
-      JSON.stringify(report.recommendations || []),
-      JSON.stringify(report),
-      (report.issues || []).length,
-      report.overallScore || 0,
-      'completed'
-    );
-    const reportId = stmtResult.lastInsertRowid;
-    if (report.issues && report.issues.length > 0) {
-      const insertIssue = db.prepare(
-        'INSERT INTO skin_report_issues (report_id, issue_id, severity, description) VALUES (?, ?, ?, ?)'
-      );
-      for (const issue of report.issues) {
-        insertIssue.run(reportId, issue.issue_id || issue.issueId, issue.severity, issue.description || '');
-      }
+    for (const issue of report.issues) {
+      insertIssue.run(reportId, issue.issue_id || issue.issueId, issue.severity, issue.description || '');
     }
-    return reportId;
-  } finally {
-    db.close();
   }
+  return reportId;
 }
 
 function getSkinReport(reportId) {
   const db = getDb();
-  try {
-    const report = db.prepare('SELECT * FROM skin_reports WHERE id = ?').get(reportId);
-    if (!report) return null;
-    report.issues = db.prepare(
-      'SELECT sr.*, COALESCE(si.name, sr.issue_name) as issue_name, COALESCE(si.category, sr.category) as category FROM skin_report_issues sr LEFT JOIN skin_issues si ON sr.issue_id = si.id WHERE sr.report_id = ?'
-    ).all(reportId) || [];
-    return report;
-  } finally {
-    db.close();
-  }
+  const report = db.prepare('SELECT * FROM skin_reports WHERE id = ?').get(reportId);
+  if (!report) return null;
+  report.issues = db.prepare(
+    'SELECT sr.*, COALESCE(si.name, sr.issue_name) as issue_name, COALESCE(si.category, sr.category) as category FROM skin_report_issues sr LEFT JOIN skin_issues si ON sr.issue_id = si.id WHERE sr.report_id = ?'
+  ).all(reportId) || [];
+  return report;
 }
 
 function getUserSkinReports(userId, page, pageSize) {
   const db = getDb();
-  try {
-    const offset = (page - 1) * pageSize;
-    const list = db.prepare(
-      'SELECT * FROM skin_reports WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
-    ).all(userId, pageSize, offset) || [];
-    const total = db.prepare(
-      'SELECT COUNT(*) as count FROM skin_reports WHERE user_id = ?'
-    ).get(userId);
-    return { list, total: total ? total.count : 0 };
-  } finally {
-    db.close();
-  }
+  const offset = (page - 1) * pageSize;
+  const list = db.prepare(
+    'SELECT * FROM skin_reports WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  ).all(userId, pageSize, offset) || [];
+  const total = db.prepare(
+    'SELECT COUNT(*) as count FROM skin_reports WHERE user_id = ?'
+  ).get(userId);
+  return { list, total: total ? total.count : 0 };
 }
 
 function getAgentSkinStats(agentId) {
   const db = getDb();
-  try {
-    const stats = db.prepare(
-      'SELECT COUNT(*) as total_reports, COUNT(DISTINCT user_id) as unique_users FROM skin_reports WHERE agent_id = ?'
-    ).get(agentId) || { total_reports: 0, unique_users: 0 };
-    const issueDist = db.prepare(
-      'SELECT si.category, COUNT(*) as count FROM skin_report_issues sri JOIN skin_reports sr ON sri.report_id = sr.id JOIN skin_issues si ON sri.issue_id = si.id WHERE sr.agent_id = ? GROUP BY si.category'
-    ).all(agentId) || [];
-    return { stats, issueDist };
-  } finally {
-    db.close();
-  }
+  const stats = db.prepare(
+    'SELECT COUNT(*) as total_reports, COUNT(DISTINCT user_id) as unique_users FROM skin_reports WHERE agent_id = ?'
+  ).get(agentId) || { total_reports: 0, unique_users: 0 };
+  const issueDist = db.prepare(
+    'SELECT si.category, COUNT(*) as count FROM skin_report_issues sri JOIN skin_reports sr ON sri.report_id = sr.id JOIN skin_issues si ON sri.issue_id = si.id WHERE sr.agent_id = ? GROUP BY si.category'
+  ).all(agentId) || [];
+  return { stats, issueDist };
 }
 
 function getIssueDetail(issueId) {
   const db = getDb();
-  try {
-    const issue = db.prepare('SELECT * FROM skin_issues WHERE id = ? AND status = 1').get(issueId);
-    if (!issue) return null;
-    const causes = db.prepare('SELECT * FROM skin_issue_causes WHERE issue_id = ?').all(issueId) || [];
-    const products = db.prepare(
-      'SELECT sp.*, p.product_name, p.retail_price, p.main_image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ?'
-    ).all(issueId) || [];
-    return { ...issue, causes, products };
-  } finally {
-    db.close();
-  }
+  const issue = db.prepare('SELECT * FROM skin_issues WHERE id = ? AND status = 1').get(issueId);
+  if (!issue) return null;
+  const causes = db.prepare('SELECT * FROM skin_issue_causes WHERE issue_id = ?').all(issueId) || [];
+  const products = db.prepare(
+    'SELECT sp.*, p.product_name, p.retail_price, p.main_image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ?'
+  ).all(issueId) || [];
+  return { ...issue, causes, products };
 }
 
 module.exports = { analyzeSkin, imageToBase64, getSkinIssues, getMatchedProducts, saveSkinReport, getSkinReport, getUserSkinReports, getAgentSkinStats, getIssueDetail };

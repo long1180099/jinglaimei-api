@@ -4,9 +4,9 @@
  * 提供成就系统、经验值系统、学习路径、每日任务、训练快照等功能
  */
 
-const _dbModule = require('../utils/db');
+const { getDB } = require('../utils/db');
 // 兼容直接 getDb().prepare() 调用方式，每次调用时获取最新连接
-function getDb() { return _dbModule.getDB(); }
+function getDb() { return getDB(); }
 
 // ==========================================
 // 经验值等级配置
