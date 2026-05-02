@@ -4,7 +4,9 @@
  * 提供成就系统、经验值系统、学习路径、每日任务、训练快照等功能
  */
 
-const db = require('../utils/db');
+const _dbModule = require('../utils/db');
+// 兼容直接 getDb().prepare() 调用方式，每次调用时获取最新连接
+function getDb() { return _dbModule.getDB(); }
 
 // ==========================================
 // 经验值等级配置
@@ -36,20 +38,20 @@ function getLevelFromXp(xp) {
  * 添加经验值
  */
 function addXp(userId, amount, source, sourceId = null, description = '') {
-  const insertLog = db.prepare(`
+  const insertLog = getDb().prepare(`
     INSERT INTO socratic_xp_log (user_id, xp_amount, source, source_id, description)
     VALUES (?, ?, ?, ?, ?)
   `);
   insertLog.run(userId, amount, source, sourceId, description);
 
   // 更新用户总经验值和等级
-  const user = db.prepare('SELECT socratic_xp FROM users WHERE id = ?').get(userId);
+  const user = getDb().prepare('SELECT socratic_xp FROM users WHERE id = ?').get(userId);
   if (user) {
     const newXp = (user.socratic_xp || 0) + amount;
     const newLevel = getLevelFromXp(newXp);
     const levelInfo = LEVEL_THRESHOLDS.find(l => l.level === newLevel);
     
-    db.prepare('UPDATE users SET socratic_xp = ?, socratic_level = ?, socratic_title = ? WHERE id = ?')
+    getDb().prepare('UPDATE users SET socratic_xp = ?, socratic_level = ?, socratic_title = ? WHERE id = ?')
       .run(newXp, newLevel, levelInfo.title, userId);
 
     return { newXp, oldXp: user.socratic_xp || 0, newLevel, oldLevel: getLevelFromXp(user.socratic_xp || 0), leveledUp: newLevel > getLevelFromXp(user.socratic_xp || 0) };
@@ -61,7 +63,7 @@ function addXp(userId, amount, source, sourceId = null, description = '') {
  * 获取用户等级信息
  */
 function getUserLevelInfo(userId) {
-  const user = db.prepare('SELECT socratic_xp, socratic_level, socratic_title, total_training_minutes FROM users WHERE id = ?').get(userId);
+  const user = getDb().prepare('SELECT socratic_xp, socratic_level, socratic_title, total_training_minutes FROM users WHERE id = ?').get(userId);
   if (!user) return null;
 
   const xp = user.socratic_xp || 0;
@@ -111,18 +113,18 @@ async function checkAndUnlockAchievements(userId, stats) {
   const unlockedAchievements = [];
 
   // 获取所有未解锁的成就
-  const existingUnlocked = db.prepare(
+  const existingUnlocked = getDb().prepare(
     'SELECT achievement_id FROM user_achievements WHERE user_id = ?'
   ).all(userId).map(u => u.achievement_id);
 
-  const achievements = db.prepare('SELECT * FROM achievements WHERE status = 1 AND id NOT IN (' +
+  const achievements = getDb().prepare('SELECT * FROM achievements WHERE status = 1 AND id NOT IN (' +
     (existingUnlocked.length > 0 ? existingUnlocked.join(',') : '0') + ')'
   ).all();
 
   if (existingUnlocked.length > 0) {
-    var allAchievements = db.prepare(`SELECT * FROM achievements WHERE status = 1 AND id NOT IN (${existingUnlocked.join(',')})`).all();
+    var allAchievements = getDb().prepare(`SELECT * FROM achievements WHERE status = 1 AND id NOT IN (${existingUnlocked.join(',')})`).all();
   } else {
-    var allAchievements = db.prepare('SELECT * FROM achievements WHERE status = 1').all();
+    var allAchievements = getDb().prepare('SELECT * FROM achievements WHERE status = 1').all();
   }
 
   for (const achievement of allAchievements) {
@@ -157,7 +159,7 @@ async function checkAndUnlockAchievements(userId, stats) {
 
     if (shouldUnlock) {
       // 解锁成就
-      db.prepare(`
+      getDb().prepare(`
         INSERT INTO user_achievements (user_id, achievement_id, session_id, notified)
         VALUES (?, ?, ?, 0)
       `).run(userId, achievement.id, stats.session_id);
@@ -176,11 +178,11 @@ async function checkAndUnlockAchievements(userId, stats) {
  * 获取用户的成就列表（含解锁状态）
  */
 function getUserAchievements(userId) {
-  const unlockedIds = db.prepare(
+  const unlockedIds = getDb().prepare(
     'SELECT achievement_id, unlocked_at FROM user_achievements WHERE user_id = ? ORDER BY unlocked_at DESC'
   ).all(userId);
 
-  const allAchievements = db.prepare('SELECT * FROM achievements WHERE status = 1 ORDER BY sort_order ASC').all();
+  const allAchievements = getDb().prepare('SELECT * FROM achievements WHERE status = 1 ORDER BY sort_order ASC').all();
 
   return allAchievements.map(a => {
     const unlocked = unlockedIds.find(u => u.achievement_id === a.id);
@@ -199,7 +201,7 @@ function calculateProgress(achievement, userId) {
   try {
     switch (achievement.condition_field) {
       case 'total_sessions': {
-        const count = db.prepare('SELECT COUNT(*) as c FROM socratic_sessions WHERE user_id = ? AND status = "completed"').get(userId).c;
+        const count = getDb().prepare('SELECT COUNT(*) as c FROM socratic_sessions WHERE user_id = ? AND status = "completed"').get(userId).c;
         return Math.min(100, Math.floor((count / achievement.condition_target) * 100));
       }
       default:
@@ -218,7 +220,7 @@ function calculateProgress(achievement, userId) {
  * 获取所有学习路径
  */
 function getAllPaths() {
-  return db.prepare('SELECT * FROM learning_paths WHERE status = 1 ORDER BY sort_order ASC').all().map(p => ({
+  return getDb().prepare('SELECT * FROM learning_paths WHERE status = 1 ORDER BY sort_order ASC').all().map(p => ({
     ...p,
     scenario_ids: JSON.parse(p.scenario_ids || '[]'),
   }));
@@ -229,7 +231,7 @@ function getAllPaths() {
  */
 function getUserPathProgress(userId) {
   const paths = getAllPaths();
-  const progresses = db.prepare(
+  const progresses = getDb().prepare(
     'SELECT path_id, current_step, completed_scenario_ids, status, started_at, completed_at, score_summary FROM user_path_progress WHERE user_id = ?'
   ).all(userId);
 
@@ -258,10 +260,10 @@ function getUserPathProgress(userId) {
  */
 function startPath(userId, pathId) {
   // 检查是否已开始
-  const existing = db.prepare('SELECT id FROM user_path_progress WHERE user_id = ? AND path_id = ?').get(userId, pathId);
+  const existing = getDb().prepare('SELECT id FROM user_path_progress WHERE user_id = ? AND path_id = ?').get(userId, pathId);
   if (existing) throw new Error('已经加入此学习路径');
 
-  const insert = db.prepare(`
+  const insert = getDb().prepare(`
     INSERT INTO user_path_progress (user_id, path_id, status)
     VALUES (?, ?, 'in_progress')
   `);
@@ -275,11 +277,11 @@ function startPath(userId, pathId) {
  */
 function updatePathProgress(userId, scenarioId, scoreData) {
   // 找到包含该场景的所有活跃路径
-  const paths = db.prepare('SELECT * FROM learning_paths WHERE status = 1 AND scenario_ids LIKE ?')
+  const paths = getDb().prepare('SELECT * FROM learning_paths WHERE status = 1 AND scenario_ids LIKE ?')
     .all('%' + scenarioId + '%');
 
   for (const path of paths) {
-    let progress = db.prepare(
+    let progress = getDb().prepare(
       'SELECT id, current_step, completed_scenario_ids, status FROM user_path_progress WHERE user_id = ? AND path_id = ? AND status = "in_progress"'
     ).get(userId, path.id);
 
@@ -295,7 +297,7 @@ function updatePathProgress(userId, scenarioId, scoreData) {
       let scoreSummary = {};
       try { scoreSummary = JSON.parse(progress.score_summary || '{}'); } catch(e) {}
 
-      db.prepare(`UPDATE user_path_progress SET current_step = ?, completed_scenario_ids = ?, status = ?, score_summary = ?, completed_at = ? WHERE id = ?`).run(
+      getDb().prepare(`UPDATE user_path_progress SET current_step = ?, completed_scenario_ids = ?, status = ?, score_summary = ?, completed_at = ? WHERE id = ?`).run(
         newStep,
         JSON.stringify(completedIds),
         isComplete ? 'completed' : 'in_progress',
@@ -322,8 +324,8 @@ function updatePathProgress(userId, scenarioId, scoreData) {
 function getDailyTasks(userId) {
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  const tasks = db.prepare('SELECT * FROM daily_tasks ORDER BY sort_order ASC').all();
-  const completions = db.prepare(
+  const tasks = getDb().prepare('SELECT * FROM daily_tasks ORDER BY sort_order ASC').all();
+  const completions = getDb().prepare(
     'SELECT task_id, current_count, completed FROM daily_task_completions WHERE user_id = ? AND completion_date = ?'
   ).all(userId, today);
 
@@ -345,22 +347,22 @@ function getDailyTasks(userId) {
  */
 function updateDailyTaskProgress(userId, taskKey, increment = 1) {
   const today = new Date().toISOString().split('T')[0];
-  const task = db.prepare('SELECT id, target_count, xp_reward FROM daily_tasks WHERE key = ?').get(taskKey);
+  const task = getDb().prepare('SELECT id, target_count, xp_reward FROM daily_tasks WHERE key = ?').get(taskKey);
   if (!task) return null;
 
   // 获取或创建今日记录
-  let completion = db.prepare(
+  let completion = getDb().prepare(
     'SELECT id, current_count, completed FROM daily_task_completions WHERE user_id = ? AND task_id = ? AND completion_date = ?'
   ).get(userId, task.id, today);
 
   if (!completion) {
-    db.prepare(
+    getDb().prepare(
       'INSERT INTO daily_task_completions (user_id, task_id, completion_date, current_count) VALUES (?, ?, ?, ?)'
     ).run(userId, task.id, today, increment);
     completion = { current_count: increment, completed: 0 };
   } else if (completion.completed === 0) {
     const newCount = Math.min(completion.current_count + increment, task.target_count + 5); // 允许超额
-    db.prepare('UPDATE daily_task_completions SET current_count = ? WHERE id = ?').run(newCount, completion.id);
+    getDb().prepare('UPDATE daily_task_completions SET current_count = ? WHERE id = ?').run(newCount, completion.id);
     completion.current_count = newCount;
   }
 
@@ -378,10 +380,10 @@ function updateDailyTaskProgress(userId, taskKey, increment = 1) {
  */
 function claimDailyTaskReward(userId, taskKey) {
   const today = new Date().toISOString().split('T')[0];
-  const task = db.prepare('SELECT id, xp_reward FROM daily_tasks WHERE key = ?').get(taskKey);
+  const task = getDb().prepare('SELECT id, xp_reward FROM daily_tasks WHERE key = ?').get(taskKey);
   if (!task) throw new Error('任务不存在');
 
-  const completion = db.prepare(
+  const completion = getDb().prepare(
     'SELECT id, current_count, completed FROM daily_task_completions WHERE user_id = ? AND task_id = ? AND completion_date = ?'
   ).get(userId, task.id, today);
 
@@ -389,7 +391,7 @@ function claimDailyTaskReward(userId, taskKey) {
   if (completion.completed === 1) throw new Error('奖励已领取');
 
   // 标记为已领取
-  db.prepare('UPDATE daily_task_completions SET completed = 1 WHERE id = ?').run(completion.id);
+  getDb().prepare('UPDATE daily_task_completions SET completed = 1 WHERE id = ?').run(completion.id);
 
   // 增加经验值
   const xpResult = addXp(userId, task.xp_reward, 'daily_task', task.id, `领取每日任务: ${task.name}`);
@@ -406,10 +408,10 @@ function claimDailyTaskReward(userId, taskKey) {
  */
 function createSessionSnapshot(userId, sessionId, data) {
   // 检查是否已有快照
-  const existing = db.prepare('SELECT id FROM session_snapshots WHERE session_id = ?').get(sessionId);
+  const existing = getDb().prepare('SELECT id FROM session_snapshots WHERE session_id = ?').get(sessionId);
   if (existing) return existing.id;
 
-  const insert = db.prepare(`
+  const insert = getDb().prepare(`
     INSERT INTO session_snapshots 
     (user_id, session_id, snapshot_date, scores_json, grade, overall_score, scenario_category, personality_type, duration)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -434,7 +436,7 @@ function createSessionSnapshot(userId, sessionId, data) {
  * 获取用户的历史快照（用于趋势图）
  */
 function getSessionSnapshots(userId, limit = 20) {
-  return db.prepare(
+  return getDb().prepare(
     'SELECT * FROM session_snapshots WHERE user_id = ? ORDER BY snapshot_date DESC LIMIT ?'
   ).all(userId, limit).map(s => ({
     ...s,
@@ -451,20 +453,20 @@ function getSessionSnapshots(userId, limit = 20) {
  */
 function getDashboardOverview(userId) {
   // 基础统计
-  const totalSessions = db.prepare(
+  const totalSessions = getDb().prepare(
     'SELECT COUNT(*) as c FROM socratic_sessions WHERE user_id = ? AND status = "completed"'
   ).get(userId)?.c || 0;
 
-  const avgScoreRow = db.prepare(
+  const avgScoreRow = getDb().prepare(
     'SELECT AVG(CAST(overall_score AS FLOAT)) as avg FROM session_snapshots WHERE user_id = ?'
   ).get(userId);
   const avgScore = Math.round(avgScoreRow?.avg || 0);
 
-  const totalMinutes = db.prepare('SELECT total_training_minutes FROM users WHERE id = ?').get(userId)?.total_training_minutes || 0;
+  const totalMinutes = getDb().prepare('SELECT total_training_minutes FROM users WHERE id = ?').get(userId)?.total_training_minutes || 0;
 
   // 今日训练次数
   const today = new Date().toISOString().split('T')[0];
-  const todaySessions = db.prepare(
+  const todaySessions = getDb().prepare(
     'SELECT COUNT(*) as c FROM socratic_sessions WHERE user_id = ? AND DATE(created_at) = ? AND status = "completed"'
   ).get(userId, today)?.c || 0;
 
@@ -475,8 +477,8 @@ function getDashboardOverview(userId) {
   const levelInfo = getUserLevelInfo(userId);
 
   // 成就统计
-  const totalAchievements = db.prepare('SELECT COUNT(*) as c FROM achievements WHERE status = 1').get()?.c || 0;
-  const unlockedAchievements = db.prepare('SELECT COUNT(*) as c FROM user_achievements WHERE user_id = ?').get(userId)?.c || 0;
+  const totalAchievements = getDb().prepare('SELECT COUNT(*) as c FROM achievements WHERE status = 1').get()?.c || 0;
+  const unlockedAchievements = getDb().prepare('SELECT COUNT(*) as c FROM user_achievements WHERE user_id = ?').get(userId)?.c || 0;
 
   // 最近5次训练趋势
   const recentSnapshots = getSessionSnapshots(userId, 5).reverse(); // 时间正序
@@ -527,7 +529,7 @@ function calculateStreak(userId) {
 
   while (true) {
     const dateStr = checkDate.toISOString().split('T')[0];
-    const hasTraining = db.prepare(
+    const hasTraining = getDb().prepare(
       'SELECT id FROM socratic_sessions WHERE user_id = ? AND DATE(created_at) = ? AND status = "completed" LIMIT 1'
     ).get(userId, dateStr);
 
@@ -537,7 +539,7 @@ function calculateStreak(userId) {
     } else if (streak === 0) {
       // 今天还没练，检查昨天
       checkDate.setDate(checkDate.getDate() - 1);
-      const yesterdayHas = db.prepare(
+      const yesterdayHas = getDb().prepare(
         'SELECT id FROM socratic_sessions WHERE user_id = ? AND DATE(created_at) = ? AND status = "completed" LIMIT 1'
       ).get(userId, checkDate.toISOString().split('T')[0]);
       if (yesterdayHas) {
@@ -617,7 +619,7 @@ function generateRecommendation(userId, recentSnapshots) {
   };
 
   // 推荐一个针对弱项的场景
-  const scenarios = db.prepare(
+  const scenarios = getDb().prepare(
     'SELECT id, name, category FROM socratic_scenarios WHERE status = 1 ORDER BY RANDOM() LIMIT 3'
   ).all();
 
