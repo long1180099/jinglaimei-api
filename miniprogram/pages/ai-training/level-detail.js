@@ -84,7 +84,7 @@ Page({
       selectedAnswer: '',
       showAnswer: false,
       answers: {},
-      currentQuestion: this.data.questions[0],
+      currentQuestion: this.data.questions[0] || null,
       startTime: Date.now()
     });
   },
