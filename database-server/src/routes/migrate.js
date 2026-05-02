@@ -715,4 +715,40 @@ router.get('/status', (req, res) => {
   }
 });
 
+// ==================== 执行SQL ====================
+// POST /api/migrate/execute-sql
+// 执行原始SQL（仅super_admin，用于修复表结构等紧急操作）
+router.post('/execute-sql', (req, res) => {
+  try {
+    const db = getDB();
+    const { sql } = req.body;
+    if (!sql || typeof sql !== 'string') {
+      return error(res, '请提供sql参数');
+    }
+    // 安全检查：仅允许DDL语句
+    const normalized = sql.trim().toUpperCase();
+    if (!normalized.startsWith('CREATE') && !normalized.startsWith('ALTER') && !normalized.startsWith('DROP') && !normalized.startsWith('INSERT') && !normalized.startsWith('UPDATE') && !normalized.startsWith('DELETE') && !normalized.startsWith('SELECT')) {
+      return error(res, '仅允许DDL/DML语句');
+    }
+    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    const results = [];
+    for (const stmt of statements) {
+      try {
+        if (stmt.toUpperCase().startsWith('SELECT')) {
+          const rows = db.prepare(stmt).all();
+          results.push({ statement: stmt.substring(0, 80) + '...', type: 'query', rows: rows.length, data: rows });
+        } else {
+          const info = db.exec(stmt);
+          results.push({ statement: stmt.substring(0, 80) + '...', type: 'exec', success: true });
+        }
+      } catch (err) {
+        results.push({ statement: stmt.substring(0, 80) + '...', type: 'error', error: err.message });
+      }
+    }
+    success(res, { executed: results.length, results });
+  } catch (err) {
+    error(res, '执行SQL失败: ' + err.message);
+  }
+});
+
 module.exports = router;
