@@ -20,9 +20,13 @@ RUN if [ -f /app/jinglaimei.db.migrate ]; then cp /app/jinglaimei.db.migrate /ap
 # 创建数据目录并设置权限（关键！）
 RUN mkdir -p /app/data/uploads/ebooks && chmod -R 777 /app/data
 
+# 安装系统CA证书（修复腾讯云托管内部代理导致的SSL自签名证书问题）
+RUN apk add --no-cache ca-certificates && update-ca-certificates
+
 # 设置环境变量（注意：敏感信息后续应迁移到云托管控制台的环境变量配置）
 ENV NODE_ENV=production
 ENV PORT=80
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 ENV JWT_SECRET=jinglaimei_secret_2026
 ENV WX_APPID=wx9ac76bfc2dad7364
 ENV WX_APP_SECRET=2e719267b5986241a7af8162a9d1e6a7
