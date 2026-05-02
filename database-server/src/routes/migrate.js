@@ -356,6 +356,81 @@ router.post('/create-missing-tables', (req, res) => {
         gap TEXT DEFAULT '', completion_rate REAL DEFAULT 0, reflection TEXT DEFAULT '', note TEXT DEFAULT '',
         created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
       )`,
+      // ==================== 苏格拉底学院补充表 ====================
+      `CREATE TABLE IF NOT EXISTS user_achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, achievement_id INTEGER NOT NULL,
+        session_id INTEGER, notified INTEGER DEFAULT 0, unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, achievement_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT DEFAULT '',
+        icon TEXT DEFAULT '', category TEXT DEFAULT 'training', condition_type TEXT DEFAULT 'count',
+        condition_field TEXT DEFAULT '', condition_target INTEGER DEFAULT 1, xp_reward INTEGER DEFAULT 10,
+        sort_order INTEGER DEFAULT 0, status INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS learning_paths (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT DEFAULT '',
+        scenario_ids TEXT DEFAULT '[]', difficulty TEXT DEFAULT 'medium', xp_reward INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0, status INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS user_path_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, path_id INTEGER NOT NULL,
+        current_step INTEGER DEFAULT 0, completed_scenario_ids TEXT DEFAULT '[]', status TEXT DEFAULT 'in_progress',
+        score_summary TEXT DEFAULT '{}', started_at DATETIME DEFAULT CURRENT_TIMESTAMP, completed_at DATETIME,
+        UNIQUE(user_id, path_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS daily_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
+        description TEXT DEFAULT '', target_count INTEGER DEFAULT 1, xp_reward INTEGER DEFAULT 10,
+        sort_order INTEGER DEFAULT 0, status INTEGER DEFAULT 1
+      )`,
+      `CREATE TABLE IF NOT EXISTS daily_task_completions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, task_id INTEGER NOT NULL,
+        completion_date TEXT NOT NULL, current_count INTEGER DEFAULT 0, completed INTEGER DEFAULT 0,
+        UNIQUE(user_id, task_id, completion_date)
+      )`,
+      `CREATE TABLE IF NOT EXISTS session_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, session_id INTEGER NOT NULL UNIQUE,
+        snapshot_date TEXT DEFAULT '', scores_json TEXT DEFAULT '{}', grade TEXT DEFAULT '',
+        overall_score INTEGER DEFAULT 0, scenario_category TEXT DEFAULT '', personality_type TEXT DEFAULT '',
+        duration INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      // ==================== AI话术教练补充表 ====================
+      `CREATE TABLE IF NOT EXISTS ai_coach_scenarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'general',
+        personality_type TEXT DEFAULT '', difficulty TEXT DEFAULT 'medium', description TEXT DEFAULT '',
+        customer_background TEXT DEFAULT '', initial_situation TEXT DEFAULT '', goal TEXT DEFAULT '',
+        tips TEXT DEFAULT '', status INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0,
+        usage_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS ai_coach_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, scenario_id INTEGER NOT NULL,
+        personality_type TEXT DEFAULT '', status TEXT DEFAULT 'active', total_rounds INTEGER DEFAULT 0,
+        overall_score INTEGER DEFAULT 0, grade TEXT DEFAULT '', feedback TEXT DEFAULT '',
+        duration INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP, ended_at DATETIME
+      )`,
+      `CREATE TABLE IF NOT EXISTS ai_coach_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, round_num INTEGER DEFAULT 0,
+        role TEXT NOT NULL, content TEXT NOT NULL, score INTEGER DEFAULT NULL,
+        hint TEXT DEFAULT '', is_best_response INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      // ==================== 学习积分表 ====================
+      `CREATE TABLE IF NOT EXISTS study_point_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, source_type TEXT NOT NULL,
+        source_id INTEGER DEFAULT 0, points INTEGER NOT NULL DEFAULT 0, description TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS study_points_config (
+        id INTEGER PRIMARY KEY CHECK(id=1), total_points INTEGER DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      // ==================== 话术收藏表 ====================
+      `CREATE TABLE IF NOT EXISTS personality_favorites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, script_id INTEGER NOT NULL,
+        created_at TEXT DEFAULT (datetime('now','localtime')), UNIQUE(user_id, script_id)
+      )`,
     ];
 
     for (const sql of createTableSQLs) {

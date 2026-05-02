@@ -24,6 +24,9 @@ RUN mkdir -p /app/data/uploads/ebooks && chmod -R 777 /app/data
 ENV NODE_ENV=production
 ENV PORT=80
 
+# 复制管理后台前端构建产物
+COPY admin-backend/build /app/admin-backend/build
+
 # 暴露端口
 EXPOSE 80
 
