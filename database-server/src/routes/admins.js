@@ -245,6 +245,49 @@ router.put('/role-permissions', (req, res) => {
   return success(res, rolePermissionsMap, '角色权限配置已保存');
 });
 
+// ==================== 角色列表配置（必须在 /:id 之前注册） ====================
+
+/**
+ * GET /api/admins/roles-config
+ * 获取角色列表配置（持久化在 system_configs 表中）
+ */
+router.get('/roles-config', (req, res) => {
+  const db = getDB();
+  const row = db.prepare("SELECT config_value FROM system_configs WHERE config_key = 'roles_config'").get();
+  if (row && row.config_value) {
+    try {
+      const roles = JSON.parse(row.config_value);
+      console.log('[roles-config] 加载角色列表:', roles.length, '个角色');
+      return success(res, roles);
+    } catch (e) {
+      console.error('[roles-config] JSON解析失败:', e.message);
+    }
+  }
+  // 没有配置时返回 null，前端会使用默认角色列表
+  return success(res, null);
+});
+
+/**
+ * PUT /api/admins/roles-config
+ * 保存角色列表配置到 system_configs 表
+ */
+router.put('/roles-config', (req, res) => {
+  const db = getDB();
+  const { roles } = req.body;
+  if (!roles || !Array.isArray(roles)) {
+    return error(res, '参数无效，需要 roles 数组');
+  }
+  const jsonValue = JSON.stringify(roles);
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  db.prepare(`
+    INSERT INTO system_configs (config_key, config_value, config_type, description, updated_at)
+    VALUES ('roles_config', ?, 'json', '角色列表配置', ?)
+    ON CONFLICT(config_key) DO UPDATE SET config_value = ?, updated_at = ?
+  `).run(jsonValue, now, jsonValue, now);
+  console.log('[roles-config] 保存角色列表:', roles.length, '个角色');
+  return success(res, roles, '角色列表已保存');
+});
+
 // GET /api/admins/:id - 获取单个管理员详情
 router.get('/:id', (req, res) => {
   const db = getDB();

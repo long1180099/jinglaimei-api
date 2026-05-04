@@ -122,9 +122,8 @@ interface SystemConfig {
   options?: { label: string; value: string | number }[];
 }
 
-const SettingsManagementNew: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('general');
-  const [roles, setRoles] = useState<Role[]>([
+// 默认角色列表（仅当后端没有保存配置时作为兜底）
+const DEFAULT_ROLES: Role[] = [
     {
       id: '1',
       name: '超级管理员',
@@ -185,7 +184,11 @@ const SettingsManagementNew: React.FC = () => {
       createdAt: '2026-04-24',
       updatedAt: '2026-04-24'
     }
-  ]);
+  ];
+
+const SettingsManagementNew: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('general');
+  const [roles, setRoles] = useState<Role[]>([]);
 
   const [permissions, setPermissions] = useState<Permission[]>([
     { id: '1', module: '用户管理', name: '查看用户', code: 'user:read', description: '可以查看用户列表和详情', category: 'user' },
@@ -526,21 +529,23 @@ const SettingsManagementNew: React.FC = () => {
           editRole.id === '6' ? 'warehouse' : editRole.name;
 
         // 更新本地角色数据
-        setRoles(roles.map(role =>
-          role.id === editRole.id ? { ...role, ...values, permissions: updatedPermissions, updatedAt: '2026-03-26' } : role
-        ));
+        const updatedRoles = roles.map(role =>
+          role.id === editRole.id ? { ...role, ...values, permissions: updatedPermissions, updatedAt: new Date().toISOString().slice(0, 10) } : role
+        );
+        setRoles(updatedRoles);
 
         // 同步更新 rolePermissionsMap
         const newMap = { ...rolePermissionsMap, [roleKey]: updatedPermissions };
         setRolePermissionsMap(newMap);
 
-        // 持久化到后端
+        // 持久化到后端（角色列表 + 权限配置）
         try {
           const { default: apiClient } = await import('../utils/apiClient');
+          await apiClient.put('/admins/roles-config', { roles: updatedRoles });
           await apiClient.put('/admins/role-permissions', { rolePermissionsMap: newMap });
         } catch (err) {
-          console.error('保存角色权限配置到后端失败:', err);
-          message.warning('角色权限已更新但后端同步失败，刷新后可能恢复');
+          console.error('保存角色配置到后端失败:', err);
+          message.warning('角色已更新但后端同步失败，刷新后可能恢复');
         }
 
         message.success('角色更新成功');
@@ -551,21 +556,24 @@ const SettingsManagementNew: React.FC = () => {
           ...values,
           userCount: 0,
           status: 'active',
-          createdAt: '2026-03-26',
-          updatedAt: '2026-03-26'
+          createdAt: new Date().toISOString().slice(0, 10),
+          updatedAt: new Date().toISOString().slice(0, 10)
         };
-        setRoles([...roles, newRole]);
+        const updatedRoles = [...roles, newRole];
+        setRoles(updatedRoles);
 
         // 同步到 rolePermissionsMap
         const newMap = { ...rolePermissionsMap, [newRole.name]: values.permissions || [] };
         setRolePermissionsMap(newMap);
 
-        // 持久化到后端
+        // 持久化到后端（角色列表 + 权限配置）
         try {
           const { default: apiClient } = await import('../utils/apiClient');
+          await apiClient.put('/admins/roles-config', { roles: updatedRoles });
           await apiClient.put('/admins/role-permissions', { rolePermissionsMap: newMap });
         } catch (err) {
-          console.error('保存角色权限配置到后端失败:', err);
+          console.error('保存角色配置到后端失败:', err);
+          message.warning('角色已添加但后端同步失败，刷新后可能丢失');
         }
 
         message.success('角色添加成功');
@@ -581,7 +589,8 @@ const SettingsManagementNew: React.FC = () => {
   // 处理角色删除（同时清理后端配置）
   const handleDeleteRole = async (roleId: string) => {
     const roleToDelete = roles.find(r => r.id === roleId);
-    setRoles(roles.filter(role => role.id !== roleId));
+    const updatedRoles = roles.filter(role => role.id !== roleId);
+    setRoles(updatedRoles);
     message.success('角色删除成功');
 
     // 如果有对应的 rolePermissionsMap 条目，也要删除
@@ -598,6 +607,7 @@ const SettingsManagementNew: React.FC = () => {
       setRolePermissionsMap(newMap);
       try {
         const { default: apiClient } = await import('../utils/apiClient');
+        await apiClient.put('/admins/roles-config', { roles: updatedRoles });
         await apiClient.put('/admins/role-permissions', { rolePermissionsMap: newMap });
       } catch (err) {
         console.error('同步角色删除到后端失败:', err);
@@ -747,6 +757,37 @@ const SettingsManagementNew: React.FC = () => {
     }
   };
 
+  // 加载角色列表配置（从后端持久化存储）
+  const loadRolesConfig = async () => {
+    try {
+      const { default: apiClient } = await import('../utils/apiClient');
+      const data = await apiClient.get('/admins/roles-config');
+      if (data && Array.isArray(data) && data.length > 0) {
+        console.log('[角色列表] 从后端加载:', data.length, '个角色');
+        setRoles(data);
+      } else {
+        // 后端没有保存过配置，使用默认角色列表
+        console.log('[角色列表] 后端无配置，使用默认列表');
+        setRoles(DEFAULT_ROLES);
+      }
+    } catch (err) {
+      console.error('加载角色列表配置失败:', err);
+      // 加载失败也使用默认列表作为兜底
+      setRoles(DEFAULT_ROLES);
+    }
+  };
+
+  // 保存角色列表到后端
+  const saveRolesConfig = async (currentRoles: Role[]) => {
+    try {
+      const { default: apiClient } = await import('../utils/apiClient');
+      await apiClient.put('/admins/roles-config', { roles: currentRoles });
+      console.log('[角色列表] 已保存到后端');
+    } catch (err) {
+      console.error('保存角色列表到后端失败:', err);
+    }
+  };
+
   // 加载角色权限配置（从后端持久化存储）
   const loadRolePermissions = async () => {
     try {
@@ -781,7 +822,8 @@ const SettingsManagementNew: React.FC = () => {
     }
     if (activeTab === 'roles' || activeTab === 'user-roles') {
       loadUserRoles();
-      loadRolePermissions();
+      // 先加载角色列表，再加载权限配置（权限配置需要覆盖角色列表中的 permissions）
+      loadRolesConfig().then(() => loadRolePermissions());
     }
   }, [activeTab]);
 
