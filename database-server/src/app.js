@@ -40,18 +40,28 @@ const _possiblePaths = [
 ];
 const adminBuildPath = _possiblePaths.find(p => fs.existsSync(path.join(p, 'index.html')));
 console.log('📁 Admin 前端路径:', adminBuildPath || '未找到');
+if (adminBuildPath) {
+  console.log('📁 Admin build 文件列表:');
+  const _listDir = (dir, prefix = '') => {
+    fs.readdirSync(dir).forEach(f => {
+      const fp = path.join(dir, f);
+      const stat = fs.statSync(fp);
+      console.log(`  ${prefix}${f} (${stat.size} bytes)`);
+      if (stat.isDirectory()) _listDir(fp, prefix + f + '/');
+    });
+  };
+  _listDir(adminBuildPath);
+}
 
+// Admin 前端 - 使用 express.static + historyApiFallback
 app.use((req, res, next) => {
   const host = req.headers.host || '';
   if (adminBuildPath && host.includes('admin.jinglaimei.com') && !req.path.startsWith('/api/')) {
-    // 非 API 请求，返回管理后台前端页面
-    const filePath = path.join(adminBuildPath, req.path === '/' ? 'index.html' : req.path);
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      res.sendFile(filePath);
-    } else {
-      // SPA 回退到 index.html
+    express.static(adminBuildPath)(req, res, (err) => {
+      if (err) return next(err);
+      // SPA 回退：静态文件不存在时返回 index.html
       res.sendFile(path.join(adminBuildPath, 'index.html'));
-    }
+    });
   } else {
     next();
   }
@@ -94,24 +104,6 @@ if (useCOS) {
 
 // 静态文件服务 - 商品图片等公开资源（通过 /api/public 访问）
 app.use('/api/public', express.static(path.join(__dirname, '../public')));
-
-// 诊断端点 - 检查 admin build 文件（部署后可删除）
-app.get('/api/diagnose-admin-build', (req, res) => {
-  const dir = adminBuildPath;
-  if (!dir) return res.json({ error: 'adminBuildPath not found' });
-  const results = {};
-  try {
-    const jsDir = path.join(dir, 'static/js');
-    const cssDir = path.join(dir, 'static/css');
-    results.adminBuildPath = dir;
-    results.indexHtml = fs.existsSync(path.join(dir, 'index.html'));
-    results.jsFiles = fs.existsSync(jsDir) ? fs.readdirSync(jsDir) : ['directory not found'];
-    results.cssFiles = fs.existsSync(cssDir) ? fs.readdirSync(cssDir) : ['directory not found'];
-    results.jsMainSize = (() => { try { return fs.statSync(path.join(jsDir, 'main.7edbbe2d.js')).size; } catch(e) { return e.message; } })();
-    results.cssMainSize = (() => { try { return fs.statSync(path.join(cssDir, 'main.01c716f8.css')).size; } catch(e) { return e.message; } })();
-  } catch(e) { results.error = e.message; }
-  res.json(results);
-});
 
 // 请求日志
 app.use((req, res, next) => {
