@@ -82,7 +82,7 @@ Page({
     try {
       const token = store.getToken();
       if (!token) return;
-      const res = await api.get('/users/' + (this.data.userInfo.id || '') + '/balance', { token });
+      const res = await api.get('/mp/balance', { token });
       if (res.data && res.data.balance !== undefined) {
         this.setData({
           userBalance: parseFloat(res.data.balance).toFixed(2)
