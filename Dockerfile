@@ -20,6 +20,11 @@ COPY admin-backend/build /app/admin-backend/build
 
 ENV NODE_ENV=production
 ENV PORT=80
+ENV JWT_SECRET=jinglaimei_secret_2026
+ENV WX_APPID=wx9ac76bfc2dad7364
+ENV WX_APP_SECRET=2e719267b5986241a7af8162a9d1e6a7
+ENV HUNYUAN_API_KEY=sk-sNLnuLeFuInalb5MdMHL8Iwvi6x1hJxlVTwR9i5BeKcTnFmV
+ENV DASHSCOPE_API_KEY=sk-7dd97fec3aef4c62a866e7294e167646
 EXPOSE 80
 
 CMD ["node", "src/app.js"]
