@@ -23,6 +23,26 @@ import BannerManagement from './pages/BannerManagement';
 import SkinAnalysisManagement from './pages/SkinAnalysisManagement';
 import ProductUsageManagement from './pages/ProductUsageManagement';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import useAuth from './hooks/useAuth';
+
+// 根据用户权限智能跳转到第一个可访问页面
+const SmartRedirect: React.FC = () => {
+  const { user, isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  const perms = user?.permissions || [];
+  const role = user?.role;
+  const hasAll = role === 'super_admin' || role === 'admin' || perms.includes('*') || perms.includes('all');
+  const has = (p: string) => hasAll || perms.includes(p);
+
+  if (has('dashboard:read')) return <Navigate to="/dashboard" replace />;
+  if (has('order:read')) return <Navigate to="/orders" replace />;
+  if (has('user:read')) return <Navigate to="/users" replace />;
+  if (has('product:read')) return <Navigate to="/products" replace />;
+  if (has('inventory:read')) return <Navigate to="/inventory" replace />;
+  return <Navigate to="/dashboard" replace />;
+};
 
 const App: React.FC = () => {
   return (
@@ -33,8 +53,8 @@ const App: React.FC = () => {
             {/* 公开路由 - 登录页面 */}
             <Route path="/login" element={<Login />} />
             
-            {/* 默认重定向 */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* 默认重定向 - 根据权限智能跳转 */}
+            <Route path="/" element={<SmartRedirect />} />
             
             {/* 受保护的路由 - 带权限控制 */}
             <Route element={
@@ -42,7 +62,7 @@ const App: React.FC = () => {
                 <MainLayout />
               </ProtectedRoute>
             }>
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard" element={<ProtectedRoute requiredPermissions={['dashboard:read']}><Dashboard /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute requiredPermissions={['user:read']}><UserManagementNew /></ProtectedRoute>} />
               <Route path="/products" element={<ProtectedRoute requiredPermissions={['product:read']}><ProductManagementNew /></ProtectedRoute>} />
               <Route path="/orders" element={<ProtectedRoute requiredPermissions={['order:read']}><OrderManagementNew /></ProtectedRoute>} />

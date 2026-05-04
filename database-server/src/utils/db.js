@@ -35,11 +35,10 @@ function getDB() {
 }
 
 function _autoInit(db) {
-  // 检查 admins 表是否存在
-  const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='admins'").get();
-  if (tableExists) return;
-
-  console.log('🚀 首次启动，自动初始化数据库表结构...');
+  // 始终执行建表语句（CREATE TABLE IF NOT EXISTS 幂等，不会覆盖已有表）
+  // 这样即使数据库已有旧表结构，新增的表也能被正确创建
+  console.log('🚀 检查数据库表结构...');
+  const isNew = !db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='admins'").get();
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -197,16 +196,18 @@ function _autoInit(db) {
     );
   `);
 
-  // 插入默认管理员账号
-  const adminExists = db.prepare('SELECT id FROM admins WHERE username = ?').get('admin');
-  if (!adminExists) {
-    const hashedPassword = bcrypt.hashSync('admin123456', 10);
-    db.prepare('INSERT INTO admins (username, password, real_name, role, permissions, status) VALUES (?, ?, ?, ?, ?, ?)')
-      .run('admin', hashedPassword, '超级管理员', 'super_admin', '["all"]', 1);
-    console.log('  ✅ 默认管理员账号已创建: admin / admin123456');
+  // 仅首次创建时插入默认管理员账号
+  if (isNew) {
+    const adminExists = db.prepare('SELECT id FROM admins WHERE username = ?').get('admin');
+    if (!adminExists) {
+      const hashedPassword = bcrypt.hashSync('admin123456', 10);
+      db.prepare('INSERT INTO admins (username, password, real_name, role, permissions, status) VALUES (?, ?, ?, ?, ?, ?)')
+        .run('admin', hashedPassword, '超级管理员', 'super_admin', '["all"]', 1);
+      console.log('  ✅ 默认管理员账号已创建: admin / admin123456');
+    }
   }
 
-  console.log('✅ 数据库初始化完成！');
+  console.log('✅ 数据库检查完成！');
 }
 
 module.exports = { getDB };

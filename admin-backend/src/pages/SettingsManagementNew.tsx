@@ -249,10 +249,10 @@ const SettingsManagementNew: React.FC = () => {
   const rolePermissionsMap: Record<string, string[]> = {
     super_admin: ['*'],
     admin: ['*'],
-    operator: ['order:read', 'order:write', 'product:read', 'product:write', 'user:read', 'user:write', 'inventory:read', 'inventory:write', 'setting:read', 'setting:write', 'school:read', 'school:write'],
-    finance: ['finance:read', 'finance:write', 'commission:read', 'commission:write', 'order:read'],
+    operator: ['dashboard:read', 'order:read', 'order:write', 'product:read', 'product:write', 'user:read', 'user:write', 'inventory:read', 'inventory:write', 'setting:read', 'setting:write', 'school:read', 'school:write'],
+    finance: ['dashboard:read', 'finance:read', 'finance:write', 'commission:read', 'commission:write', 'order:read'],
     warehouse: ['order:read', 'order:write', 'product:read', 'inventory:read', 'inventory:write'],
-    viewer: ['user:read', 'product:read', 'order:read', 'finance:read', 'inventory:read'],
+    viewer: ['dashboard:read', 'user:read', 'product:read', 'order:read', 'finance:read', 'inventory:read'],
   };
 
   // ========== 管理员账户管理状态 ==========
@@ -706,10 +706,14 @@ const SettingsManagementNew: React.FC = () => {
     setAdminFormLoading(true);
     try {
       const { default: apiClient } = await import('../utils/apiClient');
-      // 根据角色自动注入对应的权限，确保权限与角色一致
       const role = values.role;
-      if (role && rolePermissionsMap[role]) {
-        values.permissions = rolePermissionsMap[role];
+      // 仅在新建 或 编辑时角色发生变更 的情况下，自动注入角色默认权限
+      // 编辑时如果角色未变，保留数据库中已手动调整的权限
+      const roleChanged = editingAdmin && editingAdmin.role !== role;
+      if (!editingAdmin || roleChanged) {
+        if (role && rolePermissionsMap[role]) {
+          values.permissions = rolePermissionsMap[role];
+        }
       }
       if (editingAdmin) {
         await apiClient.put(`/admins/${editingAdmin.id}`, values);

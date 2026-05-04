@@ -38,7 +38,19 @@ const Login: React.FC = () => {
       const result = await login(values.username, values.password, rememberMe);
       if (result.success) {
         message.success('登录成功！');
-        navigate('/dashboard');
+        // 根据用户权限智能跳转到第一个有权限的页面
+        const userPerms = result.user.permissions || [];
+        const userRole = result.user.role;
+        const hasAll = userPerms.includes('*') || userPerms.includes('all') || userRole === 'super_admin' || userRole === 'admin';
+        const has = (p: string) => hasAll || userPerms.includes(p);
+
+        if (has('dashboard:read')) navigate('/dashboard');
+        else if (has('order:read')) navigate('/orders');
+        else if (has('user:read')) navigate('/users');
+        else if (has('product:read')) navigate('/products');
+        else if (has('inventory:read')) navigate('/inventory');
+        else if (has('finance:read')) navigate('/commissions');
+        else navigate('/dashboard'); // fallback
       } else {
         message.error(result.error || '登录失败，请检查用户名和密码');
       }

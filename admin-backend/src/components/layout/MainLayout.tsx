@@ -65,9 +65,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { token } = theme.useToken();
   const { user, hasPermission, hasRole, logout } = useAuthContext();
 
-  // 菜单项权限配置: 每个菜单需要的权限码（空数组=所有人可见）
+  // 菜单项权限配置: 每个菜单需要的权限码
   const menuPermissionMap: Record<string, string[]> = {
-    '/dashboard': [],                          // 数据看板 - 所有人可见
+    '/dashboard': ['dashboard:read'],           // 数据看板 - 需要权限
     '/users':     ['user:read'],               // 用户管理
     '/products':  ['product:read'],            // 商品管理
     '/orders':    ['order:read'],              // 订单管理
@@ -291,12 +291,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // super_admin 看到所有菜单
   const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'admin';
   
-  // 过滤后的菜单列表
-  const menuItems = isSuperAdmin 
-    ? allMenuItems 
+  // 过滤后的菜单列表（super_admin/admin 角色直接看全部，其他角色按权限过滤）
+  const menuItems = isSuperAdmin
+    ? allMenuItems
     : allMenuItems.filter(item => {
         const required = menuPermissionMap[item.key] || [];
-        if (required.length === 0) return true; // 无权限要求的菜单(如dashboard)
+        if (required.length === 0) return true; // 无权限要求的菜单
         return required.some((perm: string) => hasPermission(perm));
       });
 
