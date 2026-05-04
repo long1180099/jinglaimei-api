@@ -60,46 +60,29 @@ app.use((req, res, next) => {
 // 静态文件服务 - 上传的文件
 app.use('/uploads', express.static(path.join(__dirname, '../data/uploads')));
 
-// COS 代理中间件 - 当本地文件不存在时从 COS 获取并返回
-const { useCOS } = require('./utils/cosUpload');
+// COS 代理中间件 - 当本地文件不存在时从 COS 获取并返回（微信云托管临时密钥模式）
+const { useCOS, getObject } = require('./utils/cosUpload');
 if (useCOS) {
-  const COS_BUCKET = process.env.COS_BUCKET;
-  const COS_REGION = process.env.COS_REGION;
-  const _cosSecretId = process.env.TENCENTCLOUD_SECRETID || process.env.COS_SECRET_ID;
-  const _cosSecretKey = process.env.TENCENTCLOUD_SECRETKEY || process.env.COS_SECRET_KEY;
+  app.use('/uploads', (req, res, next) => {
+    // express.static 已处理（文件存在则直接返回），到达此处说明本地文件不存在
+    const key = req.path.slice(1); // 去掉开头的 /
+    if (!key) return next();
 
-  if (_cosSecretId && _cosSecretKey) {
-    const COS = require('cos-nodejs-sdk-v5');
-    const cosClient = new COS({ SecretId: _cosSecretId, SecretKey: _cosSecretKey });
-
-    app.use('/uploads', (req, res, next) => {
-      const key = req.path.slice(1);
-      if (!key) return next();
-
-      cosClient.getObject({
-        Bucket: COS_BUCKET,
-        Region: COS_REGION,
-        Key: key,
-      }, (err, data) => {
-        if (err) {
-          console.warn('[COS代理] 获取失败:', key, err.message);
-          return res.status(404).json({ error: '文件不存在' });
-        }
-        if (data.ContentType) res.set('Content-Type', data.ContentType);
-        if (data.ContentLength) res.set('Content-Length', data.ContentLength);
-        if (data.CacheControl) res.set('Cache-Control', data.CacheControl);
-        res.set('X-COS-Proxy', 'true');
-        if (data.Body) {
-          data.Body.pipe(res);
-        } else {
-          res.status(404).json({ error: '文件内容为空' });
-        }
-      });
+    getObject(key).then(data => {
+      if (!data || !data.Body) {
+        return res.status(404).json({ error: '文件不存在' });
+      }
+      if (data.ContentType) res.set('Content-Type', data.ContentType);
+      if (data.ContentLength) res.set('Content-Length', data.ContentLength);
+      if (data.CacheControl) res.set('Cache-Control', data.CacheControl);
+      res.set('X-COS-Proxy', 'true');
+      data.Body.pipe(res);
+    }).catch(err => {
+      console.warn('[COS代理] 获取失败:', key, err.message);
+      return res.status(404).json({ error: '文件不存在' });
     });
-    console.log('[COS代理] 已启用: 本地文件不存在时从 COS 获取');
-  } else {
-    console.log('[COS代理] COS_BUCKET/COS_REGION 已配置但缺少 SecretId/SecretKey，跳过COS代理');
-  }
+  });
+  console.log('[COS代理] 已启用(微信云托管模式): 本地文件不存在时从 COS 获取');
 } else {
   console.log('[COS代理] 未启用: COS_BUCKET/COS_REGION 未配置');
 }
