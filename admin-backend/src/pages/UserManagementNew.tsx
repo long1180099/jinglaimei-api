@@ -355,6 +355,12 @@ const UserManagement: React.FC = () => {
                   onClick: () => handleChangeLevel(record),
                 },
                 {
+                  key: 'invite_code',
+                  label: '修改邀请码',
+                  icon: <QrcodeOutlined />,
+                  onClick: () => handleEditInviteCode(record),
+                },
+                {
                   key: 'change_status',
                   label: record.status === 1 ? '禁用账户' : '启用账户',
                   icon: record.status === 1 ? <CloseCircleOutlined /> : <CheckCircleOutlined />,
