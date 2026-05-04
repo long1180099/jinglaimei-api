@@ -1723,4 +1723,80 @@ router.get('/school/my-courses', (req, res) => {
   return success(res, records);
 });
 
+/**
+ * GET /api/mp/balance
+ * 小程序端余额查询（使用mp token鉴权，不经过admin的authMiddleware）
+ */
+router.get('/balance', (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return error(res, '未登录', 401);
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../middleware/auth');
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+
+    let decoded;
+    try { decoded = jwt.verify(token, JWT_SECRET); } catch { return error(res, '登录已过期', 401); }
+
+    const db = getDB();
+    const user = db.prepare(
+      'SELECT id, username, real_name, COALESCE(balance, 0) as balance, COALESCE(frozen_balance, 0) as frozen_balance FROM users WHERE id = ? AND is_deleted = 0'
+    ).get(decoded.id);
+
+    if (!user) return error(res, '用户不存在，请重新登录', 401);
+
+    return success(res, {
+      userId: user.id,
+      username: user.username || user.real_name,
+      balance: parseFloat(user.balance) || 0,
+      frozenBalance: parseFloat(user.frozen_balance) || 0
+    });
+  } catch (e) {
+    console.error('[余额查询] 接口异常:', e.message || e);
+    return error(res, '获取余额失败: ' + (e.message || '未知错误'), 500);
+  }
+});
+
+/**
+ * GET /api/mp/balance-logs
+ * 小程序端余额变动明细（使用mp token鉴权）
+ * 查询参数: page, pageSize, type(筛选类型)
+ */
+router.get('/balance-logs', (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return error(res, '未登录', 401);
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../middleware/auth');
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+
+    let decoded;
+    try { decoded = jwt.verify(token, JWT_SECRET); } catch { return error(res, '登录已过期', 401); }
+
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 20;
+    const type = req.query.type;
+    const offset = (page - 1) * pageSize;
+
+    const db = getDB();
+
+    // 构建查询条件
+    let whereClause = 'WHERE user_id = ?';
+    let params = [decoded.id];
+    if (type) {
+      whereClause += ' AND change_type = ?';
+      params.push(type);
+    }
+
+    const total = db.prepare(`SELECT COUNT(*) as count FROM balance_logs ${whereClause}`).get(...params).count;
+    const logs = db.prepare(`SELECT * FROM balance_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .all(...params, pageSize, offset);
+
+    return success(res, { list: logs, total, page, pageSize });
+  } catch (e) {
+    console.error('[余额明细] 接口异常:', e.message || e);
+    return error(res, '获取余额明细失败: ' + (e.message || '未知错误'), 500);
+  }
+});
+
 module.exports = router;
