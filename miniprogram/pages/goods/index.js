@@ -15,7 +15,7 @@ Page({
     sort: 'default',
     products: [],
     page: 1,
-    pageSize: 10,
+    pageSize: 20,
     hasMore: true,
     loading: false,
     refreshing: false,
@@ -43,17 +43,10 @@ Page({
   },
 
   onReachBottom() {
+    // scroll-view 内部滚动不走 onReachBottom，保留兼容
     if (this.data.activeTab === 'products' && this.data.hasMore && !this.data.loading) {
       this.loadProducts(false);
     }
-  },
-
-  onPullDownRefresh() {
-    if (this.data.activeTab === 'products') {
-      this.setData({ refreshing: true });
-      this.loadProducts();
-    }
-    wx.stopPullDownRefresh();
   },
 
   // scroll-view 自定义下拉刷新

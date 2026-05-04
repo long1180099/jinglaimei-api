@@ -65,7 +65,7 @@ const { useCOS, getObject } = require('./utils/cosUpload');
 if (useCOS) {
   app.use('/uploads', (req, res, next) => {
     // express.static 已处理（文件存在则直接返回），到达此处说明本地文件不存在
-    const key = req.path.slice(1); // 去掉开头的 /
+    const key = req.path.slice(1); // 去掉开头的 /，得到 products/xxx.jpg
     if (!key) return next();
 
     getObject(key).then(data => {

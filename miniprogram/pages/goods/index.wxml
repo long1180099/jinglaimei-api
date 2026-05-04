@@ -43,11 +43,11 @@
     </view>
 
     <!-- 商品网格 -->
-    <scroll-view class="product-scroll" scroll-y refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh">
+    <scroll-view class="product-scroll" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" type="list">
       <view class="product-grid" wx:if="{{viewMode == 'grid'}}">
         <view class="product-card" wx:for="{{products}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
           <view class="product-img-wrap">
-            <image class="product-img" src="{{item.main_image || '/images/default-product.png'}}" mode="aspectFill" lazy-load></image>
+            <image class="product-img" src="{{item.main_image || '/images/default-product.png'}}" mode="aspectFill" lazy-load decode="async"></image>
           </view>
           <view class="product-info">
             <text class="product-name line-2">{{item.product_name}}</text>
@@ -70,7 +70,7 @@
       <!-- 列表模式 -->
       <view class="product-list-mode" wx:if="{{viewMode == 'list'}}">
         <view class="product-list-card" wx:for="{{products}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
-          <image class="list-img" src="{{item.main_image || '/images/default-product.png'}}" mode="aspectFill" lazy-load></image>
+          <image class="list-img" src="{{item.main_image || '/images/default-product.png'}}" mode="aspectFill" lazy-load decode="async"></image>
           <view class="list-info">
             <text class="list-name line-2">{{item.product_name}}</text>
             <view class="list-bottom">
