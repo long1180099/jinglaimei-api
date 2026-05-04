@@ -12,8 +12,8 @@ COPY database-server/src/ ./src/
 
 RUN mkdir -p /app/data/uploads && chmod -R 777 /app/data
 
-COPY database-server/jinglaimei.db.migrate /app/data/jinglaimei.db.preseed
-RUN chmod 666 /app/data/jinglaimei.db.preseed
+# ⚠️ 不再复制 preseed 数据库，防止容器重建时覆盖生产数据
+# COPY database-server/jinglaimei.db.migrate /app/data/jinglaimei.db.preseed
 
 # Admin 前端：本地预构建后 COPY 产物（容器内构建不稳定）
 COPY admin-backend/build /app/admin-backend/build

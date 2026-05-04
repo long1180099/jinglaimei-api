@@ -7,19 +7,15 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
 const DB_PATH = path.join(__dirname, '../../data/jinglaimei.db');
-const DB_PRESEED = path.join(__dirname, '../../data/jinglaimei.db.preseed');
 
 if (!fs.existsSync(path.dirname(DB_PATH))) {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 }
 
-// 仅在数据库文件不存在时才使用预置种子（避免覆盖生产数据）
-if (!fs.existsSync(DB_PATH) && fs.existsSync(DB_PRESEED)) {
-  console.log('🌱 检测到预置数据库，正在初始化...');
-  fs.copyFileSync(DB_PRESEED, DB_PATH);
-  console.log('✅ 预置数据库已就绪');
-}
-// 注意：不再根据用户数判断是否覆盖，防止每次部署覆盖生产数据
+// ⚠️ 已禁用 preseed：微信云托管容器重建时持久化存储可能丢失，
+// preseed 会覆盖生产数据（导致用户丢失、已删除用户恢复）。
+// 改用 CREATE TABLE IF NOT EXISTS 纯建空表，不包含任何业务数据。
+console.log('📂 数据库路径:', DB_PATH, '存在:', fs.existsSync(DB_PATH));
 
 let db;
 
