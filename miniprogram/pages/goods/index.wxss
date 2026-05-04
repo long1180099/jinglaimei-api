@@ -4,6 +4,8 @@
   flex-direction: column;
   height: 100vh;
   background: var(--bg-page);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* ==================== 顶部Tab ==================== */
@@ -155,6 +157,7 @@
 .product-scroll {
   flex: 1;
   padding: var(--space-5) var(--space-6);
+  -webkit-overflow-scrolling: touch;
 }
 
 .product-grid {
@@ -169,6 +172,7 @@
   overflow: hidden;
   border: 1rpx solid var(--border-light);
   transition: transform var(--duration-fast) var(--ease-out);
+  contain: layout style paint;
 }
 
 .product-card:active {

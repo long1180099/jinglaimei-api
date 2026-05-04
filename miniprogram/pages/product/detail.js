@@ -205,5 +205,32 @@ Page({
   },
 
   goHome() { wx.switchTab({ url: '/pages/index/index' }); },
-  goCart() { wx.switchTab({ url: '/pages/goods/index' }); }
+  goCart() {
+    // 返回商品页并切换到购物车 tab
+    const pages = getCurrentPages();
+    // 找到商品页（goods/index）
+    const goodsPage = pages.find(p => p.route === 'pages/goods/index');
+    if (goodsPage) {
+      // 从商品页进来的，返回并切换tab
+      goodsPage.setData({ activeTab: 'cart' });
+      goodsPage.refreshCart && goodsPage.refreshCart();
+      wx.navigateBack();
+    } else {
+      // 从其他页面（如首页推荐）进来的，直接跳转到商品页的购物车tab
+      wx.switchTab({
+        url: '/pages/goods/index',
+        success: () => {
+          // switchTab 成功后，通过 setTimeout 设置 tab（因为 switchTab 会重新加载页面）
+          setTimeout(() => {
+            const pages2 = getCurrentPages();
+            const gp = pages2.find(p => p.route === 'pages/goods/index');
+            if (gp) {
+              gp.setData({ activeTab: 'cart' });
+              gp.refreshCart && gp.refreshCart();
+            }
+          }, 300);
+        }
+      });
+    }
+  }
 });
