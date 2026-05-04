@@ -751,4 +751,80 @@ router.post('/execute-sql', (req, res) => {
   }
 });
 
+/**
+ * POST /api/migrate/upload-to-cos
+ * 将本地 uploads 目录下的所有文件批量上传到 COS（保持原始路径）
+ * 上传完成后本地文件仍然保留，COS代理中间件会优先使用COS版本
+ */
+router.post('/upload-to-cos', async (req, res) => {
+  try {
+    const { useCOS, uploadFromDisk } = require('../utils/cosUpload');
+
+    if (!useCOS) {
+      return error(res, 'COS 未配置，无法上传到 COS');
+    }
+
+    if (!fs.existsSync(UPLOADS_DIR)) {
+      return error(res, '本地 uploads 目录不存在');
+    }
+
+    // 收集所有文件
+    const allFiles = [];
+    function walkDir(dir, baseDir) {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walkDir(fullPath, baseDir);
+        } else {
+          const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
+          const stat = fs.statSync(fullPath);
+          allFiles.push({ localPath: fullPath, cosKey: relPath, size: stat.size });
+        }
+      }
+    }
+    walkDir(UPLOADS_DIR, UPLOADS_DIR);
+
+    if (allFiles.length === 0) {
+      return success(res, { total: 0, uploaded: 0, message: '没有找到需要上传的文件' });
+    }
+
+    // 排除视频文件（太大）
+    const files = allFiles.filter(f => !f.localPath.toLowerCase().endsWith('.mp4'));
+
+    console.log(`[COS迁移] 开始上传 ${files.length} 个文件到 COS...`);
+    let uploaded = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (const file of files) {
+      try {
+        const cosUrl = await uploadFromDisk(file.localPath, file.cosKey);
+        if (cosUrl) {
+          uploaded++;
+        } else {
+          failed++;
+          errors.push(file.cosKey + ': uploadFromDisk返回null');
+        }
+      } catch (err) {
+        failed++;
+        errors.push(file.cosKey + ': ' + err.message);
+      }
+    }
+
+    console.log(`[COS迁移] 完成: 成功 ${uploaded}, 失败 ${failed}`);
+
+    success(res, {
+      total: files.length,
+      uploaded,
+      failed,
+      errors: errors.slice(0, 20), // 最多返回20个错误
+      message: `已上传 ${uploaded} 个文件到 COS`
+    });
+  } catch (err) {
+    console.error('[COS迁移] 异常:', err);
+    error(res, 'COS迁移失败: ' + err.message);
+  }
+});
+
 module.exports = router;
