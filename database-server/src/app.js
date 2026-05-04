@@ -65,40 +65,41 @@ const { useCOS } = require('./utils/cosUpload');
 if (useCOS) {
   const COS_BUCKET = process.env.COS_BUCKET;
   const COS_REGION = process.env.COS_REGION;
-  const COS = require('cos-nodejs-sdk-v5');
-  const cosClient = new COS({
-    SecretId: process.env.TENCENTCLOUD_SECRETID || process.env.COS_SECRET_ID,
-    SecretKey: process.env.TENCENTCLOUD_SECRETKEY || process.env.COS_SECRET_KEY,
-  });
+  const _cosSecretId = process.env.TENCENTCLOUD_SECRETID || process.env.COS_SECRET_ID;
+  const _cosSecretKey = process.env.TENCENTCLOUD_SECRETKEY || process.env.COS_SECRET_KEY;
 
-  app.use('/uploads', (req, res, next) => {
-    // express.static 已经在上面处理了，走到这里说明本地文件不存在
-    const key = req.path.slice(1); // 去掉开头的 /
-    if (!key) return next();
+  if (_cosSecretId && _cosSecretKey) {
+    const COS = require('cos-nodejs-sdk-v5');
+    const cosClient = new COS({ SecretId: _cosSecretId, SecretKey: _cosSecretKey });
 
-    cosClient.getObject({
-      Bucket: COS_BUCKET,
-      Region: COS_REGION,
-      Key: key,
-    }, (err, data) => {
-      if (err) {
-        console.warn('[COS代理] 获取失败:', key, err.message);
-        return res.status(404).json({ error: '文件不存在' });
-      }
-      // 设置正确的 Content-Type
-      if (data.ContentType) res.set('Content-Type', data.ContentType);
-      if (data.ContentLength) res.set('Content-Length', data.ContentLength);
-      if (data.CacheControl) res.set('Cache-Control', data.CacheControl);
-      res.set('X-COS-Proxy', 'true');
-      // 流式返回文件内容
-      if (data.Body) {
-        data.Body.pipe(res);
-      } else {
-        res.status(404).json({ error: '文件内容为空' });
-      }
+    app.use('/uploads', (req, res, next) => {
+      const key = req.path.slice(1);
+      if (!key) return next();
+
+      cosClient.getObject({
+        Bucket: COS_BUCKET,
+        Region: COS_REGION,
+        Key: key,
+      }, (err, data) => {
+        if (err) {
+          console.warn('[COS代理] 获取失败:', key, err.message);
+          return res.status(404).json({ error: '文件不存在' });
+        }
+        if (data.ContentType) res.set('Content-Type', data.ContentType);
+        if (data.ContentLength) res.set('Content-Length', data.ContentLength);
+        if (data.CacheControl) res.set('Cache-Control', data.CacheControl);
+        res.set('X-COS-Proxy', 'true');
+        if (data.Body) {
+          data.Body.pipe(res);
+        } else {
+          res.status(404).json({ error: '文件内容为空' });
+        }
+      });
     });
-  });
-  console.log('[COS代理] 已启用: 本地文件不存在时从 COS 获取');
+    console.log('[COS代理] 已启用: 本地文件不存在时从 COS 获取');
+  } else {
+    console.log('[COS代理] COS_BUCKET/COS_REGION 已配置但缺少 SecretId/SecretKey，跳过COS代理');
+  }
 } else {
   console.log('[COS代理] 未启用: COS_BUCKET/COS_REGION 未配置');
 }
