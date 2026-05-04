@@ -1015,14 +1015,25 @@ router.post('/orders', (req, res) => {
       if (!product) throw new Error('商品不存在: ' + item.product_id);
       if ((product.stock_quantity - product.sold_quantity) < item.quantity) throw new Error('商品库存不足: ' + product.product_name);
 
-      // 多级定价
+      // 多级定价：使用价格字段映射表，确保各等级价格正确对应
       let unitPrice = product.retail_price;
       const level = user.agent_level || 1;
-      if (level >= 6 && product.division_price) unitPrice = product.division_price;
-      else if (level >= 5 && product.chief_price) unitPrice = product.chief_price;
-      else if (level >= 4 && product.wholesale_price) unitPrice = product.wholesale_price;
-      else if (level >= 3 && product.agent_price) unitPrice = product.agent_price;
-      else if (level >= 2 && product.vip_price) unitPrice = product.vip_price;
+      const priceFieldMap = { 2: 'vip_price', 3: 'agent_price', 4: 'wholesale_price', 5: 'chief_price', 6: 'division_price' };
+      const priceField = priceFieldMap[level];
+      // 仅当对应等级价格字段存在且大于0时使用，否则沿等级向下查找
+      if (priceField && product[priceField] && product[priceField] > 0) {
+        unitPrice = product[priceField];
+      } else {
+        // 向下查找第一个有效价格
+        for (let l = level - 1; l >= 1; l--) {
+          const field = priceFieldMap[l];
+          if (field && product[field] && product[field] > 0) {
+            unitPrice = product[field];
+            break;
+          }
+        }
+      }
+      console.log(`[定价] 用户=${user.username}(level=${level}), 商品=${product.product_name}, 使用价格字段=${priceField}, 单价=${unitPrice}`);
 
       const subtotal = unitPrice * item.quantity;
       totalAmount += subtotal;

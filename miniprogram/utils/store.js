@@ -1,6 +1,8 @@
 /**
  * 全局数据存储
  */
+const util = require('./util');
+
 const globalData = {
   userInfo: null,
   token: '',
@@ -75,12 +77,30 @@ function addToCart(product, quantity = 1) {
   const exist = cart.find(item => item.product_id === product.id);
   if (exist) {
     exist.quantity += quantity;
+    // 已存在的商品也更新价格（防止等级变更后价格不刷新）
+    if (product.price !== undefined) {
+      exist.price = product.price;
+    }
   } else {
+    // 根据用户等级计算正确的价格，而非硬编码 agent_price
+    var price = product.price;
+    if (price === undefined) {
+      const userInfo = getUserInfo();
+      var level = userInfo ? (userInfo.agent_level || userInfo.agentLevel) : 1;
+      price = util.getPriceByLevel(product, level);
+    }
     cart.push({
       product_id: product.id,
       product_name: product.product_name,
       main_image: product.main_image,
-      price: product.agent_price,
+      price: price,
+      // 保留原始价格字段，以便购物车刷新时重新计算
+      retail_price: product.retail_price,
+      vip_price: product.vip_price,
+      agent_price: product.agent_price,
+      wholesale_price: product.wholesale_price,
+      chief_price: product.chief_price,
+      division_price: product.division_price,
       quantity: quantity,
       selected: true
     });

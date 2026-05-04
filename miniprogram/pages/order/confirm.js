@@ -80,6 +80,14 @@ Page({
 
     const userInfo = store.getUserInfo();
     var level = userInfo ? (userInfo.agent_level || userInfo.agentLevel) : 1;
+    // 重新根据当前等级计算价格（防止购物车中缓存了旧价格）
+    cart.forEach(function(item) {
+      var newPrice = util.getPriceByLevel(item, level);
+      if (newPrice) {
+        item.price = newPrice;
+      }
+    });
+    store.setCart(cart);
     const goodsTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const shippingFee = goodsTotal >= 99 ? 0 : 10; // 满99免运费
     const totalAmount = goodsTotal + shippingFee;
