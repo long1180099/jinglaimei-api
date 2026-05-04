@@ -827,4 +827,77 @@ router.post('/upload-to-cos', async (req, res) => {
   }
 });
 
+// ==================== COS 诊断 ====================
+// GET /api/migrate/cos-diagnose - 诊断 COS 连接和上传状态
+router.get('/cos-diagnose', async (req, res) => {
+  try {
+    const result = {};
+
+    // 1. 检查环境变量
+    result.env = {
+      COS_BUCKET: process.env.COS_BUCKET || '未设置',
+      COS_REGION: process.env.COS_REGION || '未设置',
+      useCOS: !!(process.env.COS_BUCKET && process.env.COS_REGION),
+    };
+
+    // 2. 测试 getauth 接口
+    try {
+      const { getCOSAuth } = require('../utils/cosUpload');
+      const auth = await getCOSAuth();
+      result.getauth = {
+        success: true,
+        hasTmpSecretId: !!auth.TmpSecretId,
+        hasTmpSecretKey: !!auth.TmpSecretKey,
+        hasToken: !!auth.Token,
+        expiredTime: auth.ExpiredTime,
+      };
+    } catch (err) {
+      result.getauth = { success: false, error: err.message };
+    }
+
+    // 3. 测试 COS 上传一个测试文件
+    try {
+      const { uploadFile } = require('../utils/cosUpload');
+      const testContent = Buffer.from('COS diagnostic test ' + new Date().toISOString());
+      const testUrl = await uploadFile(testContent, 'uploads/__cos_test__.txt', 'text/plain');
+      result.uploadTest = {
+        success: !!testUrl,
+        url: testUrl,
+      };
+    } catch (err) {
+      result.uploadTest = { success: false, error: err.message };
+    }
+
+    // 4. 测试 COS 下载（getObject）
+    try {
+      const { getObject } = require('../utils/cosUpload');
+      const obj = await getObject('uploads/__cos_test__.txt');
+      result.downloadTest = {
+        success: !!obj,
+        hasBody: !!obj.Body,
+        contentType: obj.ContentType,
+      };
+    } catch (err) {
+      result.downloadTest = { success: false, error: err.message };
+    }
+
+    // 5. 测试一个真实商品图片的 COS 下载
+    try {
+      const { getObject } = require('../utils/cosUpload');
+      const obj = await getObject('products/8ae9471f-da45-4624-98f3-43c6d620ae60.jpg');
+      result.realImageTest = {
+        success: !!obj,
+        hasBody: !!obj.Body,
+        contentLength: obj.ContentLength,
+      };
+    } catch (err) {
+      result.realImageTest = { success: false, error: err.message };
+    }
+
+    success(res, result);
+  } catch (err) {
+    error(res, 'COS诊断异常: ' + err.message);
+  }
+});
+
 module.exports = router;
