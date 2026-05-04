@@ -9,24 +9,26 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const { getDB } = require('../utils/db');
 const { success, error } = require('../utils/response');
+const { uploadFile, deleteFile, toFullUrl, useCOS } = require('../utils/cosUpload');
 
 // ==================== 图片上传配置 ====================
 const PRODUCT_IMAGE_DIR = path.join(__dirname, '../../data/uploads/products');
 
-// 确保商品图片目录存在
+// 确保商品图片目录存在（本地存储时需要）
 if (!fs.existsSync(PRODUCT_IMAGE_DIR)) {
   fs.mkdirSync(PRODUCT_IMAGE_DIR, { recursive: true });
 }
 
-// multer 存储
-const imageStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, PRODUCT_IMAGE_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const filename = `${uuidv4()}${ext}`;
-    cb(null, filename);
-  }
-});
+// multer 存储：COS 用内存存储，本地用磁盘存储
+const imageStorage = useCOS
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, PRODUCT_IMAGE_DIR),
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${uuidv4()}${ext}`);
+      }
+    });
 
 // 图片文件过滤（仅允许常见图片格式）
 const imageFilter = (_req, file, cb) => {
@@ -205,11 +207,21 @@ router.put('/:id/stock', (req, res) => {
 // ==================== 商品图片上传 ====================
 
 // POST /api/products/upload-image - 上传单张商品图片
-router.post('/upload-image', uploadImage.single('image'), (req, res) => {
+router.post('/upload-image', uploadImage.single('image'), async (req, res) => {
   try {
     if (!req.file) return error(res, '请选择要上传的图片');
 
-    const imageUrl = `/uploads/products/${req.file.filename}`;
+    let imageUrl;
+
+    if (useCOS && req.file.buffer) {
+      // COS 上传
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const key = `products/${uuidv4()}${ext}`;
+      imageUrl = await uploadFile(req.file.buffer, key, req.file.mimetype);
+    } else {
+      // 本地磁盘上传
+      imageUrl = `/uploads/products/${req.file.filename}`;
+    }
 
     success(res, {
       url: imageUrl,
@@ -227,14 +239,15 @@ router.post('/upload-image', uploadImage.single('image'), (req, res) => {
 const BANNER_DIR = path.join(__dirname, '../../data/uploads/banners');
 if (!fs.existsSync(BANNER_DIR)) fs.mkdirSync(BANNER_DIR, { recursive: true });
 
-const bannerStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, BANNER_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const filename = `banner_${Date.now()}_${uuidv4().slice(0,8)}${ext}`;
-    cb(null, filename);
-  }
-});
+const bannerStorage = useCOS
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, BANNER_DIR),
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `banner_${Date.now()}_${uuidv4().slice(0,8)}${ext}`);
+      }
+    });
 const uploadBanner = multer({
   storage: bannerStorage,
   fileFilter: imageFilter,
@@ -242,11 +255,19 @@ const uploadBanner = multer({
 });
 
 // POST /api/upload/banner - 轮播图/通用图片上传（前端BannerManagement调用）
-router.post('/upload/banner', uploadBanner.single('image'), (req, res) => {
+router.post('/upload/banner', uploadBanner.single('image'), async (req, res) => {
   try {
     if (!req.file) return error(res, '请选择要上传的图片');
 
-    const fileUrl = `/uploads/banners/${req.file.filename}`;
+    let fileUrl;
+
+    if (useCOS && req.file.buffer) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const key = `banners/banner_${Date.now()}_${uuidv4().slice(0,8)}${ext}`;
+      fileUrl = await uploadFile(req.file.buffer, key, req.file.mimetype);
+    } else {
+      fileUrl = `/uploads/banners/${req.file.filename}`;
+    }
 
     console.log('[BANNER_UPLOAD]', { fileUrl, originalName: req.file.originalname, size: req.file.size });
 
@@ -261,15 +282,25 @@ router.post('/upload/banner', uploadBanner.single('image'), (req, res) => {
 });
 
 // POST /api/products/upload-images - 批量上传多张商品图片（最多9张）
-router.post('/upload-images', uploadImage.array('images', 9), (req, res) => {
+router.post('/upload-images', uploadImage.array('images', 9), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) return error(res, '请选择要上传的图片');
 
-    const images = req.files.map(file => ({
-      url: `/uploads/products/${file.filename}`,
-      filename: file.originalname,
-      size: file.size,
-    }));
+    const images = [];
+    for (const file of req.files) {
+      if (useCOS && file.buffer) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const key = `products/${uuidv4()}${ext}`;
+        const url = await uploadFile(file.buffer, key, file.mimetype);
+        images.push({ url, filename: file.originalname, size: file.size });
+      } else {
+        images.push({
+          url: `/uploads/products/${file.filename}`,
+          filename: file.originalname,
+          size: file.size,
+        });
+      }
+    }
 
     success(res, { images }, `成功上传 ${images.length} 张图片`);
   } catch (err) {
@@ -298,17 +329,21 @@ router.delete('/:id', (req, res) => {
   // 3. 删除关联的物理图片
   try {
     if (product.main_image) {
+      deleteFile(product.main_image); // COS 环境删除 COS 对象
       const mainPath = path.join(__dirname, '../..', product.main_image);
-      if (fs.existsSync(mainPath)) fs.unlinkSync(mainPath);
+      if (fs.existsSync(mainPath)) fs.unlinkSync(mainPath); // 本地也清
     }
     if (product.image_gallery) {
       try {
         const gallery = JSON.parse(product.image_gallery);
         if (Array.isArray(gallery)) {
           gallery.forEach(imgUrl => {
-            if (!imgUrl || !imgUrl.startsWith('/uploads/products/')) return;
-            const imgPath = path.join(__dirname, '../..', imgUrl);
-            if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+            if (!imgUrl) return;
+            deleteFile(imgUrl); // COS 环境删除
+            if (imgUrl.startsWith('/uploads/products/')) {
+              const imgPath = path.join(__dirname, '../..', imgUrl);
+              if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+            }
           });
         }
       } catch(e) { /* image_gallery解析失败，跳过 */ }
