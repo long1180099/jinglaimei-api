@@ -1,13 +1,18 @@
 /**
- * COS 对象存储上传工具
+ * COS 对象存储上传工具（微信云托管版）
  *
- * 微信云托管自动注入环境变量：
- *   COS_BUCKET / COS_REGION — COS 桶名和地域
- *   TENCENTCLOUD_SECRETID / TENCENTCLOUD_SECRETKEY — 平台临时凭证
+ * 微信云托管对象存储鉴权方式：
+ *   通过内部接口 http://api.weixin.qq.com/_/cos/getauth 获取临时密钥
+ *   不需要手动配置 TENCENTCLOUD_SECRETID / TENCENTCLOUD_SECRETKEY
+ *
+ * 环境变量：
+ *   COS_BUCKET  — 对象存储桶名（如 7072-prod-6g3ecawx14ba12f2-1422673068）
+ *   COS_REGION  — 地域（如 ap-shanghai）
  *
  * 降级：若无 COS 配置则回退到本地磁盘上传
  */
 const COS = require('cos-nodejs-sdk-v5');
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
@@ -17,14 +22,54 @@ const COS_REGION = process.env.COS_REGION;
 // 判断是否可用 COS
 const useCOS = !!(COS_BUCKET && COS_REGION);
 
+/**
+ * 微信云托管内部接口获取 COS 临时密钥
+ * 端点：http://api.weixin.qq.com/_/cos/getauth
+ * 返回：{ TmpSecretId, TmpSecretKey, Token, ExpiredTime }
+ */
+function getCOSAuth() {
+  return new Promise((resolve, reject) => {
+    const req = http.get('http://api.weixin.qq.com/_/cos/getauth', (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const info = JSON.parse(data);
+          if (info.TmpSecretId) {
+            resolve(info);
+          } else {
+            reject(new Error('getauth 返回无效: ' + data));
+          }
+        } catch (e) {
+          reject(new Error('getauth 解析失败: ' + data));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(5000, () => { req.destroy(); reject(new Error('getauth 超时')); });
+  });
+}
+
 let cosClient = null;
 
 if (useCOS) {
   cosClient = new COS({
-    SecretId: process.env.TENCENTCLOUD_SECRETID || process.env.COS_SECRET_ID,
-    SecretKey: process.env.TENCENTCLOUD_SECRETKEY || process.env.COS_SECRET_KEY,
+    getAuthorization: async function (_options, callback) {
+      try {
+        const info = await getCOSAuth();
+        callback({
+          TmpSecretId: info.TmpSecretId,
+          TmpSecretKey: info.TmpSecretKey,
+          SecurityToken: info.Token,
+          ExpiredTime: info.ExpiredTime,
+        });
+      } catch (err) {
+        console.error('[COS] 获取临时密钥失败:', err.message);
+        callback(err);
+      }
+    },
   });
-  console.log(`[COS] 已初始化: bucket=${COS_BUCKET}, region=${COS_REGION}`);
+  console.log(`[COS] 已初始化(微信云托管模式): bucket=${COS_BUCKET}, region=${COS_REGION}`);
 } else {
   console.log('[COS] 未配置 COS_BUCKET/COS_REGION，将使用本地磁盘上传');
 }
@@ -32,9 +77,9 @@ if (useCOS) {
 /**
  * 上传文件到 COS 或本地
  * @param {Buffer|Stream} fileData - 文件数据（Buffer 或 ReadStream）
- * @param {string} key - 对象键（如 products/xxx.jpg）
+ * @param {string} key - 对象键（如 uploads/products/xxx.jpg）
  * @param {string} contentType - MIME 类型
- * @returns {Promise<string>} 可访问的 URL
+ * @returns {Promise<string|null>} COS URL 或 null（本地模式）
  */
 function uploadFile(fileData, key, contentType) {
   if (!useCOS) {
@@ -65,7 +110,7 @@ function uploadFile(fileData, key, contentType) {
  * 从本地磁盘上传文件到 COS
  * @param {string} localPath - 本地文件路径
  * @param {string} key - COS 对象键
- * @returns {Promise<string>} COS URL
+ * @returns {Promise<string|null>} COS URL 或 null
  */
 function uploadFromDisk(localPath, key) {
   if (!useCOS || !fs.existsSync(localPath)) {
@@ -105,6 +150,29 @@ function deleteFile(urlOrKey) {
 }
 
 /**
+ * 从 COS 获取对象内容（用于代理中间件）
+ * @param {string} key - 对象键
+ * @returns {Promise<object>} { Body, ContentType, ContentLength, CacheControl }
+ */
+function getObject(key) {
+  if (!useCOS) return Promise.resolve(null);
+
+  return new Promise((resolve, reject) => {
+    cosClient.getObject({
+      Bucket: COS_BUCKET,
+      Region: COS_REGION,
+      Key: key,
+    }, (err, data) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(data);
+    });
+  });
+}
+
+/**
  * 将本地路径 URL（/uploads/xxx）转换为完整 URL
  * COS 环境下拼接 COS 域名，本地环境保留原样
  */
@@ -118,4 +186,4 @@ function toFullUrl(localUrl) {
   return localUrl;
 }
 
-module.exports = { uploadFile, uploadFromDisk, deleteFile, toFullUrl, useCOS };
+module.exports = { uploadFile, uploadFromDisk, deleteFile, getObject, toFullUrl, useCOS, getCOSAuth };
