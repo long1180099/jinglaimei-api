@@ -431,6 +431,51 @@ router.post('/create-missing-tables', (req, res) => {
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, script_id INTEGER NOT NULL,
         created_at TEXT DEFAULT (datetime('now','localtime')), UNIQUE(user_id, script_id)
       )`,
+      // ==================== 排行榜配置表 ====================
+      `CREATE TABLE IF NOT EXISTS ranking_configs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL UNIQUE,
+        rank_position INTEGER DEFAULT 0, display_name TEXT, highlight_color TEXT DEFAULT '#e94560',
+        badge_text TEXT, is_pinned INTEGER DEFAULT 0, is_hidden INTEGER DEFAULT 0, custom_note TEXT,
+        created_by INTEGER, updated_by INTEGER,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS ranking_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, setting_key TEXT NOT NULL UNIQUE,
+        setting_value TEXT, description TEXT,
+        updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      // ==================== 话术投喂表 ====================
+      `CREATE TABLE IF NOT EXISTS script_feeds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, raw_content TEXT NOT NULL,
+        target_personality TEXT DEFAULT '', target_scene TEXT DEFAULT '', admin_notes TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending', priority INTEGER DEFAULT 0,
+        optimized_content TEXT, optimization_prompt TEXT, optimized_at TEXT,
+        created_script_id TEXT, published_at TEXT, ai_raw_response TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS sales_scripts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT DEFAULT '', content TEXT DEFAULT '',
+        category TEXT DEFAULT '', difficulty INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0,
+        status INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
+      )`,
+      // ==================== 皮肤报告问题表 ====================
+      `CREATE TABLE IF NOT EXISTS skin_report_issues (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL,
+        issue_name TEXT NOT NULL DEFAULT '', category TEXT NOT NULL DEFAULT '',
+        severity INTEGER DEFAULT 1, confidence REAL DEFAULT 0, area TEXT DEFAULT '',
+        description TEXT DEFAULT '', cause_text TEXT DEFAULT '', advice_text TEXT DEFAULT '',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (report_id) REFERENCES skin_reports(id) ON DELETE CASCADE
+      )`,
+      // ==================== 学习积分表 ====================
+      `CREATE TABLE IF NOT EXISTS study_points (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+        points INTEGER DEFAULT 0, available_points INTEGER DEFAULT 0, spent_points INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
     ];
 
     for (const sql of createTableSQLs) {
