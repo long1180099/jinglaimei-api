@@ -69,7 +69,7 @@ Page({
   // 刷新当前余额
   fetchBalance() {
     if (!this.data.userId) return;
-    var url = '/users/' + this.data.userId + '/balance';
+    var url = '/mp/balance';
     request(url).then(res => {
       var data = res && res.data ? res.data : res;
       if (data && data.balance !== undefined) {
@@ -91,7 +91,7 @@ Page({
     var page = refresh ? 1 : this.data.page;
     this.setData({ loading: true });
 
-    var url = '/users/' + this.data.userId + '/balance-logs?page=' + page + '&pageSize=' + this.data.pageSize;
+    var url = '/mp/balance-logs?page=' + page + '&pageSize=' + this.data.pageSize;
     if (this.data.currentType) {
       url += '&type=' + this.data.currentType;
     }
