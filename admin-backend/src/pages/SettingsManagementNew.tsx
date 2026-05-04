@@ -245,8 +245,8 @@ const SettingsManagementNew: React.FC = () => {
   const [assignSearch, setAssignSearch] = useState('');
   const [assignSubmitting, setAssignSubmitting] = useState(false);
 
-  // 角色对应默认权限映射
-  const rolePermissionsMap: Record<string, string[]> = {
+  // 角色对应默认权限映射（默认值，可被后端配置覆盖）
+  const defaultRolePermissionsMap: Record<string, string[]> = {
     super_admin: ['*'],
     admin: ['*'],
     operator: ['dashboard:read', 'order:read', 'order:write', 'product:read', 'product:write', 'user:read', 'user:write', 'inventory:read', 'inventory:write', 'setting:read', 'setting:write', 'school:read', 'school:write'],
@@ -254,6 +254,7 @@ const SettingsManagementNew: React.FC = () => {
     warehouse: ['order:read', 'order:write', 'product:read', 'inventory:read', 'inventory:write'],
     viewer: ['dashboard:read', 'user:read', 'product:read', 'order:read', 'finance:read', 'inventory:read'],
   };
+  const [rolePermissionsMap, setRolePermissionsMap] = useState<Record<string, string[]>>(defaultRolePermissionsMap);
 
   // ========== 管理员账户管理状态 ==========
   const [adminList, setAdminList] = useState<AdminAccount[]>([]);
@@ -509,14 +510,39 @@ const SettingsManagementNew: React.FC = () => {
     setRoleModalVisible(true);
   };
 
-  // 处理角色保存
-  const handleSaveRole = () => {
-    roleForm.validateFields().then(values => {
+  // 处理角色保存（同时持久化到后端）
+  const handleSaveRole = async () => {
+    try {
+      const values = await roleForm.validateFields();
       if (editRole) {
-        // 更新现有角色
-        setRoles(roles.map(role => 
-          role.id === editRole.id ? { ...role, ...values, updatedAt: '2026-03-26' } : role
+        // 更新现有角色（本地 state + 同步角色权限到 rolePermissionsMap）
+        const updatedPermissions = values.permissions || editRole.permissions;
+        const roleKey =
+          editRole.id === '1' ? 'super_admin' :
+          editRole.id === '2' ? 'admin' :
+          editRole.id === '3' ? 'operator' :
+          editRole.id === '4' ? 'finance' :
+          editRole.id === '5' ? 'viewer' :
+          editRole.id === '6' ? 'warehouse' : editRole.name;
+
+        // 更新本地角色数据
+        setRoles(roles.map(role =>
+          role.id === editRole.id ? { ...role, ...values, permissions: updatedPermissions, updatedAt: '2026-03-26' } : role
         ));
+
+        // 同步更新 rolePermissionsMap
+        const newMap = { ...rolePermissionsMap, [roleKey]: updatedPermissions };
+        setRolePermissionsMap(newMap);
+
+        // 持久化到后端
+        try {
+          const { default: apiClient } = await import('../utils/apiClient');
+          await apiClient.put('/admins/role-permissions', { rolePermissionsMap: newMap });
+        } catch (err) {
+          console.error('保存角色权限配置到后端失败:', err);
+          message.warning('角色权限已更新但后端同步失败，刷新后可能恢复');
+        }
+
         message.success('角色更新成功');
       } else {
         // 添加新角色
@@ -529,18 +555,54 @@ const SettingsManagementNew: React.FC = () => {
           updatedAt: '2026-03-26'
         };
         setRoles([...roles, newRole]);
+
+        // 同步到 rolePermissionsMap
+        const newMap = { ...rolePermissionsMap, [newRole.name]: values.permissions || [] };
+        setRolePermissionsMap(newMap);
+
+        // 持久化到后端
+        try {
+          const { default: apiClient } = await import('../utils/apiClient');
+          await apiClient.put('/admins/role-permissions', { rolePermissionsMap: newMap });
+        } catch (err) {
+          console.error('保存角色权限配置到后端失败:', err);
+        }
+
         message.success('角色添加成功');
       }
       setRoleModalVisible(false);
       setEditRole(null);
       roleForm.resetFields();
-    });
+    } catch (err) {
+      // 表单验证失败，ant design 已自动提示
+    }
   };
 
-  // 处理角色删除
-  const handleDeleteRole = (roleId: string) => {
+  // 处理角色删除（同时清理后端配置）
+  const handleDeleteRole = async (roleId: string) => {
+    const roleToDelete = roles.find(r => r.id === roleId);
     setRoles(roles.filter(role => role.id !== roleId));
     message.success('角色删除成功');
+
+    // 如果有对应的 rolePermissionsMap 条目，也要删除
+    if (roleToDelete) {
+      const roleKey =
+        roleId === '1' ? 'super_admin' :
+        roleId === '2' ? 'admin' :
+        roleId === '3' ? 'operator' :
+        roleId === '4' ? 'finance' :
+        roleId === '5' ? 'viewer' :
+        roleId === '6' ? 'warehouse' : roleToDelete.name;
+      const newMap = { ...rolePermissionsMap };
+      delete newMap[roleKey];
+      setRolePermissionsMap(newMap);
+      try {
+        const { default: apiClient } = await import('../utils/apiClient');
+        await apiClient.put('/admins/role-permissions', { rolePermissionsMap: newMap });
+      } catch (err) {
+        console.error('同步角色删除到后端失败:', err);
+      }
+    }
   };
 
   // 处理用户分配 — 打开分配弹窗
@@ -685,6 +747,33 @@ const SettingsManagementNew: React.FC = () => {
     }
   };
 
+  // 加载角色权限配置（从后端持久化存储）
+  const loadRolePermissions = async () => {
+    try {
+      const { default: apiClient } = await import('../utils/apiClient');
+      const data = await apiClient.get('/admins/role-permissions');
+      if (data && Object.keys(data).length > 0) {
+        setRolePermissionsMap(data);
+        // 同步更新角色的 permissions 字段
+        setRoles(prev => prev.map(r => {
+          const roleKey =
+            r.id === '1' ? 'super_admin' :
+            r.id === '2' ? 'admin' :
+            r.id === '3' ? 'operator' :
+            r.id === '4' ? 'finance' :
+            r.id === '5' ? 'viewer' :
+            r.id === '6' ? 'warehouse' : r.name;
+          if (data[roleKey]) {
+            return { ...r, permissions: data[roleKey] };
+          }
+          return r;
+        }));
+      }
+    } catch (err) {
+      console.error('加载角色权限配置失败:', err);
+    }
+  };
+
   // Tab切换时自动加载数据
   useEffect(() => {
     if (activeTab === 'admin-accounts' && adminList.length === 0) {
@@ -692,6 +781,7 @@ const SettingsManagementNew: React.FC = () => {
     }
     if (activeTab === 'roles' || activeTab === 'user-roles') {
       loadUserRoles();
+      loadRolePermissions();
     }
   }, [activeTab]);
 
