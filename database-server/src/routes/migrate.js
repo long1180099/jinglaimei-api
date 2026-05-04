@@ -894,6 +894,47 @@ router.get('/cos-diagnose', async (req, res) => {
       result.realImageTest = { success: false, error: err.message };
     }
 
+    // 6. 测试 COS 代理（模拟：先删本地文件，再通过HTTP访问）
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const testFile = path.join(__dirname, '../../data/uploads/products/8ae9471f-da45-4624-98f3-43c6d620ae60.jpg');
+      let localExists = fs.existsSync(testFile);
+      if (localExists) {
+        // 临时重命名，模拟文件不存在
+        fs.renameSync(testFile, testFile + '.bak');
+      }
+      try {
+        const http = require('http');
+        const result2 = await new Promise((resolve, reject) => {
+          const req = http.get('http://127.0.0.1:80/uploads/products/8ae9471f-da45-4624-98f3-43c6d620ae60.jpg', (res) => {
+            let data = [];
+            res.on('data', chunk => data.push(chunk));
+            res.on('end', () => resolve({
+              status: res.statusCode,
+              cosProxy: res.headers['x-cos-proxy'] || 'not present',
+              bodyLen: Buffer.concat(data).length,
+            }));
+          });
+          req.on('error', reject);
+          req.setTimeout(5000, () => { req.destroy(); reject(new Error('timeout')); });
+        });
+        result.proxyTest = {
+          localFileExisted: localExists,
+          proxyStatus: result2.status,
+          proxyCOSHeader: result2.cosProxy,
+          proxyBodyLen: result2.bodyLen,
+        };
+      } finally {
+        // 恢复文件
+        if (localExists) {
+          fs.renameSync(testFile + '.bak', testFile);
+        }
+      }
+    } catch (err) {
+      result.proxyTest = { error: err.message };
+    }
+
     success(res, result);
   } catch (err) {
     error(res, 'COS诊断异常: ' + err.message);
