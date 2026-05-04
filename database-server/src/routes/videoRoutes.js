@@ -847,7 +847,7 @@ router.post('/videos/batch-status', (req, res) => {
     if (status === undefined) return error(res, '请指定目标状态');
 
     const newStatus = parseInt(status);
-    const stmt = db.prepare('UPDATE videos SET status = ?, updated_at = datetime("now","localtime") WHERE id IN (' + ids.map('?').join(',') + ')');
+    const stmt = db.prepare('UPDATE videos SET status = ?, updated_at = new Date().toISOString().replace("T", " ").slice(0, 19) WHERE id IN (' + ids.map('?').join(',') + ')');
     stmt.run(...ids, newStatus);
 
     return success(res, null, `已更新${ids.length}个视频状态`);
