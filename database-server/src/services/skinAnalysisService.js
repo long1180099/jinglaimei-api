@@ -243,8 +243,9 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
     };
 }
 
-// Fallback when AI fails
-function generateFallbackReport(userId, agentId, imageUrl) {
+// Fallback when AI fails - 记录实际错误到数据库
+function generateFallbackReport(userId, agentId, imageUrl, errorMsg) {
+  console.error('[SkinAnalysis] Fallback triggered. Error:', errorMsg);
   const result = {
     skin_type: '待分析',
     overall_score: 0,
@@ -253,50 +254,73 @@ function generateFallbackReport(userId, agentId, imageUrl) {
     issues: [],
     fake: true
   };
-  return normalizeAnalysisResult(result, userId, agentId, imageUrl);
+  const normalized = normalizeAnalysisResult(result, userId, agentId, imageUrl);
+  // 记录实际错误到 error_msg 字段
+  try {
+    const db = getDb();
+    db.prepare("UPDATE skin_reports SET error_msg = ? WHERE id = ?").run(
+      errorMsg ? errorMsg.substring(0, 500) : 'unknown error',
+      normalized.reportId
+    );
+  } catch (e) {
+    console.error('[SkinAnalysis] Failed to save error_msg:', e.message);
+  }
+  return normalized;
 }
 
-// Core analysis function
+// Core analysis function - 带自动重试
 async function analyzeSkin(options) {
   const { userId, agentId, imagePath, imageUrl } = options;
   if (!imageUrl && !imagePath) {
     throw new Error('Missing image info');
   }
-  try {
-    const imageData = imageToBase64(imagePath);
-    if (!imageData) {
-      throw new Error('Image file read failed');
-    }
+  const MAX_RETRIES = 1;
+  let lastError = '';
 
-    const userContent = buildMultimodalMessage(imageData);
-    if (!userContent) {
-      throw new Error('Cannot build analysis request');
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[SkinAnalysis] Retry attempt ${attempt}/${MAX_RETRIES}...`);
+        await new Promise(r => setTimeout(r, 2000)); // 等2秒再重试
+      }
+
+      const imageData = imageToBase64(imagePath);
+      if (!imageData) {
+        throw new Error('Image file read failed');
+      }
+
+      const userContent = buildMultimodalMessage(imageData);
+      if (!userContent) {
+        throw new Error('Cannot build analysis request');
+      }
+      const messages = [
+        { role: 'system', content: SKIN_ANALYSIS_SYSTEM_PROMPT },
+        { role: 'user', content: userContent }
+      ];
+      console.log(`[SkinAnalysis] Sending to QwenVL (attempt ${attempt + 1})... imgSize=${imageData.base64.length} chars`);
+      const rawResponse = await callQwenVL(messages, {
+        temperature: 0.6,
+        max_tokens: 3000,
+        model: 'qwen-vl-max',
+        timeout: 120000,
+      });
+      console.log('[SkinAnalysis] QwenVL response, len=' + rawResponse.length);
+      console.log('[SkinAnalysis] Raw response preview: ' + rawResponse.substring(0, 500));
+      const result = parseJSON(rawResponse);
+      console.log('[SkinAnalysis] Parsed JSON keys:', Object.keys(result));
+      if (result.issues && Array.isArray(result.issues)) {
+        console.log('[SkinAnalysis] Issues count:', result.issues.length);
+      } else {
+        console.warn('[SkinAnalysis] No issues array found in result!');
+      }
+      return normalizeAnalysisResult(result, userId, agentId, imageUrl);
+    } catch (err) {
+      lastError = err.message || String(err);
+      console.error(`[SkinAnalysis] Attempt ${attempt + 1} failed:`, lastError);
     }
-    const messages = [
-      { role: 'system', content: SKIN_ANALYSIS_SYSTEM_PROMPT },
-      { role: 'user', content: userContent }
-    ];
-    console.log('[SkinAnalysis] Sending to QwenVL... imgSize=' + imageData.base64.length + ' chars');
-    const rawResponse = await callQwenVL(messages, {
-      temperature: 0.6,
-      max_tokens: 3000,
-      model: 'qwen-vl-max',
-      timeout: 120000,
-    });
-    console.log('[SkinAnalysis] QwenVL response, len=' + rawResponse.length);
-    console.log('[SkinAnalysis] Raw response preview: ' + rawResponse.substring(0, 500));
-    const result = parseJSON(rawResponse);
-    console.log('[SkinAnalysis] Parsed JSON keys:', Object.keys(result));
-    if (result.issues && Array.isArray(result.issues)) {
-      console.log('[SkinAnalysis] Issues count:', result.issues.length);
-    } else {
-      console.warn('[SkinAnalysis] No issues array found in result!');
-    }
-    return normalizeAnalysisResult(result, userId, agentId, imageUrl);
-  } catch (err) {
-    console.error('[SkinAnalysis] Analysis failed:', err.message);
-    return generateFallbackReport(userId, agentId, imageUrl);
   }
+  // 所有重试都失败，返回 fallback 报告
+  return generateFallbackReport(userId, agentId, imageUrl, lastError);
 }
 
 // DB helper functions
