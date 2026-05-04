@@ -15,8 +15,13 @@ RUN mkdir -p /app/data/uploads && chmod -R 777 /app/data
 COPY database-server/jinglaimei.db.migrate /app/data/jinglaimei.db.preseed
 RUN chmod 666 /app/data/jinglaimei.db.preseed
 
-# 复制 Admin 前端构建产物（app.js 通过 admin.jinglaimei.com 域名识别返回前端页面）
-COPY admin-backend/build /app/admin-backend/build
+# Admin 前端：在容器内构建（确保源码和产物一致）
+COPY admin-backend/package.json /app/admin-backend/package.json
+COPY admin-backend/package-lock.json /app/admin-backend/package-lock.json
+RUN cd /app/admin-backend && npm install
+COPY admin-backend/public /app/admin-backend/public
+COPY admin-backend/src /app/admin-backend/src
+RUN cd /app/admin-backend && npx react-scripts build
 
 ENV NODE_ENV=production
 ENV PORT=80
