@@ -10,6 +10,26 @@ function getDb() {
   return getDB();
 }
 
+// 自动修复 skin_report_issues 表：issue_id 改为可空（避免FK约束失败）
+try {
+  const _db = getDb();
+  const tblInfo = _db.prepare("PRAGMA table_info(skin_report_issues)").all();
+  const issueIdCol = tblInfo.find(c => c.name === 'issue_id');
+  if (issueIdCol && issueIdCol.notnull === 1) {
+    console.log('[SkinAnalysis] Fixing skin_report_issues.issue_id to allow NULL...');
+    _db.exec('PRAGMA foreign_keys=OFF');
+    _db.exec('CREATE TABLE IF NOT EXISTS skin_report_issues_new (id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL, issue_id INTEGER, issue_name TEXT NOT NULL DEFAULT "", category TEXT NOT NULL DEFAULT "", severity INTEGER DEFAULT 1, confidence REAL DEFAULT 0, area TEXT DEFAULT "", description TEXT DEFAULT "", cause_text TEXT DEFAULT "", advice_text TEXT DEFAULT "", FOREIGN KEY (report_id) REFERENCES skin_reports(id) ON DELETE CASCADE, FOREIGN KEY (issue_id) REFERENCES skin_issues(id))');
+    _db.exec('INSERT OR IGNORE INTO skin_report_issues_new SELECT * FROM skin_report_issues');
+    _db.exec('DROP TABLE skin_report_issues');
+    _db.exec('ALTER TABLE skin_report_issues_new RENAME TO skin_report_issues');
+    _db.exec('CREATE INDEX IF NOT EXISTS idx_report_issues_report ON skin_report_issues(report_id)');
+    _db.exec('PRAGMA foreign_keys=ON');
+    console.log('[SkinAnalysis] skin_report_issues table fixed successfully');
+  }
+} catch (e) {
+  console.error('[SkinAnalysis] Failed to fix skin_report_issues:', e.message);
+}
+
 // System prompt - 严格要求返回包含 overview/cause_analysis/script 的JSON
 const SKIN_ANALYSIS_SYSTEM_PROMPT = `你是玫小可品牌的首席AI皮肤顾问（非医疗机构人员）。最高优先级规则：你的身份是护肤品牌顾问，不是医生。绝对禁止使用医疗词汇（医院/就医/医生/激光/手术/药物等）。必须使用护肤语言（顽固性肌肤问题/科学护肤调理等）。宁可多报100个问题，不可遗漏1个。检测清单涵盖色素类/痘肌毛孔类/肤质状态/屏障受损/血管类/眼周/角质质地/衰老纹路/脱失类。目标发现8-15个问题，重度给4-5级。
 
@@ -144,13 +164,32 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       let issueId = iss.issue_id || iss.issueId || iss.id || 0;
       // 验证 issueId 是否确实存在于 skin_issues 表中
       if (issueId && !allSkinIssues.find(si => si.id === issueId)) {
-        issueId = 0; // 重置为0，不使用无效的外键值
+        issueId = 0;
       }
       if (!issueId && name) {
         const matched = allSkinIssues.find(si =>
           si.name === name || si.name.includes(name) || name.includes(si.name)
         );
         if (matched) issueId = matched.id;
+      }
+
+      // 如果仍未匹配到，自动创建新的 skin_issues 记录（避免FK约束失败）
+      if (!issueId && name) {
+        try {
+          const insertNewIssue = db.prepare(
+            'INSERT INTO skin_issues (category, name, icon, color, description, severity_range, sort_order, status) VALUES (?, ?, ?, ?, ?, ?, ?, 1)'
+          );
+          const newResult = insertNewIssue.run(
+            category || 'state', name, '', '#999',
+            description || '', '1-5',
+            allSkinIssues.length + 1
+          );
+          issueId = newResult.lastInsertRowid;
+          allSkinIssues.push({ id: issueId, name, category: category || 'state' });
+          console.log('[SkinAnalysis] Auto-created skin_issue id=' + issueId + ' name=' + name);
+        } catch (e) {
+          console.error('[SkinAnalysis] Failed to auto-create skin_issue:', e.message);
+        }
       }
 
       // 提取每个问题的完整信息（含成因、建议、置信度、区域）
@@ -162,7 +201,7 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       totalSeverity += severity;
 
       formattedIssues.push({
-        issue_id: issueId || 0,
+        issue_id: issueId || null,
         issue_name: name,
         category,
         severity,
