@@ -95,6 +95,24 @@ if (useCOS) {
 // 静态文件服务 - 商品图片等公开资源（通过 /api/public 访问）
 app.use('/api/public', express.static(path.join(__dirname, '../public')));
 
+// 诊断端点 - 检查 admin build 文件（部署后可删除）
+app.get('/api/diagnose-admin-build', (req, res) => {
+  const dir = adminBuildPath;
+  if (!dir) return res.json({ error: 'adminBuildPath not found' });
+  const results = {};
+  try {
+    const jsDir = path.join(dir, 'static/js');
+    const cssDir = path.join(dir, 'static/css');
+    results.adminBuildPath = dir;
+    results.indexHtml = fs.existsSync(path.join(dir, 'index.html'));
+    results.jsFiles = fs.existsSync(jsDir) ? fs.readdirSync(jsDir) : ['directory not found'];
+    results.cssFiles = fs.existsSync(cssDir) ? fs.readdirSync(cssDir) : ['directory not found'];
+    results.jsMainSize = (() => { try { return fs.statSync(path.join(jsDir, 'main.7edbbe2d.js')).size; } catch(e) { return e.message; } })();
+    results.cssMainSize = (() => { try { return fs.statSync(path.join(cssDir, 'main.01c716f8.css')).size; } catch(e) { return e.message; } })();
+  } catch(e) { results.error = e.message; }
+  res.json(results);
+});
+
 // 请求日志
 app.use((req, res, next) => {
   const timestamp = new Date().toLocaleTimeString('zh-CN');
