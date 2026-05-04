@@ -2,7 +2,7 @@ FROM node:18-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y python3 make g++ --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y python3 make g++ ca-certificates --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 # 复制后端代码
 COPY database-server/package.json ./
@@ -27,6 +27,7 @@ ENV HUNYUAN_API_KEY=sk-sNLnuLeFuInalb5MdMHL8Iwvi6x1hJxlVTwR9i5BeKcTnFmV
 ENV DASHSCOPE_API_KEY=sk-7dd97fec3aef4c62a866e7294e167646
 ENV COS_BUCKET=7072-prod-6g3ecawx14ba12f2-1422673068
 ENV COS_REGION=ap-shanghai
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 EXPOSE 80
 
 CMD ["node", "src/app.js"]
