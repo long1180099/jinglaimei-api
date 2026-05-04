@@ -76,7 +76,12 @@ if (useCOS) {
       if (data.ContentLength) res.set('Content-Length', data.ContentLength);
       if (data.CacheControl) res.set('Cache-Control', data.CacheControl);
       res.set('X-COS-Proxy', 'true');
-      data.Body.pipe(res);
+      if (typeof data.Body.pipe === 'function') {
+        data.Body.pipe(res);
+      } else {
+        // 微信云托管COS SDK可能返回Buffer而非Stream
+        res.send(data.Body);
+      }
     }).catch(err => {
       console.warn('[COS代理] 获取失败:', key, err.message);
       return res.status(404).json({ error: '文件不存在' });
