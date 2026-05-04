@@ -186,7 +186,7 @@ router.put('/batch-sort', (req, res) => {
       return error(res, '参数格式错误：需要 items 数组', 400);
     }
 
-    const updateStmt = db.prepare('UPDATE system_configs SET sort_order = ?, updated_at = datetime("now","localtime") WHERE id = ?');
+    const updateStmt = db.prepare('UPDATE system_configs SET sort_order = ?, updated_at = new Date().toISOString().replace("T", " ").slice(0, 19) WHERE id = ?');
     for (const item of items) {
       updateStmt.run(item.sort_order, item.id);
     }
@@ -215,7 +215,7 @@ router.patch('/:id/status', (req, res) => {
     try { parsed = JSON.parse(existing.config_value || '{}'); } catch (e) {}
     parsed.status = status ? 1 : 0;
 
-    db.prepare('UPDATE system_configs SET config_value = ?, updated_at = datetime("now","localtime") WHERE id = ?')
+    db.prepare('UPDATE system_configs SET config_value = ?, updated_at = new Date().toISOString().replace("T", " ").slice(0, 19) WHERE id = ?')
       .run(JSON.stringify(parsed), req.params.id);
 
     return success(res, { id: parseInt(req.params.id), status: parsed.status });
