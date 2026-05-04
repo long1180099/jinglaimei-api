@@ -1436,7 +1436,7 @@ router.get('/study-points/overview', (req, res) => {
       `SELECT COALESCE(SUM(10), 0) as points,
               COUNT(DISTINCT course_id) as completed_courses
        FROM study_progress
-       WHERE user_id = ? AND progress >= 80`
+       WHERE user_id = ? AND progress_percent >= 80`
     ).get(userId);
 
     // 计算电子书阅读积分：阅读每本书得5分
@@ -1472,7 +1472,7 @@ router.get('/study-points/overview', (req, res) => {
     // 计算学习天数（有记录的不重复天数）
     const studyDays = db.prepare(
       `SELECT COUNT(DISTINCT DATE(updated_at)) as days
-       FROM study_progress WHERE user_id = ? AND progress > 0
+       FROM study_progress WHERE user_id = ? AND progress_percent > 0
        UNION ALL
        SELECT COUNT(DISTINCT DATE(created_at)) as days
        FROM action_daily_logs WHERE user_id = ?`
@@ -1490,7 +1490,7 @@ router.get('/study-points/overview', (req, res) => {
     // 最近7天学习记录
     const recentActivity = db.prepare(
       `SELECT DATE(updated_at) as date, 'course' as type, COUNT(*) as count
-       FROM study_progress WHERE user_id = ? AND progress > 0
+       FROM study_progress WHERE user_id = ? AND progress_percent > 0
          AND updated_at >= DATE('now', '-7 days')
        GROUP BY DATE(updated_at)
        UNION ALL
@@ -1538,7 +1538,7 @@ router.get('/study-points/ranking', (req, res) => {
              COALESCE(sp.course_pts, 0) + COALESCE(bp.book_pts, 0) + COALESCE(lp.log_pts, 0) + COALESCE(cp.checkin_pts, 0) as total_points
       FROM users u
       LEFT JOIN (
-        SELECT user_id, SUM(10) as course_pts FROM study_progress WHERE progress >= 80 GROUP BY user_id
+        SELECT user_id, SUM(10) as course_pts FROM study_progress WHERE progress_percent >= 80 GROUP BY user_id
       ) sp ON u.id = sp.user_id
       LEFT JOIN (
         SELECT user_id, SUM(5) as book_pts FROM user_read_progress WHERE progress >= 50 GROUP BY user_id
