@@ -344,7 +344,7 @@ router.put('/:id/invite-code', (req, res) => {
     if (existing) return error(res, `邀请码已被用户「${existing.username}」使用`);
   }
   
-  db.prepare('UPDATE users SET invite_code = ?, updated_at = datetime("now","localtime") WHERE id = ?').run(new_code, userId);
+  db.prepare('UPDATE users SET invite_code = ?, updated_at = ? WHERE id = ?').run(new_code, new Date().toISOString().replace('T', ' ').slice(0, 19), userId);
   return success(res, { invite_code: new_code }, '邀请码已更新');
 });
 
