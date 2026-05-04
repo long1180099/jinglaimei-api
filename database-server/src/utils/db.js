@@ -181,6 +181,14 @@ function _autoInit(db) {
       ip_address TEXT, user_agent TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS balance_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+      change_type TEXT NOT NULL DEFAULT 'manual', change_amount REAL NOT NULL,
+      balance_before REAL DEFAULT 0, balance_after REAL DEFAULT 0,
+      operator_id INTEGER, operator_name TEXT, remark TEXT,
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS user_admin_roles (
       id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
       role TEXT NOT NULL, permissions TEXT DEFAULT '[]',
