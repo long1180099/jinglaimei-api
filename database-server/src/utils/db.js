@@ -186,6 +186,15 @@ function _autoInit(db) {
       ip_address TEXT, user_agent TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS user_admin_roles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+      role TEXT NOT NULL, permissions TEXT DEFAULT '[]',
+      assigned_by INTEGER, status INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime')),
+      UNIQUE(user_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
 
   // 插入默认管理员账号

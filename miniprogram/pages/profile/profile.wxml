@@ -94,6 +94,20 @@
       <text class="m-desc">在线学习提升</text>
       <text class="m-arrow">›</text>
     </view>
+    <!-- 使用记录入口：代理商及以上显示 -->
+    <view class="m-item" bindtap="onMenuTap" data-id="usage-logs" wx:if="{{userInfo && userInfo.agent_level >= 3}}">
+      <view class="m-icon m-icon--teal">📋</view>
+      <text class="m-text">使用记录</text>
+      <text class="m-desc">产品使用日志</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <!-- 团队使用记录入口：批发商及以上显示 -->
+    <view class="m-item" bindtap="onMenuTap" data-id="team-usage" wx:if="{{userInfo && userInfo.agent_level >= 4}}">
+      <view class="m-icon m-icon--purple">📊</view>
+      <text class="m-text">团队使用记录</text>
+      <text class="m-desc">查看下级使用情况</text>
+      <text class="m-arrow">›</text>
+    </view>
   </view>
 
   <!-- ===== 功能菜单组2：工具 ===== -->

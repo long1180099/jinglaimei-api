@@ -40,7 +40,8 @@ import {
   ExperimentOutlined,
   InboxOutlined,
   PictureOutlined,
-  SkinOutlined
+  SkinOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -80,6 +81,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/banners':   ['setting:write'],           // 轮播图管理
     '/rankings':  ['finance:read'],            // 排行榜管理
     '/action-log': ['team:write'],             // 行动日志
+    '/usage-logs': ['user:read'],              // 产品使用日志
     '/settings':  ['setting:read'],            // 系统设置（仅super_admin/operator）
   };
 
@@ -256,6 +258,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </span>
       ),
       description: '目标管理与行动追踪'
+    },
+    {
+      key: '/usage-logs',
+      icon: <FileTextOutlined className="menu-icon" style={{ color: '#1890ff' }} />,
+      label: (
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          使用日志
+          <span style={{
+            background: 'linear-gradient(135deg, #1890ff, #69c0ff)',
+            color: '#fff',
+            fontSize: 10,
+            padding: '1px 6px',
+            borderRadius: 8,
+            fontWeight: 700,
+            marginLeft: 6,
+            lineHeight: '16px'
+          }}>NEW</span>
+        </span>
+      ),
+      description: '产品使用记录管理'
     },
     {
       key: '/settings',

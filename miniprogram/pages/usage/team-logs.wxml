@@ -1,0 +1,59 @@
+<view class="container">
+  <!-- 顶部操作栏 -->
+  <view class="header-bar">
+    <view class="title">团队使用记录</view>
+    <view class="btn-create" wx:if="{{canDelegate}}" bindtap="goCreateSubordinate">+ 代填写</view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar" wx:if="{{subordinateAgents.length > 0}}">
+    <picker mode="selector" range="{{subordinateAgents}}" range-key="username" bindchange="onAgentChange">
+      <view class="filter-picker">
+        <text wx:if="{{!selectedAgentId}}">全部成员</text>
+        <text wx:else>{{subordinateAgents[selectedAgentIndex].username}}</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索顾客姓名/手机号" value="{{searchKeyword}}" bindinput="onSearchInput" bindconfirm="doSearch" />
+    <view class="search-btn" bindtap="doSearch">搜索</view>
+  </view>
+
+  <!-- 统计 -->
+  <view class="stats">共 {{total}} 条记录</view>
+
+  <!-- 列表 -->
+  <view class="log-list" wx:if="{{list.length > 0}}">
+    <view class="log-item" wx:for="{{list}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+      <view class="log-header">
+        <view class="customer-name">{{item.customer_name || '未知顾客'}}</view>
+        <view class="source-tag {{item.source_type === 'superior' ? 'superior' : 'self'}}">{{item.source_type === 'superior' ? '上级代填' : '自己录入'}}</view>
+      </view>
+      <view class="log-product">
+        <view class="product-info">
+          <view class="product-name">{{item.product_name}}</view>
+          <view class="trace-code" wx:if="{{item.trace_code}}">溯源码: {{item.trace_code}}</view>
+        </view>
+      </view>
+      <view class="log-footer">
+        <view class="log-agent">代理商: {{item.agent_name || '-'}}</view>
+        <view class="log-date">{{item.start_date}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && list.length === 0}}">
+    <view class="empty-text">暂无团队使用记录</view>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="load-more" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+  <view class="load-more" wx:if="{{noMore && list.length > 0}}">
+    <text>没有更多了</text>
+  </view>
+</view>

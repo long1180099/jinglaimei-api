@@ -81,6 +81,7 @@ app.use('/api/commissions', authMiddleware, requirePermission(['commission:read'
 app.use('/api/teams',       authMiddleware, requirePermission(['team:read']), require('./routes/teams'));
 // 注意: /api/school 路由已移到文件末尾(videoRoutes > school > schoolBooks 优先级顺序)
 app.use('/api/dashboard',   authMiddleware, require('./routes/dashboard'));
+app.use('/api/mp/usage',    require('./routes/mpUsage'));                           // 小程序端使用日志（必须在 /api/mp 之前，避免被 mp.js 拦截）
 app.use('/api/mp',          require('./routes/mp')); // 小程序端API（内部自行验证token）
 app.use('/api/mp',          require('./routes/mpExt')); // 小程序端扩展（电子书/行动日志/性格色彩）
 app.use('/api/mp/poster',    require('./routes/posterGenerator')); // AI营销海报生成器
@@ -109,11 +110,18 @@ try {
 }
 
 app.use('/api/mp/skin-analysis', require('./routes/skinAnalysis').router); // AI皮肤分析
+// 产品使用日志系统初始化
+try {
+  require('./routes/usageInit').initUsageDB();
+} catch (err) {
+  console.warn('⚠️ 产品使用日志系统初始化:', err.message);
+}
 // 视频学习管理(必须在school.js之前, 避免路由被截胡)
 app.use('/api/school', authMiddleware, require('./routes/videoRoutes'));          // Admin视频管理(完整CRUD)
 app.use('/api/school',      authMiddleware, require('./routes/school'));           // 商学院旧路由
 app.use('/api/school',      authMiddleware, require('./routes/schoolBooks'));       // 电子书管理
 app.use('/api/mp',          require('./routes/mpVideoRoutes'));                    // 小程序视频端
+app.use('/api/usage-logs',  authMiddleware, require('./routes/usage'));              // 管理后台使用日志
 
 // AI话术系统数据库初始化
 const { initAITrainingDB } = require('./routes/aiTrainingInit');

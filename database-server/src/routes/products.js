@@ -139,10 +139,10 @@ router.post('/', (req, res) => {
           status, is_hot, is_recommend, sort_order, commission_rate } = req.body;
   if (!product_code || !product_name || !category_id) return error(res, '商品编码、名称、分类不能为空');
   if (!retail_price) return error(res, '零售价不能为空');
-  
+
   // 确保 commission_rate 列存在（兼容旧数据库）
   try { db.prepare('ALTER TABLE products ADD COLUMN commission_rate REAL DEFAULT 0').run(); } catch(e) {}
-  
+
   try {
     const result = db.prepare(`
       INSERT INTO products (product_code, product_name, category_id, brand, retail_price, agent_price, vip_price, partner_price,

@@ -1,0 +1,134 @@
+<view class="container">
+  <!-- 步骤指示 -->
+  <view class="steps">
+    <view class="step-item {{step >= 1 ? 'active' : ''}}">
+      <view class="step-num">1</view>
+      <view class="step-text">选代理商</view>
+    </view>
+    <view class="step-line {{step >= 2 ? 'active' : ''}}"></view>
+    <view class="step-item {{step >= 2 ? 'active' : ''}}">
+      <view class="step-num">2</view>
+      <view class="step-text">填信息</view>
+    </view>
+  </view>
+
+  <!-- 步骤1: 选择下级代理商 -->
+  <view wx:if="{{step === 1}}">
+    <view class="section">
+      <view class="section-title">选择下级代理商</view>
+      <view class="form-item">
+        <input class="input" placeholder="搜索姓名/手机号" value="{{subordinateSearch}}" bindinput="onSubordinateSearch" />
+      </view>
+      <view class="subordinate-list" wx:if="{{subordinates.length > 0}}">
+        <view class="subordinate-item" wx:for="{{subordinates}}" wx:key="id" bindtap="selectSubordinate" data-item="{{item}}">
+          <view class="sub-name">{{item.username}}</view>
+          <view class="sub-phone">{{item.phone || '-'}}</view>
+          <view class="sub-level">{{item.level_text}}</view>
+        </view>
+      </view>
+      <view class="empty" wx:if="{{subordinates.length === 0 && subordinateSearch}}">
+        <text class="empty-text">未找到匹配的代理商</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤2: 填写信息（同 create-log） -->
+  <view wx:if="{{step === 2}}">
+    <!-- 已选代理商 -->
+    <view class="selected-agent" bindtap="prevStep">
+      <text>已选代理商: {{selectedSubordinate.username}}</text>
+      <text class="change-text">修改</text>
+    </view>
+
+    <!-- 顾客信息 -->
+    <view class="section">
+      <view class="section-title">顾客信息</view>
+      <view class="form-item">
+        <text class="label">姓名 *</text>
+        <input class="input" placeholder="请输入顾客姓名" value="{{customer_name}}" bindinput="onNameInput" />
+      </view>
+      <view class="form-item">
+        <text class="label">手机号</text>
+        <input class="input" type="number" placeholder="请输入手机号（选填）" value="{{customer_phone}}" bindinput="onPhoneInput" maxlength="11" />
+      </view>
+      <view class="search-results" wx:if="{{customerSearchResults.users.length > 0 || customerSearchResults.customers.length > 0}}">
+        <view wx:if="{{customerSearchResults.users.length > 0}}" wx:for="{{customerSearchResults.users}}" wx:key="id" bindtap="selectCustomer" data-item="{{item}}" class="search-item">
+          <text class="search-tag user-tag">用户</text>
+          <text>{{item.name}}</text>
+          <text class="search-phone">{{item.phone}}</text>
+        </view>
+        <view wx:if="{{customerSearchResults.customers.length > 0}}" wx:for="{{customerSearchResults.customers}}" wx:key="customer_id" bindtap="selectCustomer" data-item="{{item}}" class="search-item">
+          <text class="search-tag customer-tag">顾客</text>
+          <text>{{item.name}}</text>
+          <text class="search-phone">{{item.phone}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 产品选择 -->
+    <view class="section">
+      <view class="section-title">产品信息</view>
+      <view class="picker-btn" bindtap="toggleProductPicker">
+        <text wx:if="{{!selectedProduct}}" class="placeholder">请选择产品 *</text>
+        <text wx:else>{{selectedProduct.product_name}}</text>
+        <text class="arrow">></text>
+      </view>
+      <view class="picker-modal" wx:if="{{showProductPicker}}">
+        <view class="picker-mask" bindtap="toggleProductPicker"></view>
+        <view class="picker-content">
+          <view class="picker-header">
+            <text>选择产品</text>
+            <text class="picker-close" bindtap="toggleProductPicker">关闭</text>
+          </view>
+          <scroll-view scroll-y class="picker-list" style="max-height: 600rpx;">
+            <view class="picker-item" wx:for="{{products}}" wx:key="id" bindtap="selectProduct" data-item="{{item}}">
+              <image wx:if="{{item.image_gallery && item.image_gallery[0]}}" class="picker-img" src="{{item.image_gallery[0]}}" mode="aspectFill"></image>
+              <view class="picker-info"><text>{{item.product_name}}</text></view>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 溯源码 -->
+    <view class="section">
+      <view class="section-title">溯源码</view>
+      <view class="form-item">
+        <input class="input" placeholder="请输入产品外包装上的溯源码（必填）" value="{{trace_code}}" bindinput="onTraceCodeInput" />
+      </view>
+    </view>
+
+    <!-- 使用日期 -->
+    <view class="section">
+      <view class="section-title">开始使用日期</view>
+      <picker mode="date" value="{{start_date}}" bindchange="onDateChange">
+        <view class="picker-btn">
+          <text>{{start_date || '请选择日期 *'}}</text>
+          <text class="arrow">></text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 使用说明 -->
+    <view class="section" wx:if="{{usageOptions.length > 0}}">
+      <view class="section-title">每日用量说明</view>
+      <view class="usage-options">
+        <view class="usage-option {{selectedUsageIndex === index ? 'active' : ''}}"
+              wx:for="{{usageOptions}}" wx:key="index"
+              bindtap="selectUsageOption" data-index="{{index}}">
+          {{item}}
+        </view>
+      </view>
+      <view class="form-item" style="margin-top: 16rpx;">
+        <input class="input" placeholder="或自定义使用说明" value="{{usage_instructions}}" bindinput="onUsageInput" />
+      </view>
+    </view>
+
+    <!-- 提交 -->
+    <view class="submit-section">
+      <button class="btn-submit" bindtap="submit" disabled="{{submitting}}">
+        {{submitting ? '提交中...' : '提交代填写'}}
+      </button>
+    </view>
+  </view>
+</view>

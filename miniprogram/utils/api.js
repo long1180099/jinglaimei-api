@@ -494,6 +494,26 @@ const video = {
   }
 };
 
+// ==================== 产品使用日志 ====================
+var usage = {
+  // 查看使用日志列表（自己或团队）
+  getLogs(params) { return request('/mp/usage/logs', 'GET', params); },
+  // 使用日志详情
+  getLogDetail(id) { return request('/mp/usage/logs/' + id, 'GET'); },
+  // 创建使用日志（自己为顾客录入）
+  createLog(data) { return request('/mp/usage/create', 'POST', data); },
+  // 上级为下级代填写
+  createForSubordinate(data) { return request('/mp/usage/create-for-subordinate', 'POST', data); },
+  // 获取可代填的下级代理商列表
+  getSubordinates(params) { return request('/mp/usage/subordinates', 'GET', params); },
+  // 查看顾客列表
+  getCustomers(params) { return request('/mp/usage/customers', 'GET', params); },
+  // 按手机号搜索顾客
+  searchCustomers(params) { return request('/mp/usage/customers/search', 'GET', params); },
+  // 使用记录专用产品列表（不受上架状态限制）
+  getProducts(params) { return request('/mp/usage/products', 'GET', params); }
+};
+
 module.exports = {
   request,
   auth,
@@ -509,6 +529,7 @@ module.exports = {
   announcement,
   poster,
   video,
+  usage,
   BASE_URL,
   getBaseUrl,
   fixImageUrl

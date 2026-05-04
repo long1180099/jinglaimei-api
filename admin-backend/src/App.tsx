@@ -21,6 +21,7 @@ import InventoryManagement from './pages/InventoryManagement';
 import RankingManagement from './pages/RankingManagement';
 import BannerManagement from './pages/BannerManagement';
 import SkinAnalysisManagement from './pages/SkinAnalysisManagement';
+import ProductUsageManagement from './pages/ProductUsageManagement';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -57,6 +58,7 @@ const App: React.FC = () => {
               <Route path="/rankings" element={<ProtectedRoute requiredPermissions={['finance:read']}><RankingManagement /></ProtectedRoute>} />
               <Route path="/banners" element={<ProtectedRoute requiredPermissions={['setting:write']}><BannerManagement /></ProtectedRoute>} />
               <Route path="/skin-analysis" element={<ProtectedRoute requiredPermissions={['user:write']}><SkinAnalysisManagement /></ProtectedRoute>} />
+              <Route path="/usage-logs" element={<ProtectedRoute requiredPermissions={['user:read']}><ProductUsageManagement /></ProtectedRoute>} />
             </Route>
             
             {/* 404 页面 */}

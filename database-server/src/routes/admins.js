@@ -119,6 +119,92 @@ router.post('/', (req, res) => {
   }
 });
 
+// ==================== 用户角色分配（必须在 /:id 之前） ====================
+
+// GET /api/admins/user-roles - 获取所有用户角色分配
+router.get('/user-roles', (req, res) => {
+  const db = getDB();
+  const list = db.prepare(`
+    SELECT ur.*, u.username, u.real_name, u.phone, u.avatar_url, u.agent_level
+    FROM user_admin_roles ur
+    LEFT JOIN users u ON u.id = ur.user_id
+    WHERE ur.status = 1
+    ORDER BY ur.created_at DESC
+  `).all().map(row => ({
+    id: String(row.id),
+    userId: String(row.user_id),
+    roleId: row.role,
+    userName: row.real_name || row.username || `用户${row.user_id}`,
+    userAvatar: row.avatar_url || '',
+    userPhone: row.phone || '',
+    agentLevel: row.agent_level || 0,
+    permissions: JSON.parse(row.permissions || '[]'),
+    assignedAt: row.created_at,
+    assignedBy: row.assigned_by,
+  }));
+
+  const roleCountMap = {};
+  list.forEach(item => {
+    roleCountMap[item.roleId] = (roleCountMap[item.roleId] || 0) + 1;
+  });
+
+  return success(res, { list, roleCounts: roleCountMap });
+});
+
+// POST /api/admins/user-roles - 批量分配角色给用户
+router.post('/user-roles', (req, res) => {
+  const db = getDB();
+  const { userIds, role, permissions = [] } = req.body;
+
+  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    return error(res, '请选择要分配的用户');
+  }
+  if (!role) {
+    return error(res, '请选择角色');
+  }
+
+  const assignedBy = req.user?.id || null;
+  let added = 0;
+
+  const insertOrUpdate = db.prepare(`
+    INSERT INTO user_admin_roles (user_id, role, permissions, assigned_by, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, datetime('now','localtime'), datetime('now','localtime'))
+    ON CONFLICT(user_id) DO UPDATE SET
+      role = excluded.role,
+      permissions = excluded.permissions,
+      assigned_by = excluded.assigned_by,
+      status = 1,
+      updated_at = datetime('now','localtime')
+  `);
+
+  const transaction = db.transaction((ids) => {
+    for (const userId of ids) {
+      insertOrUpdate.run(parseInt(userId), role, JSON.stringify(permissions), assignedBy);
+      added++;
+    }
+  });
+
+  try {
+    transaction(userIds);
+    return success(res, { added }, `成功分配 ${added} 个用户`);
+  } catch (err) {
+    return error(res, '分配失败: ' + err.message);
+  }
+});
+
+// DELETE /api/admins/user-roles/:id - 移除用户角色分配
+router.delete('/user-roles/:id', (req, res) => {
+  const db = getDB();
+  const id = parseInt(req.params.id);
+
+  const existing = db.prepare('SELECT id, user_id FROM user_admin_roles WHERE id = ?').get(id);
+  if (!existing) return error(res, '分配记录不存在', 404);
+
+  db.prepare("UPDATE user_admin_roles SET status = 0, updated_at = datetime('now','localtime') WHERE id = ?").run(id);
+
+  return success(res, null, '已移除角色分配');
+});
+
 // GET /api/admins/:id - 获取单个管理员详情
 router.get('/:id', (req, res) => {
   const db = getDB();

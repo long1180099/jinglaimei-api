@@ -1,0 +1,26 @@
+.container { padding: 24rpx; min-height: 100vh; background: #f5f5f5; }
+.header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.title { font-size: 36rpx; font-weight: bold; color: #333; }
+.btn-create { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 12rpx 28rpx; border-radius: 32rpx; font-size: 26rpx; }
+.filter-bar { margin-bottom: 16rpx; }
+.filter-picker { padding: 16rpx 20rpx; background: #fff; border-radius: 8rpx; font-size: 28rpx; color: #333; border: 1rpx solid #eee; }
+.search-bar { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
+.search-input { flex: 1; background: #fff; border-radius: 8rpx; padding: 16rpx 20rpx; font-size: 28rpx; border: 1rpx solid #eee; }
+.search-btn { background: #667eea; color: #fff; padding: 0 28rpx; border-radius: 8rpx; font-size: 28rpx; display: flex; align-items: center; }
+.stats { font-size: 24rpx; color: #999; margin-bottom: 16rpx; }
+.log-list { display: flex; flex-direction: column; gap: 16rpx; }
+.log-item { background: #fff; border-radius: 16rpx; padding: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06); }
+.log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.customer-name { font-size: 30rpx; font-weight: 500; color: #333; }
+.source-tag { font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 20rpx; }
+.source-tag.self { background: #e8f5e9; color: #43a047; }
+.source-tag.superior { background: #e3f2fd; color: #1976d2; }
+.log-product { margin-bottom: 12rpx; }
+.product-name { font-size: 28rpx; color: #555; margin-bottom: 8rpx; }
+.trace-code { font-size: 24rpx; color: #999; }
+.log-footer { display: flex; justify-content: space-between; font-size: 24rpx; color: #aaa; border-top: 1rpx solid #f0f0f0; padding-top: 12rpx; }
+.log-agent { color: #667eea; }
+.log-date { color: #999; }
+.empty { text-align: center; padding: 120rpx 0; }
+.empty-text { font-size: 32rpx; color: #999; }
+.load-more { text-align: center; padding: 24rpx; font-size: 24rpx; color: #999; }

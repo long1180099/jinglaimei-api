@@ -48,7 +48,12 @@
     "pages/videos/list",
     "pages/videos/player",
     "pages/videos/learning",
-    "pages/videos/series-detail"
+    "pages/videos/series-detail",
+    "pages/usage/my-logs",
+    "pages/usage/create-log",
+    "pages/usage/team-logs",
+    "pages/usage/create-for-subordinate",
+    "pages/usage/log-detail"
   ],
   "window": {
     "navigationBarBackgroundColor": "#e94560",

@@ -168,6 +168,14 @@ Page({
         if (!this.requireLogin()) return;
         wx.navigateTo({ url: '/pages/personality/index' });
         break;
+      case 'usage-logs':
+        if (!this.requireLogin()) return;
+        wx.navigateTo({ url: '/pages/usage/my-logs' });
+        break;
+      case 'team-usage':
+        if (!this.requireLogin()) return;
+        wx.navigateTo({ url: '/pages/usage/team-logs' });
+        break;
       case 'address':
         if (!this.requireLogin()) return;
         this.showAddress();

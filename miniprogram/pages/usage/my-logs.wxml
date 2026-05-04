@@ -1,0 +1,42 @@
+<view class="container">
+  <!-- 顶部操作栏 -->
+  <view class="header-bar">
+    <view class="title">我的使用记录</view>
+    <view class="btn-create" wx:if="{{canCreate}}" bindtap="goCreate">+ 录入记录</view>
+  </view>
+
+  <!-- 列表 -->
+  <view class="log-list" wx:if="{{list.length > 0}}">
+    <view class="log-item" wx:for="{{list}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+      <view class="log-header">
+        <view class="customer-name">{{item.customer_name || '未知顾客'}}</view>
+        <view class="source-tag {{item.source_type === 'superior' ? 'superior' : 'self'}}">{{item.source_type === 'superior' ? '上级代填' : '自己录入'}}</view>
+      </view>
+      <view class="log-product">
+        <image wx:if="{{item.image_gallery && item.image_gallery[0]}}" class="product-img" src="{{item.image_gallery[0]}}" mode="aspectFill"></image>
+        <view class="product-info">
+          <view class="product-name">{{item.product_name}}</view>
+          <view class="trace-code" wx:if="{{item.trace_code}}">溯源码: {{item.trace_code}}</view>
+        </view>
+      </view>
+      <view class="log-footer">
+        <view class="log-date">开始: {{item.start_date}}</view>
+        <view class="log-time">{{item.created_at}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{!loading && list.length === 0}}">
+    <view class="empty-text">暂无使用记录</view>
+    <view class="empty-sub" wx:if="{{canCreate}}" bindtap="goCreate">点击录入第一条记录</view>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="load-more" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+  <view class="load-more" wx:if="{{noMore && list.length > 0}}">
+    <text>没有更多了</text>
+  </view>
+</view>

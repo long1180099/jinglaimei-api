@@ -890,7 +890,7 @@ router.get('/products', (req, res) => {
 
   const total = db.prepare(`SELECT COUNT(*) as cnt FROM products ${whereClause}`).get(...params).cnt;
   const products = db.prepare(`
-    SELECT id, product_name, product_code, category_id, main_image, retail_price, agent_price,
+    SELECT id, product_name, product_code, category_id, main_image, image_gallery, retail_price, agent_price,
            vip_price, partner_price, wholesale_price, chief_price, division_price,
            (stock_quantity - sold_quantity) as available_stock,
            sold_quantity as sales_count, is_hot, is_recommend, description, brand,

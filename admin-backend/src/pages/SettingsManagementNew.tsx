@@ -210,14 +210,8 @@ const SettingsManagementNew: React.FC = () => {
     { id: '20', module: '库存管理', name: '管理库存', code: 'inventory:write', description: '可以进行入库、出库、盘点等操作', category: 'inventory' }
   ]);
 
-  const [userRoles, setUserRoles] = useState<UserRole[]>([
-    { id: '1', userId: '1001', roleId: '1', userName: '管理员', userAvatar: 'https://i.pravatar.cc/150?img=1', assignedAt: '2026-01-01', assignedBy: '系统' },
-    { id: '2', userId: '1002', roleId: '2', userName: '张经理', userAvatar: 'https://i.pravatar.cc/150?img=2', assignedAt: '2026-01-15', assignedBy: '管理员' },
-    { id: '3', userId: '1003', roleId: '2', userName: '李主管', userAvatar: 'https://i.pravatar.cc/150?img=3', assignedAt: '2026-02-01', assignedBy: '张经理' },
-    { id: '4', userId: '1004', roleId: '3', userName: '王运营', userAvatar: 'https://i.pravatar.cc/150?img=4', assignedAt: '2026-02-10', assignedBy: '李主管' },
-    { id: '5', userId: '1005', roleId: '4', userName: '赵会计', userAvatar: 'https://i.pravatar.cc/150?img=5', assignedAt: '2026-03-01', assignedBy: '管理员' },
-    { id: '6', userId: '1006', roleId: '5', userName: '刘查看', userAvatar: 'https://i.pravatar.cc/150?img=6', assignedAt: '2026-03-15', assignedBy: '王运营' }
-  ]);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [userRolesLoading, setUserRolesLoading] = useState(false);
 
   const [systemConfigs, setSystemConfigs] = useState<SystemConfig[]>([
     { key: 'system_name', name: '系统名称', value: '静莱美代理商系统', type: 'string', description: '显示在页面标题和LOGO旁的系统名称', category: 'general' },
@@ -250,6 +244,16 @@ const SettingsManagementNew: React.FC = () => {
   const [assignSelectedKeys, setAssignSelectedKeys] = useState<React.Key[]>([]);
   const [assignSearch, setAssignSearch] = useState('');
   const [assignSubmitting, setAssignSubmitting] = useState(false);
+
+  // 角色对应默认权限映射
+  const rolePermissionsMap: Record<string, string[]> = {
+    super_admin: ['*'],
+    admin: ['*'],
+    operator: ['order:read', 'order:write', 'product:read', 'product:write', 'user:read', 'user:write', 'inventory:read', 'inventory:write', 'setting:read', 'setting:write', 'school:read', 'school:write'],
+    finance: ['finance:read', 'finance:write', 'commission:read', 'commission:write', 'order:read'],
+    warehouse: ['order:read', 'order:write', 'product:read', 'inventory:read', 'inventory:write'],
+    viewer: ['user:read', 'product:read', 'order:read', 'finance:read', 'inventory:read'],
+  };
 
   // ========== 管理员账户管理状态 ==========
   const [adminList, setAdminList] = useState<AdminAccount[]>([]);
@@ -459,18 +463,17 @@ const SettingsManagementNew: React.FC = () => {
       dataIndex: 'roleId',
       key: 'roleId',
       render: (roleId) => {
-        const role = roles.find(r => r.id === roleId);
-        return (
-          <Tag color={
-            roleId === '1' ? 'red' :
-            roleId === '2' ? 'blue' :
-            roleId === '3' ? 'green' :
-            roleId === '4' ? 'orange' :
-            roleId === '6' ? 'cyan' : 'purple'
-          }>
-            {role?.name || '未知角色'}
-          </Tag>
-        );
+        // roleId 现在是后端的 role 字段（如 'warehouse', 'super_admin' 等）
+        const roleNameMap: Record<string, { color: string; name: string }> = {
+          super_admin: { color: 'red', name: '超级管理员' },
+          admin: { color: 'blue', name: '系统管理员' },
+          operator: { color: 'green', name: '运营管理员' },
+          finance: { color: 'orange', name: '财务管理员' },
+          warehouse: { color: 'cyan', name: '仓库管理员' },
+          viewer: { color: 'purple', name: '查看者' },
+        };
+        const cfg = roleNameMap[roleId] || { color: 'default', name: roleId };
+        return <Tag color={cfg.color}>{cfg.name}</Tag>;
       }
     },
     {
@@ -555,9 +558,19 @@ const SettingsManagementNew: React.FC = () => {
     try {
       const { usersApi } = await import('../services/dbApi');
       const data = await usersApi.getList({ pageSize: 100, keyword });
-      // 过滤掉已经分配给当前角色的用户
+      // 过滤掉已经分配给当前角色的用户（从后端已加载的数据中过滤）
       const existingUserIds = userRoles
-        .filter(ur => ur.roleId === assignRole?.id)
+        .filter(ur => {
+          // 将 roleId（后端的 role 字段，如 'warehouse'）映射回前端的 role id
+          const roleKey =
+            assignRole?.id === '1' ? 'super_admin' :
+            assignRole?.id === '2' ? 'admin' :
+            assignRole?.id === '3' ? 'operator' :
+            assignRole?.id === '4' ? 'finance' :
+            assignRole?.id === '5' ? 'viewer' :
+            assignRole?.id === '6' ? 'warehouse' : assignRole?.name;
+          return ur.roleId === roleKey;
+        })
         .map(ur => ur.userId);
       const filtered = (data?.list || []).filter((u: any) => !existingUserIds.includes(String(u.id)));
       setAssignUsers(filtered);
@@ -575,38 +588,84 @@ const SettingsManagementNew: React.FC = () => {
     if (!assignRole || assignSelectedKeys.length === 0) return;
     setAssignSubmitting(true);
     try {
-      const now = new Date().toISOString().split('T')[0];
-      const newAssignments: UserRole[] = assignSelectedKeys.map(userId => {
-        const user = assignUsers.find(u => u.id === userId);
-        return {
-          id: `${assignRole.id}-${userId}-${Date.now()}-${userId}`,
-          userId: String(userId),
-          roleId: assignRole.id,
-          userName: user?.real_name || user?.username || `用户${userId}`,
-          userAvatar: 'https://i.pravatar.cc/150?img=' + (Math.floor(Math.random() * 70) + 1),
-          assignedAt: now,
-          assignedBy: '当前管理员',
-        };
+      const { default: apiClient } = await import('../utils/apiClient');
+      const rolePermissions = assignRole.permissions || [];
+      await apiClient.post('/admins/user-roles', {
+        userIds: assignSelectedKeys,
+        role: assignRole.id === '1' ? 'super_admin' :
+              assignRole.id === '2' ? 'admin' :
+              assignRole.id === '3' ? 'operator' :
+              assignRole.id === '4' ? 'finance' :
+              assignRole.id === '5' ? 'viewer' :
+              assignRole.id === '6' ? 'warehouse' : assignRole.name,
+        permissions: rolePermissions,
       });
 
-      // 更新本地状态
-      setUserRoles([...userRoles, ...newAssignments]);
-      setRoles(roles.map(r => r.id === assignRole!.id ? { ...r, userCount: r.userCount + newAssignments.length } : r));
-
-      message.success(`成功为角色"${assignRole.name}"分配 ${newAssignments.length} 个用户`);
+      message.success(`成功为角色"${assignRole.name}"分配 ${assignSelectedKeys.length} 个用户`);
       setAssignModalVisible(false);
       setAssignRole(null);
-    } catch (error) {
-      message.error('分配失败，请重试');
+      // 重新加载数据
+      await loadUserRoles();
+    } catch (error: any) {
+      console.error('分配失败:', error);
+      message.error(error?.message || '分配失败，请重试');
     } finally {
       setAssignSubmitting(false);
     }
   };
 
   // 处理移除用户角色
-  const handleRemoveUserRole = (userRoleId: string) => {
-    setUserRoles(userRoles.filter(ur => ur.id !== userRoleId));
-    message.success('用户角色已移除');
+  const handleRemoveUserRole = async (userRoleId: string) => {
+    try {
+      const { default: apiClient } = await import('../utils/apiClient');
+      await apiClient.delete(`/admins/user-roles/${userRoleId}`);
+      message.success('用户角色已移除');
+      await loadUserRoles();
+    } catch (error: any) {
+      message.error(error?.message || '移除失败');
+    }
+  };
+
+  // ========== 用户角色分配数据加载 ==========
+
+  // 加载用户角色分配数据
+  const loadUserRoles = async () => {
+    setUserRolesLoading(true);
+    try {
+      const { default: apiClient } = await import('../utils/apiClient');
+      const data = await apiClient.get('/admins/user-roles');
+      const list: UserRole[] = (data.list || []).map((item: any) => ({
+        id: item.id,
+        userId: item.userId,
+        roleId: item.roleId,
+        userName: item.userName,
+        userAvatar: item.userAvatar,
+        assignedAt: item.assignedAt,
+        assignedBy: item.assignedBy ? String(item.assignedBy) : '系统',
+      }));
+      setUserRoles(list);
+
+      // 更新角色的 userCount
+      const roleCounts: Record<string, number> = data.roleCounts || {};
+      setRoles(prev => prev.map(r => {
+        const roleKey =
+          r.id === '1' ? 'super_admin' :
+          r.id === '2' ? 'admin' :
+          r.id === '3' ? 'operator' :
+          r.id === '4' ? 'finance' :
+          r.id === '5' ? 'viewer' :
+          r.id === '6' ? 'warehouse' : r.name;
+        return { ...r, userCount: roleCounts[roleKey] || 0 };
+      }));
+    } catch (err: any) {
+      console.error('加载用户角色分配失败:', err);
+      // 如果是新部署，表可能还没创建，忽略 500 错误
+      if (!err?.message?.includes('500')) {
+        message.error('加载用户角色分配失败');
+      }
+    } finally {
+      setUserRolesLoading(false);
+    }
   };
 
   // ========== 管理员账户 CRUD 函数 ==========
@@ -626,10 +685,13 @@ const SettingsManagementNew: React.FC = () => {
     }
   };
 
-  // Tab切换到admin-accounts时自动加载
+  // Tab切换时自动加载数据
   useEffect(() => {
     if (activeTab === 'admin-accounts' && adminList.length === 0) {
       loadAdminList();
+    }
+    if (activeTab === 'roles' || activeTab === 'user-roles') {
+      loadUserRoles();
     }
   }, [activeTab]);
 
@@ -644,6 +706,11 @@ const SettingsManagementNew: React.FC = () => {
     setAdminFormLoading(true);
     try {
       const { default: apiClient } = await import('../utils/apiClient');
+      // 根据角色自动注入对应的权限，确保权限与角色一致
+      const role = values.role;
+      if (role && rolePermissionsMap[role]) {
+        values.permissions = rolePermissionsMap[role];
+      }
       if (editingAdmin) {
         await apiClient.put(`/admins/${editingAdmin.id}`, values);
         message.success('管理员信息已更新');
@@ -1430,6 +1497,7 @@ const SettingsManagementNew: React.FC = () => {
               columns={userRoleColumns}
               dataSource={userRoles}
               rowKey="id"
+              loading={userRolesLoading}
               pagination={{ pageSize: 10 }}
             />
           </div>
