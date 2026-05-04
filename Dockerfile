@@ -1,43 +1,25 @@
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
-# 复制源代码（排除数据库文件，使用持久化存储）
+RUN apt-get update && apt-get install -y python3 make g++ --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+# 复制后端代码
 COPY database-server/package.json ./
+RUN npm install --production
 
-# 安装依赖
-RUN npm install --production --omit=dev
+COPY database-server/src/ ./src/
 
-# 复制源代码
-COPY database-server/ ./
+RUN mkdir -p /app/data/uploads && chmod -R 777 /app/data
 
-# 删除可能被复制的数据库文件（使用持久化存储中的数据）
-RUN rm -f /app/data/jinglaimei.db /app/data/jinglaimei.db-shm /app/data/jinglaimei.db-wal
+COPY database-server/jinglaimei.db.migrate /app/data/jinglaimei.db.preseed
+RUN chmod 666 /app/data/jinglaimei.db.preseed
 
-# 复制种子数据库（数据库为空时自动初始化）
-RUN if [ -f /app/jinglaimei.db.migrate ]; then cp /app/jinglaimei.db.migrate /app/data/jinglaimei.db.preseed; fi
-
-# 创建数据目录并设置权限（关键！）
-RUN mkdir -p /app/data/uploads/ebooks && chmod -R 777 /app/data
-
-# 安装系统CA证书（修复腾讯云托管内部代理导致的SSL自签名证书问题）
-RUN apk add --no-cache ca-certificates && update-ca-certificates
-
-# 设置环境变量（注意：敏感信息后续应迁移到云托管控制台的环境变量配置）
-ENV NODE_ENV=production
-ENV PORT=80
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV JWT_SECRET=jinglaimei_secret_2026
-ENV WX_APPID=wx9ac76bfc2dad7364
-ENV WX_APP_SECRET=2e719267b5986241a7af8162a9d1e6a7
-ENV HUNYUAN_API_KEY=sk-sNLnuLeFuInalb5MdMHL8Iwvi6x1hJxlVTwR9i5BeKcTnFmV
-ENV DASHSCOPE_API_KEY=sk-7dd97fec3aef4c62a866e7294e167646
-
-# 复制管理后台前端构建产物
+# 复制 Admin 前端构建产物（app.js 通过 admin.jinglaimei.com 域名识别返回前端页面）
 COPY admin-backend/build /app/admin-backend/build
 
-# 暴露端口
+ENV NODE_ENV=production
+ENV PORT=80
 EXPOSE 80
 
-# 启动命令
 CMD ["node", "src/app.js"]
