@@ -205,6 +205,46 @@ router.delete('/user-roles/:id', (req, res) => {
   return success(res, null, '已移除角色分配');
 });
 
+// ==================== 角色权限配置（必须在 /:id 之前注册） ====================
+
+/**
+ * GET /api/admins/role-permissions
+ * 获取角色权限配置（持久化在 system_configs 表中）
+ */
+router.get('/role-permissions', (req, res) => {
+  const db = getDB();
+  const row = db.prepare("SELECT config_value FROM system_configs WHERE config_key = 'role_permissions'").get();
+  if (row && row.config_value) {
+    try {
+      return success(res, JSON.parse(row.config_value));
+    } catch (e) {
+      console.error('[role-permissions] JSON解析失败:', e.message);
+    }
+  }
+  // 没有配置时返回空对象，前端会使用默认值
+  return success(res, {});
+});
+
+/**
+ * PUT /api/admins/role-permissions
+ * 保存角色权限配置到 system_configs 表
+ */
+router.put('/role-permissions', (req, res) => {
+  const db = getDB();
+  const { rolePermissionsMap } = req.body;
+  if (!rolePermissionsMap || typeof rolePermissionsMap !== 'object') {
+    return error(res, '参数无效，需要 rolePermissionsMap 对象');
+  }
+  const jsonValue = JSON.stringify(rolePermissionsMap);
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  db.prepare(`
+    INSERT INTO system_configs (config_key, config_value, config_type, description, updated_at)
+    VALUES ('role_permissions', ?, 'json', '角色权限映射配置', ?)
+    ON CONFLICT(config_key) DO UPDATE SET config_value = ?, updated_at = ?
+  `).run(jsonValue, now, jsonValue, now);
+  return success(res, rolePermissionsMap, '角色权限配置已保存');
+});
+
 // GET /api/admins/:id - 获取单个管理员详情
 router.get('/:id', (req, res) => {
   const db = getDB();
@@ -288,46 +328,6 @@ router.post('/:id/reset-password', (req, res) => {
     .run(hashedPwd, req.params.id);
 
   return success(res, null, `管理员「${admin.username}」的密码已重置`);
-});
-
-// ==================== 角色权限配置 ====================
-
-/**
- * GET /api/admins/role-permissions
- * 获取角色权限配置（持久化在 system_configs 表中）
- */
-router.get('/role-permissions', (req, res) => {
-  const db = getDB();
-  const row = db.prepare("SELECT config_value FROM system_configs WHERE config_key = 'role_permissions'").get();
-  if (row && row.config_value) {
-    try {
-      return success(res, JSON.parse(row.config_value));
-    } catch (e) {
-      console.error('[role-permissions] JSON解析失败:', e.message);
-    }
-  }
-  // 没有配置时返回空对象，前端会使用默认值
-  return success(res, {});
-});
-
-/**
- * PUT /api/admins/role-permissions
- * 保存角色权限配置到 system_configs 表
- */
-router.put('/role-permissions', (req, res) => {
-  const db = getDB();
-  const { rolePermissionsMap } = req.body;
-  if (!rolePermissionsMap || typeof rolePermissionsMap !== 'object') {
-    return error(res, '参数无效，需要 rolePermissionsMap 对象');
-  }
-  const jsonValue = JSON.stringify(rolePermissionsMap);
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  db.prepare(`
-    INSERT INTO system_configs (config_key, config_value, config_type, description, updated_at)
-    VALUES ('role_permissions', ?, 'json', '角色权限映射配置', ?)
-    ON CONFLICT(config_key) DO UPDATE SET config_value = ?, updated_at = ?
-  `).run(jsonValue, now, jsonValue, now);
-  return success(res, rolePermissionsMap, '角色权限配置已保存');
 });
 
 module.exports = router;
