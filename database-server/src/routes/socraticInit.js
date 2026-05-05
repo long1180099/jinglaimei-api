@@ -6,13 +6,13 @@
  */
 const { getDB } = require('../utils/db');
 
-function initSocraticDB() {
+async function initSocraticDB() {
   const db = getDB();
 
   // ==================== 表结构创建 ====================
 
   // 1. 苏格拉底场景表（训练场景）
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS socratic_scenarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -33,7 +33,7 @@ function initSocraticDB() {
   `);
 
   // 2. 苏格拉底问题库（标准问题模板）
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS socratic_questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       scenario_id INTEGER,
@@ -50,7 +50,7 @@ function initSocraticDB() {
   `);
 
   // 3. 苏格拉底训练会话表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS socratic_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -79,7 +79,7 @@ function initSocraticDB() {
   `);
 
   // 4. 苏格拉底对话消息表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS socratic_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER NOT NULL,
@@ -97,20 +97,20 @@ function initSocraticDB() {
 
   // 5. AI学院 - users表新增字段（ALTER TABLE ADD COLUMN IF NOT EXISTS 在SQLite中需要安全处理）
   try {
-    db.exec(`ALTER TABLE users ADD COLUMN socratic_xp INTEGER DEFAULT 0`);
+    await db.exec(`ALTER TABLE users ADD COLUMN socratic_xp INTEGER DEFAULT 0`);
   } catch(e) { /* 字段已存在，忽略 */ }
   try {
-    db.exec(`ALTER TABLE users ADD COLUMN socratic_level INTEGER DEFAULT 1`);
+    await db.exec(`ALTER TABLE users ADD COLUMN socratic_level INTEGER DEFAULT 1`);
   } catch(e) {}
   try {
-    db.exec(`ALTER TABLE users ADD COLUMN socratic_title TEXT DEFAULT ''`);
+    await db.exec(`ALTER TABLE users ADD COLUMN socratic_title TEXT DEFAULT ''`);
   } catch(e) {}
   try {
-    db.exec(`ALTER TABLE users ADD COLUMN total_training_minutes INTEGER DEFAULT 0`);
+    await db.exec(`ALTER TABLE users ADD COLUMN total_training_minutes INTEGER DEFAULT 0`);
   } catch(e) {}
 
   // 6. 经验值日志表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS socratic_xp_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -123,7 +123,7 @@ function initSocraticDB() {
   `);
 
   // 7. 成就定义表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS achievements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -141,7 +141,7 @@ function initSocraticDB() {
   `);
 
   // 8. 用户成就解锁记录
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS user_achievements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -154,7 +154,7 @@ function initSocraticDB() {
   `);
 
   // 9. 学习路径表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS learning_paths (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -169,7 +169,7 @@ function initSocraticDB() {
   `);
 
   // 10. 用户学习路径进度
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS user_path_progress (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -185,7 +185,7 @@ function initSocraticDB() {
   `);
 
   // 11. 每日任务定义表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS daily_tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT NOT NULL UNIQUE,
@@ -199,7 +199,7 @@ function initSocraticDB() {
   `);
 
   // 12. 每日任务完成记录
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS daily_task_completions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -212,7 +212,7 @@ function initSocraticDB() {
   `);
 
   // 13. 训练快照表（历史对比趋势）
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS session_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -229,7 +229,7 @@ function initSocraticDB() {
   `);
 
   // 创建索引
-  db.exec(`
+  await db.exec(`
     CREATE INDEX IF NOT EXISTS idx_socratic_sessions_user ON socratic_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_socratic_sessions_scenario ON socratic_sessions(scenario_id);
     CREATE INDEX IF NOT EXISTS idx_socratic_messages_session ON socratic_messages(session_id);
@@ -250,7 +250,7 @@ function initSocraticDB() {
 // ==================== 种子数据：训练场景 ====================
 
 function seedSocraticScenarios(db) {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM socratic_scenarios').get().cnt;
+  const count = await db.prepare('SELECT COUNT(*) as cnt FROM socratic_scenarios').get().cnt;
   if (count > 0) return;
 
   const scenarios = [
@@ -405,7 +405,7 @@ function seedSocraticScenarios(db) {
 // ==================== 种子数据：标准问题库 ====================
 
 function seedSocraticQuestions(db) {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM socratic_questions').get().cnt;
+  const count = await db.prepare('SELECT COUNT(*) as cnt FROM socratic_questions').get().cnt;
   if (count > 0) return;
 
   // 每个场景对应的标准问题模板
@@ -542,7 +542,7 @@ function seedSocraticQuestions(db) {
 
 function seedAcademyData(db) {
   // 每日任务
-  const taskCount = db.prepare('SELECT COUNT(*) as cnt FROM daily_tasks').get().cnt;
+  const taskCount = await db.prepare('SELECT COUNT(*) as cnt FROM daily_tasks').get().cnt;
   if (taskCount === 0) {
     const tasks = [
       { key: 'complete_1_session', name: '完成一次训练', description: '完成任意一次苏格拉底提问训练', target_count: 1, xp_reward: 20, sort_order: 1 },
@@ -558,7 +558,7 @@ function seedAcademyData(db) {
   }
 
   // 成就
-  const achCount = db.prepare('SELECT COUNT(*) as cnt FROM achievements').get().cnt;
+  const achCount = await db.prepare('SELECT COUNT(*) as cnt FROM achievements').get().cnt;
   if (achCount === 0) {
     const achievements = [
       { name: '初次训练', description: '完成第一次苏格拉底训练', icon: '🎯', category: 'training', condition_type: 'count', condition_field: 'total_sessions', condition_target: 1, xp_reward: 20, sort_order: 1 },

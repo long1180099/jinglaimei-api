@@ -12,9 +12,6 @@ COPY database-server/src/ ./src/
 
 RUN mkdir -p /app/data/uploads && chmod -R 777 /app/data
 
-# ⚠️ 不再复制 preseed 数据库，防止容器重建时覆盖生产数据
-# COPY database-server/jinglaimei.db.migrate /app/data/jinglaimei.db.preseed
-
 # Admin 前端：本地预构建后 COPY 产物（容器内构建不稳定）
 COPY admin-backend/build /app/admin-backend/build
 
@@ -28,6 +25,13 @@ ENV DASHSCOPE_API_KEY=sk-7dd97fec3aef4c62a866e7294e167646
 ENV COS_BUCKET=7072-prod-6g3ecawx14ba12f2-1422673068
 ENV COS_REGION=ap-shanghai
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
+# MySQL 数据库连接配置
+ENV DB_HOST=10.36.110.7
+ENV DB_PORT=3306
+ENV DB_USER=root
+ENV DB_PASSWORD=Long0329
+ENV DB_NAME=jinglaimei
 EXPOSE 80
 
 CMD ["node", "src/app.js"]

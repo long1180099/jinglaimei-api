@@ -9,13 +9,13 @@ const { success, error } = require('../utils/response');
 const { generateToken } = require('../middleware/auth');
 
 // POST /api/auth/login - 管理员登录
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return error(res, '用户名和密码不能为空');
   }
   const db = getDB();
-  const admin = db.prepare('SELECT * FROM admins WHERE username = ? AND status = 1').get(username);
+  const admin = await db.prepare('SELECT * FROM admins WHERE username = ? AND status = 1').get(username);
   if (!admin) {
     return error(res, '用户名或密码错误', 401);
   }
@@ -43,12 +43,12 @@ router.post('/login', (req, res) => {
 });
 
 // POST /api/auth/logout - 登出
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   return success(res, null, '已退出登录');
 });
 
 // GET /api/auth/profile - 获取当前用户信息
-router.get('/profile', (req, res) => {
+router.get('/profile', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未认证', 401);
   try {
@@ -57,7 +57,7 @@ router.get('/profile', (req, res) => {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
     const decoded = jwt.verify(token, JWT_SECRET);
     const db = getDB();
-    const admin = db.prepare('SELECT id, username, real_name, email, role, permissions, avatar_url, last_login_at FROM admins WHERE id = ?').get(decoded.id);
+    const admin = await db.prepare('SELECT id, username, real_name, email, role, permissions, avatar_url, last_login_at FROM admins WHERE id = ?').get(decoded.id);
     if (!admin) return error(res, '用户不存在', 404);
     return success(res, {
       id: admin.id,

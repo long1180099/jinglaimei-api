@@ -84,7 +84,7 @@ function calcItemRebate(product, buyerLevel, profitOwnerLevel, quantity) {
  */
 function findProfitOwner(buyerId, buyerWeight, db) {
   // 获取买家当前parent_id
-  let currentUserId = db.prepare('SELECT parent_id FROM users WHERE id = ?').get(buyerId)?.parent_id;
+  let currentUserId = await db.prepare('SELECT parent_id FROM users WHERE id = ?').get(buyerId)?.parent_id;
   
   if (!currentUserId) {
     return { found: false, ownerId: 0, ownerLevel: 0, chain: [], reason: '无上级' };
@@ -101,7 +101,7 @@ function findProfitOwner(buyerId, buyerWeight, db) {
     }
     visited.add(currentUserId);
 
-    const upper = db.prepare('SELECT id, agent_level, username FROM users WHERE id = ? AND is_deleted = 0').get(currentUserId);
+    const upper = await db.prepare('SELECT id, agent_level, username FROM users WHERE id = ? AND is_deleted = 0').get(currentUserId);
     if (!upper) break;
 
     chain.push({
@@ -150,7 +150,7 @@ function findProfitOwner(buyerId, buyerWeight, db) {
  */
 function processOrderRebate(orderId, buyerId, db) {
   // 1. 获取买家信息
-  const buyer = db.prepare('SELECT id, agent_level, parent_id, username FROM users WHERE id = ? AND is_deleted = 0').get(buyerId);
+  const buyer = await db.prepare('SELECT id, agent_level, parent_id, username FROM users WHERE id = ? AND is_deleted = 0').get(buyerId);
   if (!buyer) {
     return { totalRebate: 0, details: [], reason: '买家不存在' };
   }
@@ -184,7 +184,7 @@ function processOrderRebate(orderId, buyerId, db) {
   }
 
   // 4. 逐商品计算差价
-  const order = db.prepare('SELECT order_no, actual_amount FROM orders WHERE id = ?').get(orderId);
+  const order = await db.prepare('SELECT order_no, actual_amount FROM orders WHERE id = ?').get(orderId);
   let totalRebate = 0;
   const details = [];
 

@@ -13,7 +13,7 @@ const { success, error } = require('../utils/response');
 // ==================== 排行榜用户配置 ====================
 
 // 获取排行榜配置列表（分页+搜索）
-router.get('/configs', (req, res) => {
+router.get('/configs', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, search = '', period = 'month' } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -37,7 +37,7 @@ router.get('/configs', (req, res) => {
   }
 
   const countSql = `SELECT COUNT(DISTINCT u.id) as cnt FROM users u ${whereClause}`;
-  const total = db.prepare(countSql).get(...params).cnt;
+  const total = await db.prepare(countSql).get(...params).cnt;
 
   const dataSql = `
     SELECT u.id, u.username, u.real_name, u.avatar_url, u.phone,
@@ -61,33 +61,38 @@ router.get('/configs', (req, res) => {
     LIMIT ? OFFSET ?
   `;
 
-  const list = db.prepare(dataSql).all(...params, parseInt(pageSize), offset);
+  const list = await db.prepare(dataSql).all(...params, parseInt(pageSize), offset);
 
   return success(res, { list, total, page: parseInt(page), pageSize: parseInt(pageSize) });
 });
 
 // 更新单个用户的排行榜配置
-router.put('/configs/:userId', (req, res) => {
+router.put('/configs/:userId', async (req, res) => {
   const db = getDB();
   const userId = req.params.userId;
   const { rank_position, display_name, highlight_color, badge_text, is_pinned, is_hidden, custom_note } = req.body;
 
-  const existing = db.prepare('SELECT id FROM ranking_configs WHERE user_id = ?').get(userId);
+  const existing = await db.prepare('SELECT id FROM ranking_configs WHERE user_id = ?').get(userId);
   
   if (existing) {
-    db.prepare(`
-      UPDATE ranking_configs SET
-        rank_position = COALESCE(?, rank_position),
-        display_name = COALESCE(?, display_name),
-        highlight_color = COALESCE(?, highlight_color),
-        badge_text = COALESCE(?, badge_text),
-        is_pinned = COALESCE(?, is_pinned),
-        is_hidden = COALESCE(?, is_hidden),
-        custom_note = COALESCE(?, custom_note),
-        updated_at = datetime('now','localtime'),
-        updated_by = ?
-      WHERE user_id = ?
-    `).run(rank_position, display_name, highlight_color, badge_text, is_pinned, is_hidden, custom_note, (req.user && req.user.id) || null, userId);
+    // 动态构建 SET 子句，只更新前端明确传递的字段
+    const setClauses = [];
+    const setParams = [];
+    
+    if (rank_position !== undefined) { setClauses.push('rank_position = ?'); setParams.push(rank_position); }
+    if (display_name !== undefined) { setClauses.push('display_name = ?'); setParams.push(display_name); }
+    if (highlight_color !== undefined) { setClauses.push('highlight_color = ?'); setParams.push(highlight_color); }
+    if (badge_text !== undefined) { setClauses.push('badge_text = ?'); setParams.push(badge_text); }
+    if (is_pinned !== undefined) { setClauses.push('is_pinned = ?'); setParams.push(is_pinned); }
+    if (is_hidden !== undefined) { setClauses.push('is_hidden = ?'); setParams.push(is_hidden); }
+    if (custom_note !== undefined) { setClauses.push('custom_note = ?'); setParams.push(custom_note); }
+    
+    setClauses.push("updated_at = datetime('now','localtime')");
+    setClauses.push('updated_by = ?');
+    setParams.push((req.user && req.user.id) || null);
+    setParams.push(userId);
+    
+    await db.prepare(`UPDATE ranking_configs SET ${setClauses.join(', ')} WHERE user_id = ?`).run(...setParams);
   } else {
     db.prepare(`
       INSERT INTO ranking_configs (user_id, rank_position, display_name, highlight_color, badge_text, is_pinned, is_hidden, custom_note, created_by)
@@ -99,7 +104,7 @@ router.put('/configs/:userId', (req, res) => {
 });
 
 // 批量更新排名位置
-router.put('/configs/batch-position', (req, res) => {
+router.put('/configs/batch-position', async (req, res) => {
   const db = getDB();
   const { items } = req.body;
   
@@ -113,7 +118,7 @@ router.put('/configs/batch-position', (req, res) => {
 
   const batchUpdate = db.transaction(() => {
     items.forEach(item => {
-      const existing = db.prepare('SELECT id FROM ranking_configs WHERE user_id = ?').get(item.user_id);
+      const existing = await db.prepare('SELECT id FROM ranking_configs WHERE user_id = ?').get(item.user_id);
       if (existing) {
         update.run(item.rank_position, item.user_id);
       } else {
@@ -132,15 +137,15 @@ router.put('/configs/batch-position', (req, res) => {
 
 // ==================== 排行榜展示设置 ====================
 
-router.get('/settings', (req, res) => {
+router.get('/settings', async (req, res) => {
   const db = getDB();
-  const rows = db.prepare('SELECT * FROM ranking_settings ORDER BY setting_key').all();
+  const rows = await db.prepare('SELECT * FROM ranking_settings ORDER BY setting_key').all();
   const settings = {};
   rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
   return success(res, settings);
 });
 
-router.put('/settings', (req, res) => {
+router.put('/settings', async (req, res) => {
   const db = getDB();
   const updates = req.body;
 
@@ -159,7 +164,7 @@ router.put('/settings', (req, res) => {
 
 // ==================== 同步数据 ====================
 
-router.post('/sync', (req, res) => {
+router.post('/sync', async (req, res) => {
   const db = getDB();
   const { limit = 50, period = 'month' } = req.body;
 

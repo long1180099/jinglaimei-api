@@ -10,26 +10,6 @@ function getDb() {
   return getDB();
 }
 
-// 自动修复 skin_report_issues 表：issue_id 改为可空（避免FK约束失败）
-try {
-  const _db = getDb();
-  const tblInfo = _db.prepare("PRAGMA table_info(skin_report_issues)").all();
-  const issueIdCol = tblInfo.find(c => c.name === 'issue_id');
-  if (issueIdCol && issueIdCol.notnull === 1) {
-    console.log('[SkinAnalysis] Fixing skin_report_issues.issue_id to allow NULL...');
-    _db.exec('PRAGMA foreign_keys=OFF');
-    _db.exec('CREATE TABLE IF NOT EXISTS skin_report_issues_new (id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL, issue_id INTEGER, issue_name TEXT NOT NULL DEFAULT "", category TEXT NOT NULL DEFAULT "", severity INTEGER DEFAULT 1, confidence REAL DEFAULT 0, area TEXT DEFAULT "", description TEXT DEFAULT "", cause_text TEXT DEFAULT "", advice_text TEXT DEFAULT "", FOREIGN KEY (report_id) REFERENCES skin_reports(id) ON DELETE CASCADE, FOREIGN KEY (issue_id) REFERENCES skin_issues(id))');
-    _db.exec('INSERT OR IGNORE INTO skin_report_issues_new SELECT * FROM skin_report_issues');
-    _db.exec('DROP TABLE skin_report_issues');
-    _db.exec('ALTER TABLE skin_report_issues_new RENAME TO skin_report_issues');
-    _db.exec('CREATE INDEX IF NOT EXISTS idx_report_issues_report ON skin_report_issues(report_id)');
-    _db.exec('PRAGMA foreign_keys=ON');
-    console.log('[SkinAnalysis] skin_report_issues table fixed successfully');
-  }
-} catch (e) {
-  console.error('[SkinAnalysis] Failed to fix skin_report_issues:', e.message);
-}
-
 // System prompt - 严格要求返回包含 overview/cause_analysis/script 的JSON
 const SKIN_ANALYSIS_SYSTEM_PROMPT = `你是玫小可品牌的首席AI皮肤顾问（非医疗机构人员）。最高优先级规则：你的身份是护肤品牌顾问，不是医生。绝对禁止使用医疗词汇（医院/就医/医生/激光/手术/药物等）。必须使用护肤语言（顽固性肌肤问题/科学护肤调理等）。宁可多报100个问题，不可遗漏1个。检测清单涵盖色素类/痘肌毛孔类/肤质状态/屏障受损/血管类/眼周/角质质地/衰老纹路/脱失类。目标发现8-15个问题，重度给4-5级。
 
@@ -151,7 +131,7 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
     if (typeof issueCount === 'string') issueCount = parseInt(issueCount) || issues.length;
 
     // 格式化 issues，映射中文字段名，并查找 issue_id
-    const allSkinIssues = db.prepare('SELECT id, name, category FROM skin_issues WHERE status = 1').all() || [];
+    const allSkinIssues = await db.prepare('SELECT id, name, category FROM skin_issues WHERE status = 1').all() || [];
 
     const formattedIssues = [];
     for (const iss of issues) {
@@ -164,32 +144,13 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       let issueId = iss.issue_id || iss.issueId || iss.id || 0;
       // 验证 issueId 是否确实存在于 skin_issues 表中
       if (issueId && !allSkinIssues.find(si => si.id === issueId)) {
-        issueId = 0;
+        issueId = 0; // 重置为0，不使用无效的外键值
       }
       if (!issueId && name) {
         const matched = allSkinIssues.find(si =>
           si.name === name || si.name.includes(name) || name.includes(si.name)
         );
         if (matched) issueId = matched.id;
-      }
-
-      // 如果仍未匹配到，自动创建新的 skin_issues 记录（避免FK约束失败）
-      if (!issueId && name) {
-        try {
-          const insertNewIssue = db.prepare(
-            'INSERT INTO skin_issues (category, name, icon, color, description, severity_range, sort_order, status) VALUES (?, ?, ?, ?, ?, ?, ?, 1)'
-          );
-          const newResult = insertNewIssue.run(
-            category || 'state', name, '', '#999',
-            description || '', '1-5',
-            allSkinIssues.length + 1
-          );
-          issueId = newResult.lastInsertRowid;
-          allSkinIssues.push({ id: issueId, name, category: category || 'state' });
-          console.log('[SkinAnalysis] Auto-created skin_issue id=' + issueId + ' name=' + name);
-        } catch (e) {
-          console.error('[SkinAnalysis] Failed to auto-create skin_issue:', e.message);
-        }
       }
 
       // 提取每个问题的完整信息（含成因、建议、置信度、区域）
@@ -201,7 +162,7 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
       totalSeverity += severity;
 
       formattedIssues.push({
-        issue_id: issueId || null,
+        issue_id: issueId || 0,
         issue_name: name,
         category,
         severity,
@@ -282,9 +243,8 @@ function normalizeAnalysisResult(result, userId, agentId, imageUrl) {
     };
 }
 
-// Fallback when AI fails - 记录实际错误到数据库
-function generateFallbackReport(userId, agentId, imageUrl, errorMsg) {
-  console.error('[SkinAnalysis] Fallback triggered. Error:', errorMsg);
+// Fallback when AI fails
+function generateFallbackReport(userId, agentId, imageUrl) {
   const result = {
     skin_type: '待分析',
     overall_score: 0,
@@ -293,79 +253,56 @@ function generateFallbackReport(userId, agentId, imageUrl, errorMsg) {
     issues: [],
     fake: true
   };
-  const normalized = normalizeAnalysisResult(result, userId, agentId, imageUrl);
-  // 记录实际错误到 error_msg 字段
-  try {
-    const db = getDb();
-    db.prepare("UPDATE skin_reports SET error_msg = ? WHERE id = ?").run(
-      errorMsg ? errorMsg.substring(0, 500) : 'unknown error',
-      normalized.reportId
-    );
-  } catch (e) {
-    console.error('[SkinAnalysis] Failed to save error_msg:', e.message);
-  }
-  return normalized;
+  return normalizeAnalysisResult(result, userId, agentId, imageUrl);
 }
 
-// Core analysis function - 带自动重试
+// Core analysis function
 async function analyzeSkin(options) {
   const { userId, agentId, imagePath, imageUrl } = options;
   if (!imageUrl && !imagePath) {
     throw new Error('Missing image info');
   }
-  const MAX_RETRIES = 1;
-  let lastError = '';
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 0) {
-        console.log(`[SkinAnalysis] Retry attempt ${attempt}/${MAX_RETRIES}...`);
-        await new Promise(r => setTimeout(r, 2000)); // 等2秒再重试
-      }
-
-      const imageData = imageToBase64(imagePath);
-      if (!imageData) {
-        throw new Error('Image file read failed');
-      }
-
-      const userContent = buildMultimodalMessage(imageData);
-      if (!userContent) {
-        throw new Error('Cannot build analysis request');
-      }
-      const messages = [
-        { role: 'system', content: SKIN_ANALYSIS_SYSTEM_PROMPT },
-        { role: 'user', content: userContent }
-      ];
-      console.log(`[SkinAnalysis] Sending to QwenVL (attempt ${attempt + 1})... imgSize=${imageData.base64.length} chars`);
-      const rawResponse = await callQwenVL(messages, {
-        temperature: 0.6,
-        max_tokens: 3000,
-        model: 'qwen-vl-max',
-        timeout: 120000,
-      });
-      console.log('[SkinAnalysis] QwenVL response, len=' + rawResponse.length);
-      console.log('[SkinAnalysis] Raw response preview: ' + rawResponse.substring(0, 500));
-      const result = parseJSON(rawResponse);
-      console.log('[SkinAnalysis] Parsed JSON keys:', Object.keys(result));
-      if (result.issues && Array.isArray(result.issues)) {
-        console.log('[SkinAnalysis] Issues count:', result.issues.length);
-      } else {
-        console.warn('[SkinAnalysis] No issues array found in result!');
-      }
-      return normalizeAnalysisResult(result, userId, agentId, imageUrl);
-    } catch (err) {
-      lastError = err.message || String(err);
-      console.error(`[SkinAnalysis] Attempt ${attempt + 1} failed:`, lastError);
+  try {
+    const imageData = imageToBase64(imagePath);
+    if (!imageData) {
+      throw new Error('Image file read failed');
     }
+
+    const userContent = buildMultimodalMessage(imageData);
+    if (!userContent) {
+      throw new Error('Cannot build analysis request');
+    }
+    const messages = [
+      { role: 'system', content: SKIN_ANALYSIS_SYSTEM_PROMPT },
+      { role: 'user', content: userContent }
+    ];
+    console.log('[SkinAnalysis] Sending to QwenVL... imgSize=' + imageData.base64.length + ' chars');
+    const rawResponse = await callQwenVL(messages, {
+      temperature: 0.6,
+      max_tokens: 3000,
+      model: 'qwen-vl-max',
+      timeout: 120000,
+    });
+    console.log('[SkinAnalysis] QwenVL response, len=' + rawResponse.length);
+    console.log('[SkinAnalysis] Raw response preview: ' + rawResponse.substring(0, 500));
+    const result = parseJSON(rawResponse);
+    console.log('[SkinAnalysis] Parsed JSON keys:', Object.keys(result));
+    if (result.issues && Array.isArray(result.issues)) {
+      console.log('[SkinAnalysis] Issues count:', result.issues.length);
+    } else {
+      console.warn('[SkinAnalysis] No issues array found in result!');
+    }
+    return normalizeAnalysisResult(result, userId, agentId, imageUrl);
+  } catch (err) {
+    console.error('[SkinAnalysis] Analysis failed:', err.message);
+    return generateFallbackReport(userId, agentId, imageUrl);
   }
-  // 所有重试都失败，返回 fallback 报告
-  return generateFallbackReport(userId, agentId, imageUrl, lastError);
 }
 
 // DB helper functions
-function getSkinIssues() {
+async function getSkinIssues() {
   const db = getDb();
-  return db.prepare('SELECT * FROM skin_issues WHERE status = 1 ORDER BY category, id').all() || [];
+  return (await db.prepare('SELECT * FROM skin_issues WHERE status = 1 ORDER BY category, id').all()) || [];
 }
 
 function getMatchedProducts(issueId) {
@@ -406,7 +343,7 @@ function saveSkinReport(report) {
 
 function getSkinReport(reportId) {
   const db = getDb();
-  const report = db.prepare('SELECT * FROM skin_reports WHERE id = ?').get(reportId);
+  const report = await db.prepare('SELECT * FROM skin_reports WHERE id = ?').get(reportId);
   if (!report) return null;
   report.issues = db.prepare(
     'SELECT sr.*, COALESCE(si.name, sr.issue_name) as issue_name, COALESCE(si.category, sr.category) as category FROM skin_report_issues sr LEFT JOIN skin_issues si ON sr.issue_id = si.id WHERE sr.report_id = ?'
@@ -439,9 +376,9 @@ function getAgentSkinStats(agentId) {
 
 function getIssueDetail(issueId) {
   const db = getDb();
-  const issue = db.prepare('SELECT * FROM skin_issues WHERE id = ? AND status = 1').get(issueId);
+  const issue = await db.prepare('SELECT * FROM skin_issues WHERE id = ? AND status = 1').get(issueId);
   if (!issue) return null;
-  const causes = db.prepare('SELECT * FROM skin_issue_causes WHERE issue_id = ?').all(issueId) || [];
+  const causes = await db.prepare('SELECT * FROM skin_issue_causes WHERE issue_id = ?').all(issueId) || [];
   const products = db.prepare(
     'SELECT sp.*, p.product_name, p.retail_price, p.main_image as product_image FROM skin_products sp LEFT JOIN products p ON sp.product_id = p.id WHERE sp.issue_id = ?'
   ).all(issueId) || [];

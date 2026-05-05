@@ -16,7 +16,7 @@ const {
 // 确保user_read_progress表存在
 try {
   const db = getDB();
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS user_read_progress (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -30,7 +30,7 @@ try {
   `);
 
   // 电子书分类管理表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ebook_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -42,7 +42,7 @@ try {
   `);
 
   // 初始化默认分类
-  const catCount = db.prepare('SELECT COUNT(*) as c FROM ebook_categories').get().c;
+  const catCount = await db.prepare('SELECT COUNT(*) as c FROM ebook_categories').get().c;
   if (catCount === 0) {
     const defaultCats = [
       ['代理商培训', '🎓', 1],
@@ -52,13 +52,13 @@ try {
       ['团队管理', '👥', 5],
       ['品牌文化', '🏆', 6],
     ];
-    db.prepare('INSERT INTO ebook_categories (name, icon, sort_order) VALUES (?, ?, ?)').run(
+    await db.prepare('INSERT INTO ebook_categories (name, icon, sort_order) VALUES (?, ?, ?)').run(
       ...defaultCats.reduce((acc, c) => acc.concat(c), [])
     );
   }
 
   // 用户收藏电子书表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS user_book_favorites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -70,10 +70,10 @@ try {
 
   // 给learning_books添加权限和置顶字段（如果不存在）
   try {
-    db.exec('ALTER TABLE learning_books ADD COLUMN access_level TEXT DEFAULT "all"');
+    await db.exec('ALTER TABLE learning_books ADD COLUMN access_level TEXT DEFAULT "all"');
   } catch(e) {}
   try {
-    db.exec('ALTER TABLE learning_books ADD COLUMN is_top INTEGER DEFAULT 0');
+    await db.exec('ALTER TABLE learning_books ADD COLUMN is_top INTEGER DEFAULT 0');
   } catch(e) {}
 } catch(e) {}
 
@@ -95,7 +95,7 @@ function verifyUser(req, res, callback) {
  * GET /api/mp/books
  * 小程序端电子书列表（支持分类Tab、搜索、权限过滤）
  */
-router.get('/books', (req, res) => {
+router.get('/books', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
     const { page = 1, pageSize = 10, keyword, category, tab = 'all' } = req.query;
@@ -118,7 +118,7 @@ router.get('/books', (req, res) => {
     const whereClause = 'WHERE ' + where.join(' AND ');
 
     // 统计总数
-    const total = db.prepare(`SELECT COUNT(*) as cnt FROM learning_books lb ${whereClause}`).get(...params).cnt;
+    const total = await db.prepare(`SELECT COUNT(*) as cnt FROM learning_books lb ${whereClause}`).get(...params).cnt;
 
     // 查询书籍列表
     const books = db.prepare(`
@@ -134,7 +134,7 @@ router.get('/books', (req, res) => {
 
     // 如果是"收藏"tab，改为查询收藏列表
     if (tab === 'favorites') {
-      const favTotal = db.prepare(`SELECT COUNT(*) as cnt FROM user_book_favorites WHERE user_id = ?`).get(decoded.id).cnt;
+      const favTotal = await db.prepare(`SELECT COUNT(*) as cnt FROM user_book_favorites WHERE user_id = ?`).get(decoded.id).cnt;
       const favBooks = db.prepare(`
         SELECT lb.id, lb.title, lb.author, lb.category, lb.file_format, lb.cover_url, lb.description,
                lb.views, lb.downloads, lb.created_at, lb.access_level, lb.is_top,
@@ -158,14 +158,14 @@ router.get('/books', (req, res) => {
  * GET /api/mp/books/:id/read
  * 电子书在线阅读
  */
-router.get('/books/:id/read', (req, res) => {
+router.get('/books/:id/read', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
-    const book = db.prepare("SELECT * FROM learning_books WHERE id = ? AND (status = '1' OR status = 'active' OR status = 'available' OR status = 'recommended' OR status IS NULL)").get(req.params.id);
+    const book = await db.prepare("SELECT * FROM learning_books WHERE id = ? AND (status = '1' OR status = 'active' OR status = 'available' OR status = 'recommended' OR status IS NULL)").get(req.params.id);
     if (!book) return error(res, '电子书不存在', 404);
 
     // 更新阅读量
-    db.prepare('UPDATE learning_books SET views = COALESCE(views, 0) + 1 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE learning_books SET views = COALESCE(views, 0) + 1 WHERE id = ?').run(req.params.id);
 
     // 记录阅读进度（如果用户有阅读记录就返回）
     const readRecord = db.prepare('SELECT * FROM user_read_progress WHERE user_id = ? AND book_id = ?')
@@ -210,7 +210,7 @@ router.get('/books/:id/read', (req, res) => {
  * POST /api/mp/books/:id/progress
  * 保存电子书阅读进度
  */
-router.post('/books/:id/progress', (req, res) => {
+router.post('/books/:id/progress', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
     const bookId = req.params.id;
@@ -233,7 +233,7 @@ router.post('/books/:id/progress', (req, res) => {
  * GET /api/mp/books/my-progress
  * 我的电子书阅读列表（含进度）
  */
-router.get('/books/my-progress', (req, res) => {
+router.get('/books/my-progress', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
     const records = db.prepare(`
@@ -254,17 +254,17 @@ router.get('/books/my-progress', (req, res) => {
  * POST /api/mp/books/:id/favorite
  * 收藏/取消收藏电子书
  */
-router.post('/books/:id/favorite', (req, res) => {
+router.post('/books/:id/favorite', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
     const bookId = req.params.id;
     const existing = db.prepare('SELECT id FROM user_book_favorites WHERE user_id = ? AND book_id = ?')
       .get(decoded.id, bookId);
     if (existing) {
-      db.prepare('DELETE FROM user_book_favorites WHERE id = ?').run(existing.id);
+      await db.prepare('DELETE FROM user_book_favorites WHERE id = ?').run(existing.id);
       return success(res, { favorited: false }, '已取消收藏');
     } else {
-      db.prepare('INSERT INTO user_book_favorites (user_id, book_id) VALUES (?, ?)').run(decoded.id, bookId);
+      await db.prepare('INSERT INTO user_book_favorites (user_id, book_id) VALUES (?, ?)').run(decoded.id, bookId);
       return success(res, { favorited: true }, '收藏成功');
     }
   });
@@ -274,12 +274,12 @@ router.post('/books/:id/favorite', (req, res) => {
  * GET /api/mp/books/categories
  * 获取电子书分类列表
  */
-router.get('/books/categories', (req, res) => {
+router.get('/books/categories', async (req, res) => {
   const db = getDB();
-  const categories = db.prepare('SELECT * FROM ebook_categories WHERE status = 1 ORDER BY sort_order ASC').all();
+  const categories = await db.prepare('SELECT * FROM ebook_categories WHERE status = 1 ORDER BY sort_order ASC').all();
   // 统计每个分类下的书籍数量
   const catsWithCount = categories.map(cat => {
-    const count = db.prepare("SELECT COUNT(*) as c FROM learning_books WHERE category = ? AND status IN ('1','active','available','recommended')").get(cat.name);
+    const count = await db.prepare("SELECT COUNT(*) as c FROM learning_books WHERE category = ? AND status IN ('1','active','available','recommended')").get(cat.name);
     return { ...cat, book_count: count ? count.c : 0 };
   });
   return success(res, catsWithCount);
@@ -289,13 +289,13 @@ router.get('/books/categories', (req, res) => {
  * GET /api/mp/books/stats
  * 获取电子书阅读统计（总阅读数、总阅读人数、我的进度概览）
  */
-router.get('/books/stats', (req, res) => {
+router.get('/books/stats', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
     // 总阅读次数
-    const totalReads = db.prepare("SELECT COALESCE(SUM(views), 0) as v FROM learning_books").get().v;
+    const totalReads = await db.prepare("SELECT COALESCE(SUM(views), 0) as v FROM learning_books").get().v;
     // 阅读人数（有阅读记录的用户数）
-    const readerCount = db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM user_read_progress WHERE progress > 0').get().c;
+    const readerCount = await db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM user_read_progress WHERE progress > 0').get().c;
     // 我的统计
     const myStats = db.prepare(`
       SELECT
@@ -305,7 +305,7 @@ router.get('/books/stats', (req, res) => {
       FROM user_read_progress WHERE user_id = ?
     `).get(decoded.id);
     // 我的收藏数
-    const favCount = db.prepare('SELECT COUNT(*) as c FROM user_book_favorites WHERE user_id = ?').get(decoded.id).c;
+    const favCount = await db.prepare('SELECT COUNT(*) as c FROM user_book_favorites WHERE user_id = ?').get(decoded.id).c;
 
     return success(res, {
       totalReads,
@@ -327,7 +327,7 @@ router.get('/books/stats', (req, res) => {
  */
 function ensureActionLogTables() {
   const db = getDB();
-  db.exec(`
+  await db.exec(`
     -- 年度/月度目标（统一表，goal_type区分）
     CREATE TABLE IF NOT EXISTS action_goals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -463,7 +463,7 @@ function ensureActionLogTables() {
  * GET /api/mp/action-log/annual-goals
  * 获取我的年度目标
  */
-router.get('/action-log/annual-goals', (req, res) => {
+router.get('/action-log/annual-goals', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -479,7 +479,7 @@ router.get('/action-log/annual-goals', (req, res) => {
  * POST /api/mp/action-log/annual-goals
  * 创建/更新年度目标
  */
-router.post('/action-log/annual-goals', (req, res) => {
+router.post('/action-log/annual-goals', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -507,7 +507,7 @@ router.post('/action-log/annual-goals', (req, res) => {
  * PUT /api/mp/action-log/goals/:id
  * 更新目标进度和状态
  */
-router.put('/action-log/goals/:id', (req, res) => {
+router.put('/action-log/goals/:id', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -533,11 +533,11 @@ router.put('/action-log/goals/:id', (req, res) => {
  * DELETE /api/mp/action-log/goals/:id
  * 删除目标
  */
-router.delete('/action-log/goals/:id', (req, res) => {
+router.delete('/action-log/goals/:id', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
-    db.prepare('DELETE FROM action_goals WHERE id = ? AND user_id = ?').run(req.params.id, decoded.id);
+    await db.prepare('DELETE FROM action_goals WHERE id = ? AND user_id = ?').run(req.params.id, decoded.id);
     return success(res, null, '目标已删除');
   });
 });
@@ -546,7 +546,7 @@ router.delete('/action-log/goals/:id', (req, res) => {
  * POST /api/mp/action-log/daily
  * 创建/更新每日日志
  */
-router.post('/action-log/daily', (req, res) => {
+router.post('/action-log/daily', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -574,7 +574,7 @@ router.post('/action-log/daily', (req, res) => {
  * GET /api/mp/action-log/daily
  * 获取每日日志
  */
-router.get('/action-log/daily', (req, res) => {
+router.get('/action-log/daily', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -601,7 +601,7 @@ router.get('/action-log/daily', (req, res) => {
  * GET /api/mp/action-log/daily/today
  * 获取今日日志
  */
-router.get('/action-log/daily/today', (req, res) => {
+router.get('/action-log/daily/today', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -617,7 +617,7 @@ router.get('/action-log/daily/today', (req, res) => {
  * POST /api/mp/action-log/commitments
  * 创建承诺书
  */
-router.post('/action-log/commitments', (req, res) => {
+router.post('/action-log/commitments', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -640,7 +640,7 @@ router.post('/action-log/commitments', (req, res) => {
  * POST /api/mp/action-log/commitments/:id/checkin
  * 承诺书打卡
  */
-router.post('/action-log/commitments/:id/checkin', (req, res) => {
+router.post('/action-log/commitments/:id/checkin', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -666,7 +666,7 @@ router.post('/action-log/commitments/:id/checkin', (req, res) => {
  * GET /api/mp/action-log/commitments
  * 我的承诺书列表
  */
-router.get('/action-log/commitments', (req, res) => {
+router.get('/action-log/commitments', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -681,7 +681,7 @@ router.get('/action-log/commitments', (req, res) => {
  * GET /api/mp/action-log/monthly-tracking
  * 月度追踪数据
  */
-router.get('/action-log/monthly-tracking', (req, res) => {
+router.get('/action-log/monthly-tracking', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -713,7 +713,7 @@ router.get('/action-log/monthly-tracking', (req, res) => {
  * POST /api/mp/action-log/monthly-tracking
  * 保存月度追踪数据（批量）
  */
-router.post('/action-log/monthly-tracking', (req, res) => {
+router.post('/action-log/monthly-tracking', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -767,7 +767,7 @@ router.post('/action-log/monthly-tracking', (req, res) => {
  * GET /api/mp/action-log/monthly-goals
  * 获取月度目标（按月筛选）
  */
-router.get('/action-log/monthly-goals', (req, res) => {
+router.get('/action-log/monthly-goals', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -794,7 +794,7 @@ router.get('/action-log/monthly-goals', (req, res) => {
  * POST /api/mp/action-log/monthly-goals
  * 创建/更新月度目标
  */
-router.post('/action-log/monthly-goals', (req, res) => {
+router.post('/action-log/monthly-goals', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -826,7 +826,7 @@ router.post('/action-log/monthly-goals', (req, res) => {
  * GET /api/mp/action-log/weekly-goals
  * 获取周目标
  */
-router.get('/action-log/weekly-goals', (req, res) => {
+router.get('/action-log/weekly-goals', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -855,7 +855,7 @@ router.get('/action-log/weekly-goals', (req, res) => {
  * POST /api/mp/action-log/weekly-goals
  * 保存周目标（批量）
  */
-router.post('/action-log/weekly-goals', (req, res) => {
+router.post('/action-log/weekly-goals', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -898,7 +898,7 @@ router.post('/action-log/weekly-goals', (req, res) => {
  * PUT /api/mp/action-log/weekly-goals/:id/complete
  * 切换周目标完成状态
  */
-router.put('/action-log/weekly-goals/:id/complete', (req, res) => {
+router.put('/action-log/weekly-goals/:id/complete', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -916,7 +916,7 @@ router.put('/action-log/weekly-goals/:id/complete', (req, res) => {
  * POST /api/mp/action-log/weekly-summary
  * 保存周总结
  */
-router.post('/action-log/weekly-summary', (req, res) => {
+router.post('/action-log/weekly-summary', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -947,7 +947,7 @@ router.post('/action-log/weekly-summary', (req, res) => {
  * POST /api/mp/action-log/daily
  * 创建/更新每日日志（升级版：含ABC事项+心态管理）
  */
-router.post('/action-log/daily', (req, res) => {
+router.post('/action-log/daily', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -973,13 +973,13 @@ router.post('/action-log/daily', (req, res) => {
 
     // 确保新字段存在（兼容旧表）
     try {
-      db.prepare('ALTER TABLE action_daily_logs ADD COLUMN gratitude_text TEXT DEFAULT \'\'').run();
+      await db.prepare('ALTER TABLE action_daily_logs ADD COLUMN gratitude_text TEXT DEFAULT \'\'').run();
     } catch(e) {}
-    try { db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_morning INTEGER DEFAULT 5').run(); } catch(e) {}
-    try { db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_afternoon INTEGER DEFAULT 5').run(); } catch(e) {}
-    try { db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_evening INTEGER DEFAULT 5').run(); } catch(e) {}
-    try { db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_total INTEGER DEFAULT 15').run(); } catch(e) {}
-    try { db.prepare('ALTER TABLE action_daily_logs ADD COLUMN top_three TEXT').run(); } catch(e) {}
+    try { await db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_morning INTEGER DEFAULT 5').run(); } catch(e) {}
+    try { await db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_afternoon INTEGER DEFAULT 5').run(); } catch(e) {}
+    try { await db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_evening INTEGER DEFAULT 5').run(); } catch(e) {}
+    try { await db.prepare('ALTER TABLE action_daily_logs ADD COLUMN energy_total INTEGER DEFAULT 15').run(); } catch(e) {}
+    try { await db.prepare('ALTER TABLE action_daily_logs ADD COLUMN top_three TEXT').run(); } catch(e) {}
 
     const upsertLogByDate = db.prepare(`
       INSERT INTO action_daily_logs (user_id, log_date, score, mindset_serious, mindset_optimistic, mindset_confident,
@@ -1043,7 +1043,7 @@ router.post('/action-log/daily', (req, res) => {
  * GET /api/mp/action-log/daily/detail
  * 获取某日日目标详情（含ABC事项+心态评分）
  */
-router.get('/action-log/daily/detail', (req, res) => {
+router.get('/action-log/daily/detail', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -1071,7 +1071,7 @@ router.get('/action-log/daily/detail', (req, res) => {
  * PUT /api/mp/action-log/daily-items/:id/complete
  * 切换事项完成状态
  */
-router.put('/action-log/daily-items/:id/complete', (req, res) => {
+router.put('/action-log/daily-items/:id/complete', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureActionLogTables();
     const db = getDB();
@@ -1217,7 +1217,7 @@ router.get('/personality/scripts', async (req, res) => {
       if (scene) { sql += ' AND scenario LIKE ?'; params.push('%' + scene + '%'); }
       sql += ' ORDER BY sort_order ASC, created_at DESC';
 
-      const dbScripts = db.prepare(sql).all(...params);
+      const dbScripts = await db.prepare(sql).all(...params);
 
       if (dbScripts && dbScripts.length > 0) {
         // 有数据库数据，使用数据库话术
@@ -1271,7 +1271,7 @@ router.get('/personality/scripts', async (req, res) => {
  * POST /api/mp/personality/scripts/generate
  * AI生成个性化话术（按需调用）
  */
-router.post('/personality/scripts/generate', (req, res) => {
+router.post('/personality/scripts/generate', async (req, res) => {
   verifyUser(req, res, async (decoded) => {
     const { personality_type, scene, keyword } = req.body;
     if (!personality_type || !scene) return error(res, '缺少必要参数：personality_type 和 scene');
@@ -1297,13 +1297,13 @@ router.post('/personality/scripts/generate', (req, res) => {
  * POST /api/mp/personality/scripts/:id/favorite
  * 收藏/取消收藏话术
  */
-router.post('/personality/scripts/:id/favorite', (req, res) => {
+router.post('/personality/scripts/:id/favorite', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
     const scriptId = parseInt(req.params.id);
 
     // 确保收藏表存在
-    db.exec(`CREATE TABLE IF NOT EXISTS personality_favorites (
+    await db.exec(`CREATE TABLE IF NOT EXISTS personality_favorites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       script_id INTEGER NOT NULL,
@@ -1315,10 +1315,10 @@ router.post('/personality/scripts/:id/favorite', (req, res) => {
       .get(decoded.id, scriptId);
 
     if (existing) {
-      db.prepare('DELETE FROM personality_favorites WHERE user_id = ? AND script_id = ?').run(decoded.id, scriptId);
+      await db.prepare('DELETE FROM personality_favorites WHERE user_id = ? AND script_id = ?').run(decoded.id, scriptId);
       return success(res, { favorited: false }, '已取消收藏');
     } else {
-      db.prepare('INSERT INTO personality_favorites (user_id, script_id) VALUES (?, ?)').run(decoded.id, scriptId);
+      await db.prepare('INSERT INTO personality_favorites (user_id, script_id) VALUES (?, ?)').run(decoded.id, scriptId);
       return success(res, { favorited: true }, '已收藏', 201);
     }
   });
@@ -1328,7 +1328,7 @@ router.post('/personality/scripts/:id/favorite', (req, res) => {
  * GET /api/mp/personality/my-favorites
  * 我的收藏话术
  */
-router.get('/personality/my-favorites', (req, res) => {
+router.get('/personality/my-favorites', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const db = getDB();
     const favorites = db.prepare(`
@@ -1345,8 +1345,7 @@ router.get('/personality/my-favorites', (req, res) => {
 // ==================== 公告资讯（小程序端） ====================
 
 // 确保公告表存在
-try {
-  getDB().exec(`
+getDB().exec(`
     CREATE TABLE IF NOT EXISTS announcements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL DEFAULT '',
@@ -1362,15 +1361,14 @@ try {
       published_at TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime')),
       updated_at TEXT DEFAULT (datetime('now','localtime'))
-    );
-  `);
-} catch(e) {}
+    ).catch(() => {});
+  `)).catch(() => {})
 
 /**
  * GET /api/mp/announcements
  * 小程序端公告列表（仅返回已发布的）
  */
-router.get('/announcements', (req, res) => {
+router.get('/announcements', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, category } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -1380,7 +1378,7 @@ router.get('/announcements', (req, res) => {
   if (category) { where.push('category = ?'); params.push(category); }
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM announcements ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM announcements ${whereClause}`).get(...params).cnt;
   const list = db.prepare(`
     SELECT id, title, summary, category, cover_url, author,
            view_count, published_at, created_at, is_top
@@ -1396,13 +1394,13 @@ router.get('/announcements', (req, res) => {
  * GET /api/mp/announcements/:id
  * 小程序端公告详情
  */
-router.get('/announcements/:id', (req, res) => {
+router.get('/announcements/:id', async (req, res) => {
   const db = getDB();
-  const item = db.prepare('SELECT * FROM announcements WHERE id = ? AND status = 1').get(req.params.id);
+  const item = await db.prepare('SELECT * FROM announcements WHERE id = ? AND status = 1').get(req.params.id);
   if (!item) return error(res, '公告不存在', 404);
 
   // 更新阅读量
-  db.prepare('UPDATE announcements SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?').run(req.params.id);
+  await db.prepare('UPDATE announcements SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?').run(req.params.id);
 
   return success(res, item);
 });
@@ -1411,7 +1409,7 @@ router.get('/announcements/:id', (req, res) => {
  * GET /api/mp/announcements-home
  * 首页公告资讯精简列表（置顶+最新4条）
  */
-router.get('/announcements-home', (req, res) => {
+router.get('/announcements-home', async (req, res) => {
   const db = getDB();
 
   const list = db.prepare(`
@@ -1426,7 +1424,7 @@ router.get('/announcements-home', (req, res) => {
 });
 
 // 获取学习积分概览
-router.get('/study-points/overview', (req, res) => {
+router.get('/study-points/overview', async (req, res) => {
   try {
     const userId = req.user?.id || req.query.user_id || 1;
     const db = getDB();
@@ -1436,7 +1434,7 @@ router.get('/study-points/overview', (req, res) => {
       `SELECT COALESCE(SUM(10), 0) as points,
               COUNT(DISTINCT course_id) as completed_courses
        FROM study_progress
-       WHERE user_id = ? AND progress_percent >= 80`
+       WHERE user_id = ? AND progress >= 80`
     ).get(userId);
 
     // 计算电子书阅读积分：阅读每本书得5分
@@ -1472,7 +1470,7 @@ router.get('/study-points/overview', (req, res) => {
     // 计算学习天数（有记录的不重复天数）
     const studyDays = db.prepare(
       `SELECT COUNT(DISTINCT DATE(updated_at)) as days
-       FROM study_progress WHERE user_id = ? AND progress_percent > 0
+       FROM study_progress WHERE user_id = ? AND progress > 0
        UNION ALL
        SELECT COUNT(DISTINCT DATE(created_at)) as days
        FROM action_daily_logs WHERE user_id = ?`
@@ -1490,7 +1488,7 @@ router.get('/study-points/overview', (req, res) => {
     // 最近7天学习记录
     const recentActivity = db.prepare(
       `SELECT DATE(updated_at) as date, 'course' as type, COUNT(*) as count
-       FROM study_progress WHERE user_id = ? AND progress_percent > 0
+       FROM study_progress WHERE user_id = ? AND progress > 0
          AND updated_at >= DATE('now', '-7 days')
        GROUP BY DATE(updated_at)
        UNION ALL
@@ -1528,7 +1526,7 @@ router.get('/study-points/overview', (req, res) => {
 });
 
 // 学习积分排行榜
-router.get('/study-points/ranking', (req, res) => {
+router.get('/study-points/ranking', async (req, res) => {
   try {
     const db = getDB();
 
@@ -1538,7 +1536,7 @@ router.get('/study-points/ranking', (req, res) => {
              COALESCE(sp.course_pts, 0) + COALESCE(bp.book_pts, 0) + COALESCE(lp.log_pts, 0) + COALESCE(cp.checkin_pts, 0) as total_points
       FROM users u
       LEFT JOIN (
-        SELECT user_id, SUM(10) as course_pts FROM study_progress WHERE progress_percent >= 80 GROUP BY user_id
+        SELECT user_id, SUM(10) as course_pts FROM study_progress WHERE progress >= 80 GROUP BY user_id
       ) sp ON u.id = sp.user_id
       LEFT JOIN (
         SELECT user_id, SUM(5) as book_pts FROM user_read_progress WHERE progress >= 50 GROUP BY user_id

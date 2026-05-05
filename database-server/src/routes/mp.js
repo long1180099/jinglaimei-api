@@ -135,7 +135,7 @@ async function _wxLogin(req, res, code, nickname, avatarUrl, gender) {
 function _completeLogin(res, openid, nickname, avatarUrl, gender, inviteCodeForBinding) {
   const db = getDB();
 
-  let user = db.prepare('SELECT * FROM users WHERE openid = ? AND is_deleted = 0').get(openid);
+  let user = await db.prepare('SELECT * FROM users WHERE openid = ? AND is_deleted = 0').get(openid);
 
   if (user) {
     // 已有openid账户
@@ -154,7 +154,7 @@ function _completeLogin(res, openid, nickname, avatarUrl, gender, inviteCodeForB
     db.prepare("UPDATE users SET avatar_url = COALESCE(?, avatar_url), updated_at = datetime('now','localtime') WHERE id = ?")
       .run(avatarUrl || user.avatar_url, user.id);
     // 刷新用户数据（可能已更新parent_id）
-    user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+    user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
   } else {
     // 新注册
     const myInviteCode = generateInviteCode(db);
@@ -170,10 +170,10 @@ function _completeLogin(res, openid, nickname, avatarUrl, gender, inviteCodeForB
         try { _bindByInviteCode(db, newUserId, inviteCodeForBinding); } catch(e) {}
       }
       
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(newUserId);
+      user = await db.prepare('SELECT * FROM users WHERE id = ?').get(newUserId);
     } catch (err) {
       if (err.message.includes('UNIQUE')) {
-        user = db.prepare('SELECT * FROM users WHERE openid = ?').get(openid);
+        user = await db.prepare('SELECT * FROM users WHERE openid = ?').get(openid);
       } else {
         return error(res, '注册失败: ' + err.message);
       }
@@ -208,8 +208,8 @@ function _completeLogin(res, openid, nickname, avatarUrl, gender, inviteCodeForB
 function _mergeAccounts(db, keepUserId, mergeUserId) {
   if (keepUserId === mergeUserId) return;
   
-  const keep = db.prepare('SELECT id, phone, openid FROM users WHERE id = ?').get(keepUserId);
-  const merge = db.prepare('SELECT id, phone, openid, parent_id, agent_level, invite_code, balance, total_income FROM users WHERE id = ?').get(mergeUserId);
+  const keep = await db.prepare('SELECT id, phone, openid FROM users WHERE id = ?').get(keepUserId);
+  const merge = await db.prepare('SELECT id, phone, openid, parent_id, agent_level, invite_code, balance, total_income FROM users WHERE id = ?').get(mergeUserId);
   if (!keep || !merge) return;
 
   console.log(`[账号合并] 主账户(${keepUserId}, phone=${keep.phone||'无'}) ← 合并账户(${mergeUserId}, openid=${merge.openid||'无'})`);
@@ -236,28 +236,28 @@ function _mergeAccounts(db, keepUserId, mergeUserId) {
     for (const [table, field] of tablesToMigrate) {
       if (table === 'order_items') {
         // order_items通过order_id间接关联
-        const orderIds = db.prepare(`SELECT id FROM orders WHERE user_id = ?`).all(mergeUserId);
+        const orderIds = await db.prepare(`SELECT id FROM orders WHERE user_id = ?`).all(mergeUserId);
         for (const oid of orderIds) {
-          db.prepare(`UPDATE ${table} SET user_id = ? WHERE order_id = ?`).run(keepUserId, oid.id);
+          await db.prepare(`UPDATE ${table} SET user_id = ? WHERE order_id = ?`).run(keepUserId, oid.id);
         }
       } else if (table === 'socratic_sessions') {
-        db.prepare(`UPDATE ${table} SET user_id = ? WHERE user_id = ?`).run(keepUserId, mergeUserId);
+        await db.prepare(`UPDATE ${table} SET user_id = ? WHERE user_id = ?`).run(keepUserId, mergeUserId);
       } else if (table === 'socratic_messages') {
         // socratic_messages 通过 session_id 关联 socratic_sessions
-        const sessionIds = db.prepare(`SELECT id FROM socratic_sessions WHERE user_id = ?`).all(mergeUserId);
+        const sessionIds = await db.prepare(`SELECT id FROM socratic_sessions WHERE user_id = ?`).all(mergeUserId);
         for (const sid of sessionIds) {
-          db.prepare(`UPDATE socratic_messages SET user_id = ? WHERE session_id = ?`).run(keepUserId, sid.id);
+          await db.prepare(`UPDATE socratic_messages SET user_id = ? WHERE session_id = ?`).run(keepUserId, sid.id);
         }
       } else {
         // 直接迁移用户字段
-        db.prepare(`UPDATE ${table} SET ${field} = ? WHERE ${field} = ?`).run(keepUserId, mergeUserId);
+        await db.prepare(`UPDATE ${table} SET ${field} = ? WHERE ${field} = ?`).run(keepUserId, mergeUserId);
       }
     }
 
     // 2. 合并余额：把子账户余额加到主账户
     if (parseFloat(merge.balance) > 0) {
       const newBalance = parseFloat((parseFloat(keep.balance) + parseFloat(merge.balance)).toFixed(2));
-      db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(newBalance, keepUserId);
+      await db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(newBalance, keepUserId);
       // 记录余额合并日志
       db.prepare(`
         INSERT INTO balance_logs (user_id, change_type, change_amount, balance_before, balance_after, remark)
@@ -266,27 +266,27 @@ function _mergeAccounts(db, keepUserId, mergeUserId) {
       
       // 同步 total_income
       const newTotalIncome = parseFloat((parseFloat(keep.total_income || 0) + parseFloat(merge.total_income || 0)).toFixed(2));
-      db.prepare('UPDATE users SET total_income = ? WHERE id = ?').run(newTotalIncome > 0 ? newTotalIncome : 0, keepUserId);
+      await db.prepare('UPDATE users SET total_income = ? WHERE id = ?').run(newTotalIncome > 0 ? newTotalIncome : 0, keepUserId);
     }
 
     // 3. 补全主账户缺失字段
     if (!keep.phone && merge.phone) {
-      db.prepare('UPDATE users SET phone = ? WHERE id = ?').run(merge.phone, keepUserId);
+      await db.prepare('UPDATE users SET phone = ? WHERE id = ?').run(merge.phone, keepUserId);
     }
     if (!keep.openid && merge.openid) {
-      db.prepare('UPDATE users SET openid = ? WHERE id = ?').run(merge.openid, keepUserId);
+      await db.prepare('UPDATE users SET openid = ? WHERE id = ?').run(merge.openid, keepUserId);
     }
     // 如果子账户有头像而主账户没有，也补上
     if (!keep.avatar_url && merge.avatar_url) {
-      db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(merge.avatar_url, keepUserId);
+      await db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(merge.avatar_url, keepUserId);
     }
 
     // 4. 处理上下级关系：如果主账户没上级但子账户有，迁移过来
     if (!keep.parent_id && merge.parent_id) {
-      db.prepare('UPDATE users SET parent_id = ? WHERE id = ?').run(merge.parent_id, keepUserId);
+      await db.prepare('UPDATE users SET parent_id = ? WHERE id = ?').run(merge.parent_id, keepUserId);
     }
     // 如果子账户是别人的上级，把那些下级的parent_id改成主账户
-    db.prepare("UPDATE users SET parent_id = ? WHERE parent_id = ? AND id != ?").run(keepUserId, mergeUserId, keepUserId);
+    await db.prepare("UPDATE users SET parent_id = ? WHERE parent_id = ? AND id != ?").run(keepUserId, mergeUserId, keepUserId);
 
     // 5. 标记子账户为已合并删除
     db.prepare(`
@@ -318,7 +318,7 @@ function generateInviteCode(db) {
     }
     attempts++;
     if (attempts > 20) break; // 安全退出
-  } while (db.prepare('SELECT 1 FROM users WHERE invite_code = ?').get(code));
+  } while (await db.prepare('SELECT 1 FROM users WHERE invite_code = ?').get(code));
   return code;
 }
 
@@ -341,7 +341,7 @@ function _bindByInviteCode(db, userId, code) {
  * 开发阶段：不调用微信API，直接用code模拟openid
  * 支持邀请码参数：新用户注册时自动绑定上级
  */
-router.post('/wx-login', (req, res) => {
+router.post('/wx-login', async (req, res) => {
   const { code, nickname, avatarUrl, gender, invite_code } = req.body;
 
   if (!code) return error(res, '登录code不能为空');
@@ -408,32 +408,35 @@ router.post('/wx-phone-login', async (req, res) => {
 
     if (!phone) return error(res, '手机号获取失败');
 
-    // 查找或创建用户（已删除用户不再恢复，视为全新用户）
+    // 查找或创建用户（支持账号合并）
     const db = getDB();
-    let user = db.prepare('SELECT * FROM users WHERE phone = ? AND is_deleted = 0').get(phone);
+    let user = await db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
+    // 如果用户被软删除，恢复账号
+    if (user && user.is_deleted === 1) {
+      await db.prepare("UPDATE users SET is_deleted = 0, status = 1, updated_at = datetime('now','localtime') WHERE id = ?").run(user.id);
+      user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      console.log(`[微信一键登录] 恢复已删除用户: ${user.id}`);
+    }
 
     if (!user) {
-      // 释放被删除用户的手机号（避免UNIQUE约束冲突）
-      db.prepare("UPDATE users SET phone = NULL WHERE phone = ? AND is_deleted = 1").run(phone);
-
       const inviteCode = generateInviteCode(db);
       try {
         const result = db.prepare(`
           INSERT INTO users (phone, username, agent_level, invite_code, registered_at, status)
           VALUES (?, ?, 1, ?, datetime('now','localtime'), 1)
         `).run(phone, '用户' + phone.slice(-4), inviteCode);
-        user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+        user = await db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
         
         // 新用户绑定邀请码
         if (invite_code) {
-          try { _bindByInviteCode(db, user.id, invite_code); user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id); } catch(e) {}
+          try { _bindByInviteCode(db, user.id, invite_code); user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id); } catch(e) {}
         }
       } catch (err) {
         return error(res, '注册失败: ' + err.message);
       }
     } else if (invite_code && !user.parent_id) {
       // 老用户无上级，尝试绑定
-      try { _bindByInviteCode(db, user.id, invite_code); user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id); } catch(e) {}
+      try { _bindByInviteCode(db, user.id, invite_code); user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id); } catch(e) {}
     }
 
     // 🔗 用户名同步：如果当前账号的 username 是自动生成的（如"用户1234"），
@@ -463,11 +466,11 @@ router.post('/wx-phone-login', async (req, res) => {
     if (!user.openid) {
       // 主账户没有openid → 查找有没有openid-only的同手机号账户可以合并
       // （这种情况发生在：后台先创建用户，后来用微信直接登录又建了一个）
-      const dupByPhone = db.prepare("SELECT * FROM users WHERE phone = ? AND openid IS NOT NULL AND openid != '' AND id != ? AND is_deleted = 0").get(phone, user.id);
+      const dupByPhone = await db.prepare("SELECT * FROM users WHERE phone = ? AND openid IS NOT NULL AND openid != '' AND id != ? AND is_deleted = 0").get(phone, user.id);
       if (dupByPhone) {
         console.log(`[账号合并触发] 手机号登录发现重复账户: 主=${user.id}(无openid) vs 重复=${dupByPhone.id}(有openid), 执行合并`);
         _mergeAccounts(db, user.id, dupByPhone.id);
-        user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id); // 刷新数据
+        user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id); // 刷新数据
       }
     }
 
@@ -498,7 +501,7 @@ router.post('/wx-phone-login', async (req, res) => {
  * POST /api/mp/send-sms
  * 发送短信验证码（开发模式：控制台打印验证码；生产环境接入腾讯云SMS）
  */
-router.post('/send-sms', (req, res) => {
+router.post('/send-sms', async (req, res) => {
   const { phone } = req.body;
   if (!phone) return error(res, '手机号不能为空');
   if (!/^1[3-9]\d{9}$/.test(phone)) return error(res, '手机号格式不正确');
@@ -526,7 +529,7 @@ router.post('/send-sms', (req, res) => {
  * POST /api/mp/phone-login
  * 手机号+验证码登录（自动注册新用户，支持邀请码绑定）
  */
-router.post('/phone-login', (req, res) => {
+router.post('/phone-login', async (req, res) => {
   const { phone, code, invite_code } = req.body;
   if (!phone) return error(res, '手机号不能为空');
   if (!code) return error(res, '验证码不能为空');
@@ -539,7 +542,7 @@ router.post('/phone-login', (req, res) => {
 
   const db = getDB();
 
-  let user = db.prepare('SELECT * FROM users WHERE phone = ? AND is_deleted = 0').get(phone);
+  let user = await db.prepare('SELECT * FROM users WHERE phone = ? AND is_deleted = 0').get(phone);
   let parentName = null;
 
   if (!user) {
@@ -550,14 +553,14 @@ router.post('/phone-login', (req, res) => {
         INSERT INTO users (phone, username, agent_level, invite_code, registered_at, status)
         VALUES (?, ?, 1, ?, datetime('now','localtime'), 1)
       `).run(phone, '用户' + phone.slice(-4), myInviteCode);
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+      user = await db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
       
       // 新用户填写了邀请码 → 自动绑定上级
       if (invite_code) {
         try {
           _bindByInviteCode(db, user.id, invite_code);
-          user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
-          const parent = db.prepare('SELECT username FROM users WHERE id = ?').get(user.parent_id);
+          user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+          const parent = await db.prepare('SELECT username FROM users WHERE id = ?').get(user.parent_id);
           parentName = parent?.username || null;
         } catch(e) {}
       }
@@ -568,8 +571,8 @@ router.post('/phone-login', (req, res) => {
     // 老用户无上级，尝试绑定
     try {
       _bindByInviteCode(db, user.id, invite_code);
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
-      const parent = db.prepare('SELECT username FROM users WHERE id = ?').get(user.parent_id);
+      user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      const parent = await db.prepare('SELECT username FROM users WHERE id = ?').get(user.parent_id);
       parentName = parent?.username || null;
     } catch(e) {}
   }
@@ -591,11 +594,11 @@ router.post('/phone-login', (req, res) => {
 
   // 🔗 账号合并：检查是否有同手机号的openid账户需要合并
   if (!user.openid) {
-    const dupByPhone = db.prepare("SELECT * FROM users WHERE phone = ? AND openid IS NOT NULL AND openid != '' AND id != ? AND is_deleted = 0").get(phone, user.id);
+    const dupByPhone = await db.prepare("SELECT * FROM users WHERE phone = ? AND openid IS NOT NULL AND openid != '' AND id != ? AND is_deleted = 0").get(phone, user.id);
     if (dupByPhone) {
       console.log(`[phone-login合并] 短信登录发现重复: 主=${user.id}(无openid) vs 重复=${dupByPhone.id}(有openid)`);
       _mergeAccounts(db, user.id, dupByPhone.id);
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      user = await db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
     }
   }
 
@@ -623,7 +626,7 @@ router.post('/phone-login', (req, res) => {
  * POST /api/mp/bind-invite-code
  * 已登录用户通过邀请码绑定上级关系（一次性，仅无上级时可绑定）
  */
-router.post('/bind-invite-code', (req, res) => {
+router.post('/bind-invite-code', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -638,15 +641,15 @@ router.post('/bind-invite-code', (req, res) => {
   const db = getDB();
   
   // 检查自己是否已有上级
-  const me = db.prepare('SELECT id, parent_id FROM users WHERE id = ? AND is_deleted = 0').get(decoded.id);
+  const me = await db.prepare('SELECT id, parent_id FROM users WHERE id = ? AND is_deleted = 0').get(decoded.id);
   if (!me) return error(res, '用户不存在');
   if (me.parent_id) return error(res, '您已有上级，无法重复绑定');
 
   // 验证邀请码并绑定
   try {
     _bindByInviteCode(db, decoded.id, invite_code);
-    const updated = db.prepare('SELECT id, parent_id, username FROM users WHERE id = ?').get(decoded.id);
-    const parent = db.prepare('SELECT username, real_name, agent_level FROM users WHERE id = ?').get(updated.parent_id);
+    const updated = await db.prepare('SELECT id, parent_id, username FROM users WHERE id = ?').get(decoded.id);
+    const parent = await db.prepare('SELECT username, real_name, agent_level FROM users WHERE id = ?').get(updated.parent_id);
     return success(res, {
       parentId: updated.parent_id,
       parentName: parent?.username || '',
@@ -660,7 +663,7 @@ router.post('/bind-invite-code', (req, res) => {
  * POST /api/mp/bind-phone
  * 绑定手机号
  */
-router.post('/bind-phone', (req, res) => {
+router.post('/bind-phone', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -677,16 +680,16 @@ router.post('/bind-phone', (req, res) => {
 
   try {
     // 检查手机号是否已被其他账户占用
-    const existingUser = db.prepare('SELECT * FROM users WHERE phone = ? AND is_deleted = 0 AND id != ?').get(phone, decoded.id);
+    const existingUser = await db.prepare('SELECT * FROM users WHERE phone = ? AND is_deleted = 0 AND id != ?').get(phone, decoded.id);
     
     if (existingUser) {
       // 🔗 手机号被占用 → 执行账号合并（当前openid账户 → 已有phone的主账户）
       console.log(`[bind-phone合并] 用户${decoded.id}绑定手机${phone}，发现已有主账户${existingUser.id}，执行合并`);
       
       // 把当前用户的openid补到主账户上
-      const myOpenid = db.prepare('SELECT openid FROM users WHERE id = ?').get(decoded.id).openid;
+      const myOpenid = await db.prepare('SELECT openid FROM users WHERE id = ?').get(decoded.id).openid;
       if (myOpenid && !existingUser.openid) {
-        db.prepare("UPDATE users SET openid = ?, updated_at = datetime('now','localtime') WHERE id = ?").run(myOpenid, existingUser.id);
+        await db.prepare("UPDATE users SET openid = ?, updated_at = datetime('now','localtime') WHERE id = ?").run(myOpenid, existingUser.id);
       }
       
       // 合并当前用户数据到主账户
@@ -694,7 +697,7 @@ router.post('/bind-phone', (req, res) => {
       
       // 返回新token（指向主账户）
       const newToken = generateToken({ id: existingUser.id, openid: existingUser.openid || myOpenid, type: 'mp' });
-      const mainUser = db.prepare('SELECT * FROM users WHERE id = ?').get(existingUser.id);
+      const mainUser = await db.prepare('SELECT * FROM users WHERE id = ?').get(existingUser.id);
       return success(res, {
         token: newToken,
         merged: true,
@@ -721,7 +724,7 @@ router.post('/bind-phone', (req, res) => {
  * PUT /api/mp/profile
  * 更新个人信息
  */
-router.put('/profile', (req, res) => {
+router.put('/profile', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -751,7 +754,7 @@ router.put('/profile', (req, res) => {
  * POST /api/mp/apply-agent
  * 申请成为代理商
  */
-router.post('/apply-agent', (req, res) => {
+router.post('/apply-agent', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -765,11 +768,11 @@ router.post('/apply-agent', (req, res) => {
   if (!real_name || !phone) return error(res, '姓名和手机号不能为空');
 
   const db = getDB();
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
+  const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
   if (!user) return error(res, '用户不存在');
 
   if (parent_id) {
-    const parent = db.prepare('SELECT id, invite_code FROM users WHERE (id = ? OR invite_code = ?) AND is_deleted = 0').get(parent_id, parent_id);
+    const parent = await db.prepare('SELECT id, invite_code FROM users WHERE (id = ? OR invite_code = ?) AND is_deleted = 0').get(parent_id, parent_id);
     if (parent) {
       db.prepare("UPDATE users SET parent_id = ?, real_name = ?, phone = ?, agent_level = 2, updated_at = datetime('now','localtime') WHERE id = ?")
         .run(parent.id, real_name, phone, decoded.id);
@@ -788,9 +791,9 @@ router.post('/apply-agent', (req, res) => {
  * GET /api/mp/categories
  * 公开商品分类（无需登录，供商品页使用）
  */
-router.get('/categories', (req, res) => {
+router.get('/categories', async (req, res) => {
   const db = getDB();
-  const categories = db.prepare('SELECT * FROM product_categories WHERE status = 1 ORDER BY sort_order').all();
+  const categories = await db.prepare('SELECT * FROM product_categories WHERE status = 1 ORDER BY sort_order').all();
   return success(res, categories);
 });
 
@@ -798,12 +801,12 @@ router.get('/categories', (req, res) => {
  * GET /api/mp/home
  * 小程序首页数据聚合
  */
-router.get('/home', (req, res) => {
+router.get('/home', async (req, res) => {
   const db = getDB();
 
   // 轮播图/公告（使用系统配置）
-  const banners = db.prepare("SELECT * FROM system_configs WHERE config_key LIKE 'banner_%' ORDER BY sort_order").all();
-  const announcements = db.prepare("SELECT * FROM system_configs WHERE config_key LIKE 'notice_%' ORDER BY sort_order").all();
+  const banners = await db.prepare("SELECT * FROM system_configs WHERE config_key LIKE 'banner_%' ORDER BY sort_order").all();
+  const announcements = await db.prepare("SELECT * FROM system_configs WHERE config_key LIKE 'notice_%' ORDER BY sort_order").all();
 
   // 热门商品（按销量排序）
   const hotProducts = db.prepare(`
@@ -836,7 +839,7 @@ router.get('/home', (req, res) => {
   `).all();
 
   // 商品分类
-  const categories = db.prepare('SELECT * FROM product_categories WHERE status = 1 ORDER BY sort_order LIMIT 10').all();
+  const categories = await db.prepare('SELECT * FROM product_categories WHERE status = 1 ORDER BY sort_order LIMIT 10').all();
 
   // 最新课程
   const latestCourses = db.prepare(`
@@ -861,7 +864,7 @@ router.get('/home', (req, res) => {
  * GET /api/mp/products
  * 小程序端商品列表（只显示上架商品）
  */
-router.get('/products', (req, res) => {
+router.get('/products', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, keyword, categoryId, isHot, isRecommend, sort } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -885,9 +888,9 @@ router.get('/products', (req, res) => {
   else if (sort === 'newest') orderBy = 'created_at DESC';
   else if (sort === 'sales') orderBy = 'sold_quantity DESC';
 
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM products ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM products ${whereClause}`).get(...params).cnt;
   const products = db.prepare(`
-    SELECT id, product_name, product_code, category_id, main_image, image_gallery, retail_price, agent_price,
+    SELECT id, product_name, product_code, category_id, main_image, retail_price, agent_price,
            vip_price, partner_price, wholesale_price, chief_price, division_price,
            (stock_quantity - sold_quantity) as available_stock,
            sold_quantity as sales_count, is_hot, is_recommend, description, brand,
@@ -907,7 +910,7 @@ router.get('/products', (req, res) => {
  * GET /api/mp/products/:id
  * 小程序端商品详情
  */
-router.get('/products/:id', (req, res) => {
+router.get('/products/:id', async (req, res) => {
   const db = getDB();
   const product = db.prepare(`
     SELECT p.*, c.category_name,
@@ -973,7 +976,7 @@ router.get('/products/:id', (req, res) => {
  * POST /api/mp/orders
  * 小程序端创建订单（增强版：支持多级定价）
  */
-router.post('/orders', (req, res) => {
+router.post('/orders', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -993,7 +996,7 @@ router.post('/orders', (req, res) => {
   const isPickup = delivery_type === 'pickup';
 
   // 获取用户信息和默认收货地址
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
+  const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
   const rName = receiver_name || user.real_name || user.username;
   const rPhone = receiver_phone || user.phone;
   // 自提时手机号非必填，快递时必填
@@ -1008,29 +1011,18 @@ router.post('/orders', (req, res) => {
 
     // 根据代理商等级确定价格
     for (const item of items) {
-      const product = db.prepare('SELECT * FROM products WHERE id = ? AND status = 1').get(item.product_id);
+      const product = await db.prepare('SELECT * FROM products WHERE id = ? AND status = 1').get(item.product_id);
       if (!product) throw new Error('商品不存在: ' + item.product_id);
       if ((product.stock_quantity - product.sold_quantity) < item.quantity) throw new Error('商品库存不足: ' + product.product_name);
 
-      // 多级定价：使用价格字段映射表，确保各等级价格正确对应
+      // 多级定价
       let unitPrice = product.retail_price;
       const level = user.agent_level || 1;
-      const priceFieldMap = { 2: 'vip_price', 3: 'agent_price', 4: 'wholesale_price', 5: 'chief_price', 6: 'division_price' };
-      const priceField = priceFieldMap[level];
-      // 仅当对应等级价格字段存在且大于0时使用，否则沿等级向下查找
-      if (priceField && product[priceField] && product[priceField] > 0) {
-        unitPrice = product[priceField];
-      } else {
-        // 向下查找第一个有效价格
-        for (let l = level - 1; l >= 1; l--) {
-          const field = priceFieldMap[l];
-          if (field && product[field] && product[field] > 0) {
-            unitPrice = product[field];
-            break;
-          }
-        }
-      }
-      console.log(`[定价] 用户=${user.username}(level=${level}), 商品=${product.product_name}, 使用价格字段=${priceField}, 单价=${unitPrice}`);
+      if (level >= 6 && product.division_price) unitPrice = product.division_price;
+      else if (level >= 5 && product.chief_price) unitPrice = product.chief_price;
+      else if (level >= 4 && product.wholesale_price) unitPrice = product.wholesale_price;
+      else if (level >= 3 && product.agent_price) unitPrice = product.agent_price;
+      else if (level >= 2 && product.vip_price) unitPrice = product.vip_price;
 
       const subtotal = unitPrice * item.quantity;
       totalAmount += subtotal;
@@ -1094,7 +1086,7 @@ router.post('/orders', (req, res) => {
  * GET /api/mp/orders
  * 小程序端我的订单
  */
-router.get('/orders', (req, res) => {
+router.get('/orders', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1116,7 +1108,7 @@ router.get('/orders', (req, res) => {
   }
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM orders o ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM orders o ${whereClause}`).get(...params).cnt;
   const orders = db.prepare(`
     SELECT o.id, o.order_no, o.total_amount, o.actual_amount, o.order_status, o.payment_status,
            o.order_time, o.shipping_no, o.receiver_name,
@@ -1134,7 +1126,7 @@ router.get('/orders', (req, res) => {
  * GET /api/mp/orders/:id
  * 小程序端订单详情
  */
-router.get('/orders/:id', (req, res) => {
+router.get('/orders/:id', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1161,7 +1153,7 @@ router.get('/orders/:id', (req, res) => {
  * POST /api/mp/orders/:id/confirm
  * 确认收货
  */
-router.post('/orders/:id/confirm', (req, res) => {
+router.post('/orders/:id/confirm', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1194,7 +1186,7 @@ router.post('/orders/:id/confirm', (req, res) => {
  * POST /api/mp/orders/:id/cancel
  * 取消订单
  */
-router.post('/orders/:id/cancel', (req, res) => {
+router.post('/orders/:id/cancel', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1211,7 +1203,7 @@ router.post('/orders/:id/cancel', (req, res) => {
 
   // 恢复库存
   db.transaction(() => {
-    const items = db.prepare('SELECT product_id, quantity FROM order_items WHERE order_id = ?').all(req.params.id);
+    const items = await db.prepare('SELECT product_id, quantity FROM order_items WHERE order_id = ?').all(req.params.id);
     for (const item of items) {
       db.prepare("UPDATE products SET sold_quantity = sold_quantity - ?, updated_at = datetime('now','localtime') WHERE id = ?")
         .run(item.quantity, item.product_id);
@@ -1229,7 +1221,7 @@ router.post('/orders/:id/cancel', (req, res) => {
  * GET /api/mp/income
  * 我的收益概览
  */
-router.get('/income', (req, res) => {
+router.get('/income', async (req, res) => {
   try {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
@@ -1241,7 +1233,7 @@ router.get('/income', (req, res) => {
   try { decoded = jwt.verify(token, JWT_SECRET); } catch { return error(res, '登录已过期', 401); }
 
   const db = getDB();
-  const user = db.prepare('SELECT COALESCE(balance,0) as balance, COALESCE(frozen_balance,0) as frozen_balance, COALESCE(total_income,0) as total_income FROM users WHERE id = ?').get(decoded.id);
+  const user = await db.prepare('SELECT COALESCE(balance,0) as balance, COALESCE(frozen_balance,0) as frozen_balance, COALESCE(total_income,0) as total_income FROM users WHERE id = ?').get(decoded.id);
   if (!user) return error(res, '用户不存在，请重新登录', 401);
 
   const todayIncome = db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE user_id = ? AND date(created_at) = date('now') AND commission_status = 1")
@@ -1269,7 +1261,7 @@ router.get('/income', (req, res) => {
  * GET /api/mp/income/records
  * 收益明细
  */
-router.get('/income/records', (req, res) => {
+router.get('/income/records', async (req, res) => {
   try {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
@@ -1291,7 +1283,7 @@ router.get('/income/records', (req, res) => {
   let countWhere = ['user_id = ?'];
   if (status !== undefined && status !== '') { countWhere.push('commission_status = ?'); }
   const countClause = 'WHERE ' + countWhere.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM commissions ${countClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM commissions ${countClause}`).get(...params).cnt;
 
   // 主查询有别名c，用 c.user_id
   let selectWhere = ['c.user_id = ?'];
@@ -1318,7 +1310,7 @@ router.get('/income/records', (req, res) => {
  * POST /api/mp/income/withdraw
  * 申请提现
  */
-router.post('/income/withdraw', (req, res) => {
+router.post('/income/withdraw', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1332,7 +1324,7 @@ router.post('/income/withdraw', (req, res) => {
   if (!withdrawal_amount || withdrawal_amount <= 0) return error(res, '提现金额必须大于0');
 
   const db = getDB();
-  const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(decoded.id);
+  const user = await db.prepare('SELECT balance FROM users WHERE id = ?').get(decoded.id);
   if (!user || user.balance < withdrawal_amount) return error(res, '余额不足');
 
   const serviceFee = parseFloat((withdrawal_amount * 0.005).toFixed(2));
@@ -1357,7 +1349,7 @@ router.post('/income/withdraw', (req, res) => {
  * GET /api/mp/income/withdrawals
  * 我的提现记录
  */
-router.get('/income/withdrawals', (req, res) => {
+router.get('/income/withdrawals', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1371,7 +1363,7 @@ router.get('/income/withdrawals', (req, res) => {
   const db = getDB();
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
 
-  const total = db.prepare('SELECT COUNT(*) as cnt FROM withdrawals WHERE user_id = ?').get(decoded.id).cnt;
+  const total = await db.prepare('SELECT COUNT(*) as cnt FROM withdrawals WHERE user_id = ?').get(decoded.id).cnt;
   const records = db.prepare(`
     SELECT * FROM withdrawals WHERE user_id = ?
     ORDER BY created_at DESC LIMIT ? OFFSET ?
@@ -1386,7 +1378,7 @@ router.get('/income/withdrawals', (req, res) => {
  * GET /api/mp/team
  * 我的团队信息
  */
-router.get('/team', (req, res) => {
+router.get('/team', async (req, res) => {
   try {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
@@ -1413,15 +1405,22 @@ router.get('/team', (req, res) => {
   if (!user) return error(res, '用户不存在，请重新登录', 401);
 
   // 直属下级数量
-  const directCount = db.prepare('SELECT COUNT(*) as cnt FROM users WHERE parent_id = ? AND is_deleted = 0').get(decoded.id).cnt;
+  const directCount = await db.prepare('SELECT COUNT(*) as cnt FROM users WHERE parent_id = ? AND is_deleted = 0').get(decoded.id).cnt;
   // 团队总人数（递归计算所有下级）
-  const teamCount = db.prepare(`
-    WITH RECURSIVE team_tree(id) AS (
-      SELECT ? UNION ALL
-      SELECT u.id FROM users u JOIN team_tree t ON u.parent_id = t.id WHERE u.is_deleted = 0
-    )
-    SELECT COUNT(*) - 1 as cnt FROM team_tree
-  `).get(decoded.id).cnt;
+  // 团队总人数（用JS循环递归，兼容MySQL 5.7）
+  let teamIds = [decoded.id];
+  let currentIds = [decoded.id];
+  let safetyCounter = 0;
+  while (currentIds.length > 0 && safetyCounter < 20) {
+    safetyCounter++;
+    const placeholders = currentIds.map(() => '?').join(',');
+    const children = await db.prepare(
+      `SELECT id FROM users WHERE parent_id IN (${placeholders}) AND (is_deleted = 0 OR is_deleted IS NULL)`
+    ).all(...currentIds);
+    currentIds = children.map(c => c.id);
+    teamIds.push(...currentIds);
+  }
+  const teamCount = teamIds.length - 1;
 
   // 直属成员列表（用created_at或registered_at兼容不同字段）
   let members;
@@ -1474,7 +1473,7 @@ router.get('/team', (req, res) => {
  * GET /api/mp/team/tree
  * 团队树形结构
  */
-router.get('/team/tree', (req, res) => {
+router.get('/team/tree', async (req, res) => {
   try {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
@@ -1504,7 +1503,7 @@ router.get('/team/tree', (req, res) => {
     }));
   }
 
-  const me = db.prepare('SELECT id, username, real_name, avatar_url, agent_level, total_income FROM users WHERE id = ?').get(decoded.id);
+  const me = await db.prepare('SELECT id, username, real_name, avatar_url, agent_level, total_income FROM users WHERE id = ?').get(decoded.id);
 
   return success(res, {
     ...(me || {}),
@@ -1521,7 +1520,7 @@ router.get('/team/tree', (req, res) => {
  * GET /api/mp/team/ranking
  * 团队排行（仅显示同团队）
  */
-router.get('/team/ranking', (req, res) => {
+router.get('/team/ranking', async (req, res) => {
   try {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
@@ -1533,7 +1532,7 @@ router.get('/team/ranking', (req, res) => {
   try { decoded = jwt.verify(token, JWT_SECRET); } catch { return error(res, '登录已过期', 401); }
 
   const db = getDB();
-  const user = db.prepare('SELECT COALESCE(team_id,0) as team_id FROM users WHERE id = ?').get(decoded.id);
+  const user = await db.prepare('SELECT COALESCE(team_id,0) as team_id FROM users WHERE id = ?').get(decoded.id);
 
   if (!user || !user.team_id) {
     return success(res, []);
@@ -1570,7 +1569,7 @@ router.get('/team/ranking', (req, res) => {
  * 公开业绩排行榜（无需登录，供首页展示）
  * 支持查询参数: limit(默认10), period(month/all)
  */
-router.get('/public/ranking', (req, res) => {
+router.get('/public/ranking', async (req, res) => {
   const db = getDB();
   const limit = Math.min(parseInt(req.query.limit) || 10, 50);
   const period = req.query.period || 'month';
@@ -1609,7 +1608,7 @@ router.get('/public/ranking', (req, res) => {
  * GET /api/mp/school/courses
  * 小程序端课程列表
  */
-router.get('/school/courses', (req, res) => {
+router.get('/school/courses', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, type, keyword } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -1620,7 +1619,7 @@ router.get('/school/courses', (req, res) => {
   if (keyword) { where.push('course_title LIKE ?'); params.push(`%${keyword}%`); }
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM school_courses ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM school_courses ${whereClause}`).get(...params).cnt;
   const courses = db.prepare(`
     SELECT id, course_title, course_subtitle, cover_image, video_url, content, course_type, required_time,
            difficulty_level, credit_points, view_count, like_count, created_at
@@ -1636,13 +1635,13 @@ router.get('/school/courses', (req, res) => {
  * GET /api/mp/school/courses/:id
  * 小程序端课程详情
  */
-router.get('/school/courses/:id', (req, res) => {
+router.get('/school/courses/:id', async (req, res) => {
   const db = getDB();
-  const course = db.prepare('SELECT * FROM school_courses WHERE id = ? AND status = 1').get(req.params.id);
+  const course = await db.prepare('SELECT * FROM school_courses WHERE id = ? AND status = 1').get(req.params.id);
   if (!course) return error(res, '课程不存在', 404);
 
   // 浏览量+1
-  db.prepare('UPDATE school_courses SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
+  await db.prepare('UPDATE school_courses SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
 
   // 检查当前用户学习进度
   let myProgress = null;
@@ -1653,7 +1652,7 @@ router.get('/school/courses/:id', (req, res) => {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      myProgress = db.prepare('SELECT * FROM study_progress WHERE user_id = ? AND course_id = ?').get(decoded.id, req.params.id);
+      myProgress = await db.prepare('SELECT * FROM study_progress WHERE user_id = ? AND course_id = ?').get(decoded.id, req.params.id);
     } catch {}
   }
 
@@ -1664,7 +1663,7 @@ router.get('/school/courses/:id', (req, res) => {
  * POST /api/mp/school/progress
  * 更新学习进度
  */
-router.post('/school/progress', (req, res) => {
+router.post('/school/progress', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1698,7 +1697,7 @@ router.post('/school/progress', (req, res) => {
  * GET /api/mp/school/my-courses
  * 我的课程/学习记录
  */
-router.get('/school/my-courses', (req, res) => {
+router.get('/school/my-courses', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return error(res, '未登录', 401);
   const jwt = require('jsonwebtoken');
@@ -1718,82 +1717,6 @@ router.get('/school/my-courses', (req, res) => {
   `).all(decoded.id);
 
   return success(res, records);
-});
-
-/**
- * GET /api/mp/balance
- * 小程序端余额查询（使用mp token鉴权，不经过admin的authMiddleware）
- */
-router.get('/balance', (req, res) => {
-  try {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader) return error(res, '未登录', 401);
-    const jwt = require('jsonwebtoken');
-    const { JWT_SECRET } = require('../middleware/auth');
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-
-    let decoded;
-    try { decoded = jwt.verify(token, JWT_SECRET); } catch { return error(res, '登录已过期', 401); }
-
-    const db = getDB();
-    const user = db.prepare(
-      'SELECT id, username, real_name, COALESCE(balance, 0) as balance, COALESCE(frozen_balance, 0) as frozen_balance FROM users WHERE id = ? AND is_deleted = 0'
-    ).get(decoded.id);
-
-    if (!user) return error(res, '用户不存在，请重新登录', 401);
-
-    return success(res, {
-      userId: user.id,
-      username: user.username || user.real_name,
-      balance: parseFloat(user.balance) || 0,
-      frozenBalance: parseFloat(user.frozen_balance) || 0
-    });
-  } catch (e) {
-    console.error('[余额查询] 接口异常:', e.message || e);
-    return error(res, '获取余额失败: ' + (e.message || '未知错误'), 500);
-  }
-});
-
-/**
- * GET /api/mp/balance-logs
- * 小程序端余额变动明细（使用mp token鉴权）
- * 查询参数: page, pageSize, type(筛选类型)
- */
-router.get('/balance-logs', (req, res) => {
-  try {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader) return error(res, '未登录', 401);
-    const jwt = require('jsonwebtoken');
-    const { JWT_SECRET } = require('../middleware/auth');
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-
-    let decoded;
-    try { decoded = jwt.verify(token, JWT_SECRET); } catch { return error(res, '登录已过期', 401); }
-
-    const page = parseInt(req.query.page) || 1;
-    const pageSize = parseInt(req.query.pageSize) || 20;
-    const type = req.query.type;
-    const offset = (page - 1) * pageSize;
-
-    const db = getDB();
-
-    // 构建查询条件
-    let whereClause = 'WHERE user_id = ?';
-    let params = [decoded.id];
-    if (type) {
-      whereClause += ' AND change_type = ?';
-      params.push(type);
-    }
-
-    const total = db.prepare(`SELECT COUNT(*) as count FROM balance_logs ${whereClause}`).get(...params).count;
-    const logs = db.prepare(`SELECT * FROM balance_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
-      .all(...params, pageSize, offset);
-
-    return success(res, { list: logs, total, page, pageSize });
-  } catch (e) {
-    console.error('[余额明细] 接口异常:', e.message || e);
-    return error(res, '获取余额明细失败: ' + (e.message || '未知错误'), 500);
-  }
 });
 
 module.exports = router;

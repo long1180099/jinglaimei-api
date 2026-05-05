@@ -22,7 +22,7 @@ function error(res, msg, code = 500) {
 }
 
 // ==================== 获取轮播图列表 ====================
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   try {
     const rows = db.prepare(`
@@ -56,10 +56,10 @@ router.get('/', (req, res) => {
 });
 
 // ==================== 获取单条轮播图 ====================
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDB();
   try {
-    const row = db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
+    const row = await db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
     if (!row) {
       return error(res, '轮播图不存在', 404);
     }
@@ -75,7 +75,7 @@ router.get('/:id', (req, res) => {
 });
 
 // ==================== 新增轮播图 ====================
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   try {
     const { image_url, title, link_url, description, status = 1 } = req.body;
@@ -85,11 +85,11 @@ router.post('/', (req, res) => {
     }
 
     // 获取当前最大排序号
-    const maxOrder = db.prepare("SELECT MAX(sort_order) as max_sort FROM system_configs WHERE config_key LIKE 'banner_%'").get();
+    const maxOrder = await db.prepare("SELECT MAX(sort_order) as max_sort FROM system_configs WHERE config_key LIKE 'banner_%'").get();
     const nextSort = (maxOrder.max_sort || 0) + 1;
 
     // 找到最大的 banner_N 编号
-    const maxKey = db.prepare("SELECT config_key FROM system_configs WHERE config_key LIKE 'banner_%' ORDER BY CAST(SUBSTR(config_key,8) AS INTEGER) DESC LIMIT 1").get();
+    const maxKey = await db.prepare("SELECT config_key FROM system_configs WHERE config_key LIKE 'banner_%' ORDER BY CAST(SUBSTR(config_key,8) AS INTEGER) DESC LIMIT 1").get();
     const nextNum = maxKey ? parseInt(maxKey.config_key.replace('banner_', '')) + 1 : 1;
     const configKey = `banner_${nextNum}`;
 
@@ -101,7 +101,7 @@ router.post('/', (req, res) => {
     `).run(configKey, configValue, description || '', nextSort);
 
     const newId = result.lastInsertRowid;
-    const newRow = db.prepare('SELECT * FROM system_configs WHERE id = ?').get(newId);
+    const newRow = await db.prepare('SELECT * FROM system_configs WHERE id = ?').get(newId);
     let parsed = {};
     try { parsed = JSON.parse(newRow.config_value || '{}'); } catch (e) {}
 
@@ -116,10 +116,10 @@ router.post('/', (req, res) => {
 });
 
 // ==================== 更新轮播图 ====================
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = getDB();
   try {
-    const existing = db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
     if (!existing) {
       return error(res, '轮播图不存在', 404);
     }
@@ -157,15 +157,15 @@ router.put('/:id', (req, res) => {
 });
 
 // ==================== 删除轮播图 ====================
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = getDB();
   try {
-    const existing = db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
     if (!existing) {
       return error(res, '轮播图不存在', 404);
     }
 
-    db.prepare('DELETE FROM system_configs WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM system_configs WHERE id = ?').run(req.params.id);
 
     console.log(`[Banner] 删除轮播图 #${req.params.id} (${existing.config_key})`);
     return success(res, { deleted: true, id: parseInt(req.params.id) });
@@ -178,7 +178,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // ==================== 批量更新排序 ====================
-router.put('/batch-sort', (req, res) => {
+router.put('/batch-sort', async (req, res) => {
   const db = getDB();
   try {
     const { items } = req.body; // items: [{ id, sort_order }]
@@ -186,7 +186,7 @@ router.put('/batch-sort', (req, res) => {
       return error(res, '参数格式错误：需要 items 数组', 400);
     }
 
-    const updateStmt = db.prepare('UPDATE system_configs SET sort_order = ?, updated_at = new Date().toISOString().replace("T", " ").slice(0, 19) WHERE id = ?');
+    const updateStmt = db.prepare('UPDATE system_configs SET sort_order = ?, updated_at = datetime("now","localtime") WHERE id = ?');
     for (const item of items) {
       updateStmt.run(item.sort_order, item.id);
     }
@@ -202,11 +202,11 @@ router.put('/batch-sort', (req, res) => {
 });
 
 // ==================== 更新状态（启用/禁用） ====================
-router.patch('/:id/status', (req, res) => {
+router.patch('/:id/status', async (req, res) => {
   const db = getDB();
   try {
     const { status } = req.body;
-    const existing = db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM system_configs WHERE id = ? AND config_key LIKE "banner_%"').get(req.params.id);
     if (!existing) {
       return error(res, '轮播图不存在', 404);
     }
@@ -215,7 +215,7 @@ router.patch('/:id/status', (req, res) => {
     try { parsed = JSON.parse(existing.config_value || '{}'); } catch (e) {}
     parsed.status = status ? 1 : 0;
 
-    db.prepare('UPDATE system_configs SET config_value = ?, updated_at = new Date().toISOString().replace("T", " ").slice(0, 19) WHERE id = ?')
+    db.prepare('UPDATE system_configs SET config_value = ?, updated_at = datetime("now","localtime") WHERE id = ?')
       .run(JSON.stringify(parsed), req.params.id);
 
     return success(res, { id: parseInt(req.params.id), status: parsed.status });

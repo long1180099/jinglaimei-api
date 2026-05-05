@@ -11,7 +11,7 @@ const { generateCoachReply, generateEvaluation, generateCoachOpening, generateLe
 // ==================== 小程序 - 关卡通关 ====================
 
 // 获取关卡列表（含用户进度）
-router.get('/ai-levels', (req, res) => {
+router.get('/ai-levels', async (req, res) => {
   try {
     const db = getDB();
     const userId = req.query.user_id;
@@ -36,12 +36,12 @@ router.get('/ai-levels', (req, res) => {
 });
 
 // 获取关卡详情（含学习资料）
-router.get('/ai-levels/:id', (req, res) => {
+router.get('/ai-levels/:id', async (req, res) => {
   try {
     const db = getDB();
     const userId = req.query.user_id;
 
-    const level = db.prepare('SELECT * FROM ai_levels WHERE id = ? AND status = 1').get(req.params.id);
+    const level = await db.prepare('SELECT * FROM ai_levels WHERE id = ? AND status = 1').get(req.params.id);
     if (!level) return error(res, '关卡不存在', 404);
 
     const questions = db.prepare(`
@@ -51,7 +51,7 @@ router.get('/ai-levels/:id', (req, res) => {
 
     let progress = null;
     if (userId) {
-      progress = db.prepare('SELECT * FROM ai_level_progress WHERE user_id = ? AND level_id = ?').get(userId, req.params.id);
+      progress = await db.prepare('SELECT * FROM ai_level_progress WHERE user_id = ? AND level_id = ?').get(userId, req.params.id);
     }
 
     success(res, {
@@ -65,13 +65,13 @@ router.get('/ai-levels/:id', (req, res) => {
 });
 
 // 开始挑战（获取考核题目，不包含答案）
-router.post('/ai-levels/:id/start', (req, res) => {
+router.post('/ai-levels/:id/start', async (req, res) => {
   try {
     const db = getDB();
     const { user_id } = req.body;
     if (!user_id) return error(res, '缺少user_id');
 
-    const level = db.prepare('SELECT * FROM ai_levels WHERE id = ? AND status = 1').get(req.params.id);
+    const level = await db.prepare('SELECT * FROM ai_levels WHERE id = ? AND status = 1').get(req.params.id);
     if (!level) return error(res, '关卡不存在', 404);
 
     const questions = db.prepare(`
@@ -98,7 +98,7 @@ router.post('/ai-levels/:id/submit', async (req, res) => {
     const { user_id, answers, duration } = req.body;
     if (!user_id || !answers) return error(res, '缺少必要参数');
 
-    const level = db.prepare('SELECT * FROM ai_levels WHERE id = ? AND status = 1').get(req.params.id);
+    const level = await db.prepare('SELECT * FROM ai_levels WHERE id = ? AND status = 1').get(req.params.id);
     if (!level) return error(res, '关卡不存在', 404);
 
     // 获取所有题目（含正确答案）
@@ -153,7 +153,7 @@ router.post('/ai-levels/:id/submit', async (req, res) => {
       const newPassed = existing.passed || passed;
       const newDuration = dur < existing.best_duration || existing.best_duration === 0 ? dur : existing.best_duration;
 
-      db.prepare(`
+      await db.prepare(`
         UPDATE ai_level_progress SET
           best_score = ?,
           attempts = attempts + 1,
@@ -210,15 +210,15 @@ router.post('/ai-levels/:id/submit', async (req, res) => {
 });
 
 // 获取用户通关进度总览
-router.get('/ai-levels/progress/:userId', (req, res) => {
+router.get('/ai-levels/progress/:userId', async (req, res) => {
   try {
     const db = getDB();
     const userId = req.params.userId;
 
-    const totalLevels = db.prepare('SELECT COUNT(*) as cnt FROM ai_levels WHERE status = 1').get().cnt;
-    const passedLevels = db.prepare('SELECT COUNT(*) as cnt FROM ai_level_progress WHERE user_id = ? AND passed = 1').get(userId).cnt;
-    const totalAttempts = db.prepare('SELECT COUNT(*) as cnt FROM ai_level_attempts WHERE user_id = ?').get(userId).cnt;
-    const avgScore = db.prepare('SELECT AVG(best_score) as avg FROM ai_level_progress WHERE user_id = ?').get(userId).avg;
+    const totalLevels = await db.prepare('SELECT COUNT(*) as cnt FROM ai_levels WHERE status = 1').get().cnt;
+    const passedLevels = await db.prepare('SELECT COUNT(*) as cnt FROM ai_level_progress WHERE user_id = ? AND passed = 1').get(userId).cnt;
+    const totalAttempts = await db.prepare('SELECT COUNT(*) as cnt FROM ai_level_attempts WHERE user_id = ?').get(userId).cnt;
+    const avgScore = await db.prepare('SELECT AVG(best_score) as avg FROM ai_level_progress WHERE user_id = ?').get(userId).avg;
 
     // 获取排行榜位置
     const rankResult = db.prepare(`
@@ -246,7 +246,7 @@ router.get('/ai-levels/progress/:userId', (req, res) => {
 // ==================== 小程序 - AI教练 ====================
 
 // 获取可用场景列表
-router.get('/ai-coach/scenarios', (req, res) => {
+router.get('/ai-coach/scenarios', async (req, res) => {
   try {
     const db = getDB();
     const userId = req.query.user_id;
@@ -284,7 +284,7 @@ router.post('/ai-coach/sessions', async (req, res) => {
     // 统一规范化user_id（防止浮点字符串如 "1.0" 导致后续匹配失败）
     const normalizedUserId = String(Number(user_id));
 
-    const scenario = db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ? AND status = 1').get(scenario_id);
+    const scenario = await db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ? AND status = 1').get(scenario_id);
     if (!scenario) return error(res, '场景不存在', 404);
 
     // 创建会话
@@ -318,7 +318,7 @@ router.post('/ai-coach/sessions', async (req, res) => {
       VALUES (?, 'ai', ?)
     `).run(sessionId, openingLine);
 
-    const firstMessage = db.prepare('SELECT * FROM ai_coach_messages WHERE id = last_insert_rowid()').get();
+    const firstMessage = await db.prepare('SELECT * FROM ai_coach_messages WHERE id = last_insert_rowid()').get();
 
     success(res, {
       session_id: sessionId,
@@ -356,7 +356,7 @@ router.post('/ai-coach/sessions/:sessionId/message', async (req, res) => {
     const normalizedUserId = String(Number(user_id));
 
     // 验证会话
-    const session = db.prepare('SELECT s.*, sc.personality_type, sc.personality_name, sc.opening_line, sc.personality_traits, sc.tips FROM ai_coach_sessions s JOIN ai_coach_scenarios sc ON s.scenario_id = sc.id WHERE s.id = ?').get(sessionId);
+    const session = await db.prepare('SELECT s.*, sc.personality_type, sc.personality_name, sc.opening_line, sc.personality_traits, sc.tips FROM ai_coach_sessions s JOIN ai_coach_scenarios sc ON s.scenario_id = sc.id WHERE s.id = ?').get(sessionId);
     if (!session) return error(res, '会话不存在', 404);
     if (session.status !== 'active') return error(res, '对话已结束');
     if (String(session.user_id) !== normalizedUserId) {
@@ -379,7 +379,7 @@ router.post('/ai-coach/sessions/:sessionId/message', async (req, res) => {
     `).all(sessionId);
 
     // 更新轮次
-    db.prepare('UPDATE ai_coach_sessions SET total_rounds = total_rounds + 1 WHERE id = ?').run(sessionId);
+    await db.prepare('UPDATE ai_coach_sessions SET total_rounds = total_rounds + 1 WHERE id = ?').run(sessionId);
     console.log(`[教练Message] step4 历史查询完成, ${history.length}条 (${Date.now()-t0}ms)`);
 
     // 调用AI获取回复，失败时降级到模拟回复
@@ -458,8 +458,8 @@ router.post('/ai-coach/sessions/:sessionId/end', async (req, res) => {
     `).all(sessionId);
 
     // 计算对话时长
-    const firstMsg = db.prepare('SELECT created_at FROM ai_coach_messages WHERE session_id = ? ORDER BY created_at ASC LIMIT 1').get(sessionId);
-    const lastMsg = db.prepare('SELECT created_at FROM ai_coach_messages WHERE session_id = ? ORDER BY created_at DESC LIMIT 1').get(sessionId);
+    const firstMsg = await db.prepare('SELECT created_at FROM ai_coach_messages WHERE session_id = ? ORDER BY created_at ASC LIMIT 1').get(sessionId);
+    const lastMsg = await db.prepare('SELECT created_at FROM ai_coach_messages WHERE session_id = ? ORDER BY created_at DESC LIMIT 1').get(sessionId);
     const duration = firstMsg && lastMsg ? Math.round((new Date(lastMsg.created_at) - new Date(firstMsg.created_at)) / 1000) : 0;
 
     // 调用AI评分，失败时降级到模拟评分
@@ -524,7 +524,7 @@ router.post('/ai-coach/sessions/:sessionId/end', async (req, res) => {
 });
 
 // 获取用户历史对话列表
-router.get('/ai-coach/history', (req, res) => {
+router.get('/ai-coach/history', async (req, res) => {
   try {
     const db = getDB();
     const userId = req.query.user_id;
@@ -543,7 +543,7 @@ router.get('/ai-coach/history', (req, res) => {
       LIMIT ? OFFSET ?
     `).all(userId, parseInt(pageSize), offset);
 
-    const total = db.prepare('SELECT COUNT(*) as cnt FROM ai_coach_sessions WHERE user_id = ?').get(userId).cnt;
+    const total = await db.prepare('SELECT COUNT(*) as cnt FROM ai_coach_sessions WHERE user_id = ?').get(userId).cnt;
 
     success(res, {
       items: sessions,
@@ -558,7 +558,7 @@ router.get('/ai-coach/history', (req, res) => {
 });
 
 // 获取对话详情
-router.get('/ai-coach/sessions/:sessionId', (req, res) => {
+router.get('/ai-coach/sessions/:sessionId', async (req, res) => {
   try {
     const db = getDB();
     const userId = req.query.user_id;
@@ -598,7 +598,7 @@ router.get('/ai-coach/sessions/:sessionId', (req, res) => {
 
 // ==================== 小程序 - 排行榜 ====================
 
-router.get('/ai-coach/rankings', (req, res) => {
+router.get('/ai-coach/rankings', async (req, res) => {
   try {
     const db = getDB();
     const { type = 'overall', limit = 20 } = req.query;
@@ -630,7 +630,7 @@ router.get('/ai-coach/rankings', (req, res) => {
       `;
     }
 
-    const rankings = db.prepare(sql).all(lim);
+    const rankings = await db.prepare(sql).all(lim);
     success(res, rankings);
   } catch (err) {
     error(res, '获取排行榜失败: ' + err.message, 500);

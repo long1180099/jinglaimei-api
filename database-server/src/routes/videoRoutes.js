@@ -60,7 +60,7 @@ function ensureTables() {
 /**
  * GET /api/school/videos/categories - 分类列表
  */
-router.get('/videos/categories', (req, res) => {
+router.get('/videos/categories', async (req, res) => {
   ensureTables();
   const db = getDB();
   const categories = db.prepare(`
@@ -76,7 +76,7 @@ router.get('/videos/categories', (req, res) => {
 /**
  * POST /api/school/videos/categories - 新增分类
  */
-router.post('/videos/categories', (req, res) => {
+router.post('/videos/categories', async (req, res) => {
   ensureTables();
   const db = getDB();
   const { name, icon, description, sort_order } = req.body;
@@ -92,21 +92,22 @@ router.post('/videos/categories', (req, res) => {
 /**
  * PUT /api/school/videos/categories/:id - 更新分类
  */
-router.put('/videos/categories/:id', (req, res) => {
+router.put('/videos/categories/:id', async (req, res) => {
   ensureTables();
   const db = getDB();
   const { name, icon, description, sort_order, status } = req.body;
 
-  db.prepare(`
-    UPDATE video_categories SET
-      name = COALESCE(?, name),
-      icon = COALESCE(?, icon),
-      description = COALESCE(?, description),
-      sort_order = COALESCE(?, sort_order),
-      status = COALESCE(?, status),
-      updated_at = datetime('now','localtime')
-    WHERE id = ?
-  `).run(name, icon, description, sort_order, status, req.params.id);
+  // 动态构建 SET 子句，只更新前端明确传递的字段
+  const setClauses = [];
+  const setParams = [];
+  if (name !== undefined) { setClauses.push('name = ?'); setParams.push(name); }
+  if (icon !== undefined) { setClauses.push('icon = ?'); setParams.push(icon); }
+  if (description !== undefined) { setClauses.push('description = ?'); setParams.push(description); }
+  if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+  if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+  setClauses.push("updated_at = datetime('now','localtime')");
+  setParams.push(req.params.id);
+  await db.prepare(`UPDATE video_categories SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
   return success(res, null, '分类更新成功');
 });
@@ -114,15 +115,15 @@ router.put('/videos/categories/:id', (req, res) => {
 /**
  * DELETE /api/school/videos/categories/:id - 删除分类
  */
-router.delete('/videos/categories/:id', (req, res) => {
+router.delete('/videos/categories/:id', async (req, res) => {
   ensureTables();
   const db = getDB();
   // 检查是否有视频使用此分类
-  const videoCount = db.prepare('SELECT COUNT(*) as c FROM videos WHERE category_id = ?').get(req.params.id).c;
+  const videoCount = await db.prepare('SELECT COUNT(*) as c FROM videos WHERE category_id = ?').get(req.params.id).c;
   if (videoCount > 0) {
     return error(res, `该分类下有${videoCount}个视频，请先移动或删除视频`);
   }
-  db.prepare('DELETE FROM video_categories WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM video_categories WHERE id = ?').run(req.params.id);
   return success(res, null, '分类删除成功');
 });
 
@@ -167,7 +168,7 @@ router.post('/videos/upload-cover', upload.single('cover'), (req, res) => {
 /**
  * GET /api/school/videos - 视频列表
  */
-router.get('/videos', (req, res) => {
+router.get('/videos', async (req, res) => {
   ensureTables();
   const db = getDB();
   const { page = 1, pageSize = 20, keyword, category_id, status, difficulty, access_level, series_id, sort_by = 'created_at', sort_order = 'desc' } = req.query;
@@ -187,7 +188,7 @@ router.get('/videos', (req, res) => {
   const sortBy = allowedSort.includes(sort_by) ? sort_by : 'created_at';
   const sortOrder = sort_order === 'asc' ? 'ASC' : 'DESC';
 
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM videos v ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM videos v ${whereClause}`).get(...params).cnt;
   const videos = db.prepare(`
     SELECT v.*, vc.name as category_name_real
     FROM videos v
@@ -210,7 +211,7 @@ router.get('/videos', (req, res) => {
 /**
  * GET /api/school/videos/:id - 视频详情
  */
-router.get('/videos/:id', (req, res) => {
+router.get('/videos/:id', async (req, res) => {
   ensureTables();
   const db = getDB();
   const video = db.prepare(`
@@ -294,7 +295,7 @@ router.post('/videos/create-with-file', upload.single('video'), (req, res) => {
       `).run(series_id, series_id);
     }
 
-    const newVideo = db.prepare('SELECT * FROM videos WHERE id = ?').get(newId);
+    const newVideo = await db.prepare('SELECT * FROM videos WHERE id = ?').get(newId);
     return success(res, {
       ...newVideo,
       id: String(newVideo.id),
@@ -310,11 +311,11 @@ router.post('/videos/create-with-file', upload.single('video'), (req, res) => {
 /**
  * PUT /api/school/videos/:id - 更新视频
  */
-router.put('/videos/:id', (req, res) => {
+router.put('/videos/:id', async (req, res) => {
   try {
     ensureTables();
     const db = getDB();
-    const existing = db.prepare('SELECT id, series_id FROM videos WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT id, series_id FROM videos WHERE id = ?').get(req.params.id);
     if (!existing) return error(res, '视频不存在', 404);
 
     const {
@@ -329,45 +330,37 @@ router.put('/videos/:id', (req, res) => {
     const newSeriesId = series_id !== undefined ? (series_id === '' || series_id === 'null' ? null : parseInt(series_id)) : existing.series_id;
     const oldSeriesId = existing.series_id;
 
-    db.prepare(`
-      UPDATE videos SET
-        title = COALESCE(?, title),
-        description = COALESCE(?, description),
-        cover_url = COALESCE(?, cover_url),
-        video_url = COALESCE(?, video_url),
-        duration = COALESCE(?, duration),
-        category_id = COALESCE(?, category_id),
-        category_name = COALESCE(?, category_name),
-        series_id = ?,
-        access_level = COALESCE(?, access_level),
-        price = COALESCE(?, price),
-        instructor = COALESCE(?, instructor),
-        instructor_avatar = COALESCE(?, instructor_avatar),
-        difficulty = COALESCE(?, difficulty),
-        tags = COALESCE(?, tags),
-        status = COALESCE(?, status),
-        is_recommend = COALESCE(?, is_recommend),
-        is_top = COALESCE(?, is_top),
-        updated_at = datetime('now','localtime')
-      WHERE id = ?
-    `).run(
-      title, description, cover_url, video_url,
-      duration, category_id, category_name,
-      newSeriesId,
-      access_level, price,
-      instructor, instructor_avatar,
-      difficulty,
-      Array.isArray(tags) ? JSON.stringify(tags) : tags,
-      status, is_recommend, is_top,
-      req.params.id
-    );
+    // 动态构建 SET 子句，只更新前端明确传递的字段
+    const setClauses = [];
+    const setParams = [];
+    if (title !== undefined) { setClauses.push('title = ?'); setParams.push(title); }
+    if (description !== undefined) { setClauses.push('description = ?'); setParams.push(description); }
+    if (cover_url !== undefined) { setClauses.push('cover_url = ?'); setParams.push(cover_url); }
+    if (video_url !== undefined) { setClauses.push('video_url = ?'); setParams.push(video_url); }
+    if (duration !== undefined) { setClauses.push('duration = ?'); setParams.push(duration); }
+    if (category_id !== undefined) { setClauses.push('category_id = ?'); setParams.push(category_id); }
+    if (category_name !== undefined) { setClauses.push('category_name = ?'); setParams.push(category_name); }
+    setClauses.push('series_id = ?');
+    setParams.push(newSeriesId);
+    if (access_level !== undefined) { setClauses.push('access_level = ?'); setParams.push(access_level); }
+    if (price !== undefined) { setClauses.push('price = ?'); setParams.push(price); }
+    if (instructor !== undefined) { setClauses.push('instructor = ?'); setParams.push(instructor); }
+    if (instructor_avatar !== undefined) { setClauses.push('instructor_avatar = ?'); setParams.push(instructor_avatar); }
+    if (difficulty !== undefined) { setClauses.push('difficulty = ?'); setParams.push(difficulty); }
+    if (tags !== undefined) { setClauses.push('tags = ?'); setParams.push(Array.isArray(tags) ? JSON.stringify(tags) : tags); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    if (is_recommend !== undefined) { setClauses.push('is_recommend = ?'); setParams.push(is_recommend); }
+    if (is_top !== undefined) { setClauses.push('is_top = ?'); setParams.push(is_top); }
+    setClauses.push("updated_at = datetime('now','localtime')");
+    setParams.push(req.params.id);
+    await db.prepare(`UPDATE videos SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
     // 更新旧系列和新系列的集数统计
     if (oldSeriesId && oldSeriesId !== newSeriesId) {
-      db.prepare(`UPDATE video_series SET total_episodes = (SELECT COUNT(*) FROM videos WHERE series_id = ?), updated_at = datetime('now','localtime') WHERE id = ?`).run(oldSeriesId, oldSeriesId);
+      await db.prepare(`UPDATE video_series SET total_episodes = (SELECT COUNT(*) FROM videos WHERE series_id = ?), updated_at = datetime('now','localtime') WHERE id = ?`).run(oldSeriesId, oldSeriesId);
     }
     if (newSeriesId && newSeriesId !== oldSeriesId) {
-      db.prepare(`UPDATE video_series SET total_episodes = (SELECT COUNT(*) FROM videos WHERE series_id = ?), updated_at = datetime('now','localtime') WHERE id = ?`).run(newSeriesId, newSeriesId);
+      await db.prepare(`UPDATE video_series SET total_episodes = (SELECT COUNT(*) FROM videos WHERE series_id = ?), updated_at = datetime('now','localtime') WHERE id = ?`).run(newSeriesId, newSeriesId);
     }
 
     return success(res, null, '更新成功');
@@ -379,11 +372,11 @@ router.put('/videos/:id', (req, res) => {
 /**
  * DELETE /api/school/videos/:id - 删除视频
  */
-router.delete('/videos/:id', (req, res) => {
+router.delete('/videos/:id', async (req, res) => {
   try {
     ensureTables();
     const db = getDB();
-    const video = db.prepare('SELECT * FROM videos WHERE id = ?').get(req.params.id);
+    const video = await db.prepare('SELECT * FROM videos WHERE id = ?').get(req.params.id);
     if (!video) return error(res, '视频不存在', 404);
 
     // 删除关联文件
@@ -397,15 +390,15 @@ router.delete('/videos/:id', (req, res) => {
     }
 
     // 删除学习进度
-    db.prepare('DELETE FROM video_progress WHERE video_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM video_progress WHERE video_id = ?').run(req.params.id);
     // 删除订单
-    db.prepare('DELETE FROM video_orders WHERE target_type = "video" AND target_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM video_orders WHERE target_type = "video" AND target_id = ?').run(req.params.id);
 
-    db.prepare('DELETE FROM videos WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM videos WHERE id = ?').run(req.params.id);
 
     // 如果属于系列课，更新系列集数
     if (video.series_id) {
-      db.prepare(`UPDATE video_series SET total_episodes = (SELECT COUNT(*) FROM videos WHERE series_id = ?) WHERE id = ?`).run(video.series_id, video.series_id);
+      await db.prepare(`UPDATE video_series SET total_episodes = (SELECT COUNT(*) FROM videos WHERE series_id = ?) WHERE id = ?`).run(video.series_id, video.series_id);
     }
 
     return success(res, null, '删除成功');
@@ -417,13 +410,13 @@ router.delete('/videos/:id', (req, res) => {
 /**
  * PUT /api/school/videos/:id/toggle-status - 切换上下架状态
  */
-router.put('/videos/:id/toggle-status', (req, res) => {
+router.put('/videos/:id/toggle-status', async (req, res) => {
   ensureTables();
   const db = getDB();
-  const video = db.prepare('SELECT status FROM videos WHERE id = ?').get(req.params.id);
+  const video = await db.prepare('SELECT status FROM videos WHERE id = ?').get(req.params.id);
   if (!video) return error(res, '视频不存在', 404);
   const newStatus = video.status === 1 ? 0 : 1;
-  db.prepare('UPDATE videos SET status = ?, updated_at = datetime(\'now\',\'localtime\') WHERE id = ?').run(newStatus, req.params.id);
+  await db.prepare('UPDATE videos SET status = ?, updated_at = datetime(\'now\',\'localtime\') WHERE id = ?').run(newStatus, req.params.id);
   return success(res, { status: newStatus }, newStatus ? '已上架' : '已下架');
 });
 
@@ -432,7 +425,7 @@ router.put('/videos/:id/toggle-status', (req, res) => {
 /**
  * GET /api/school/videos/series-list - 系列课列表
  */
-router.get('/videos/series-list', (req, res) => {
+router.get('/videos/series-list', async (req, res) => {
   ensureTables();
   const db = getDB();
   const { keyword, status, page = 1, pageSize = 20 } = req.query;
@@ -445,7 +438,7 @@ router.get('/videos/series-list', (req, res) => {
 
   const whereClause = where.length > 0 ? 'WHERE ' + where.join(' AND ') : '';
 
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM video_series s ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM video_series s ${whereClause}`).get(...params).cnt;
   const seriesList = db.prepare(`
     SELECT s.*,
            (SELECT COUNT(*) FROM videos WHERE series_id = s.id AND status = 1) as active_episodes,
@@ -471,7 +464,7 @@ router.get('/videos/series-list', (req, res) => {
 /**
  * POST /api/school/videos/series-list - 创建系列课
  */
-router.post('/videos/series-list', (req, res) => {
+router.post('/videos/series-list', async (req, res) => {
   try {
     ensureTables();
     const db = getDB();
@@ -510,11 +503,11 @@ router.post('/videos/series-list', (req, res) => {
 /**
  * PUT /api/school/videos/series-list/:id - 更新系列课
  */
-router.put('/videos/series-list/:id', (req, res) => {
+router.put('/videos/series-list/:id', async (req, res) => {
   try {
     ensureTables();
     const db = getDB();
-    const exists = db.prepare('SELECT id FROM video_series WHERE id = ?').get(req.params.id);
+    const exists = await db.prepare('SELECT id FROM video_series WHERE id = ?').get(req.params.id);
     if (!exists) return error(res, '系列课不存在', 404);
 
     const {
@@ -524,34 +517,27 @@ router.put('/videos/series-list/:id', (req, res) => {
       difficulty, tags, status, is_recommend, sort_order
     } = req.body;
 
-    db.prepare(`
-      UPDATE video_series SET
-        title = COALESCE(?, title),
-        description = COALESCE(?, description),
-        cover_url = COALESCE(?, cover_url),
-        category_id = COALESCE(?, category_id),
-        category_name = COALESCE(?, category_name),
-        price = COALESCE(?, price),
-        original_price = COALESCE(?, original_price),
-        access_level = COALESCE(?, access_level),
-        instructor = COALESCE(?, instructor),
-        instructor_avatar = COALESCE(?, instructor_avatar),
-        difficulty = COALESCE(?, difficulty),
-        tags = COALESCE(?, tags),
-        status = COALESCE(?, status),
-        is_recommend = COALESCE(?, is_recommend),
-        sort_order = COALESCE(?, sort_order),
-        updated_at = datetime('now','localtime')
-      WHERE id = ?
-    `).run(
-      title, description, cover_url, category_id, category_name,
-      price, original_price, access_level,
-      instructor, instructor_avatar,
-      difficulty,
-      Array.isArray(tags) ? JSON.stringify(tags) : tags,
-      status, is_recommend, sort_order,
-      req.params.id
-    );
+    // 动态构建 SET 子句
+    const setClauses = [];
+    const setParams = [];
+    if (title !== undefined) { setClauses.push('title = ?'); setParams.push(title); }
+    if (description !== undefined) { setClauses.push('description = ?'); setParams.push(description); }
+    if (cover_url !== undefined) { setClauses.push('cover_url = ?'); setParams.push(cover_url); }
+    if (category_id !== undefined) { setClauses.push('category_id = ?'); setParams.push(category_id); }
+    if (category_name !== undefined) { setClauses.push('category_name = ?'); setParams.push(category_name); }
+    if (price !== undefined) { setClauses.push('price = ?'); setParams.push(price); }
+    if (original_price !== undefined) { setClauses.push('original_price = ?'); setParams.push(original_price); }
+    if (access_level !== undefined) { setClauses.push('access_level = ?'); setParams.push(access_level); }
+    if (instructor !== undefined) { setClauses.push('instructor = ?'); setParams.push(instructor); }
+    if (instructor_avatar !== undefined) { setClauses.push('instructor_avatar = ?'); setParams.push(instructor_avatar); }
+    if (difficulty !== undefined) { setClauses.push('difficulty = ?'); setParams.push(difficulty); }
+    if (tags !== undefined) { setClauses.push('tags = ?'); setParams.push(Array.isArray(tags) ? JSON.stringify(tags) : tags); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    if (is_recommend !== undefined) { setClauses.push('is_recommend = ?'); setParams.push(is_recommend); }
+    if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+    setClauses.push("updated_at = datetime('now','localtime')");
+    setParams.push(req.params.id);
+    await db.prepare(`UPDATE video_series SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
     return success(res, null, '系列课更新成功');
   } catch (err) {
@@ -562,7 +548,7 @@ router.put('/videos/series-list/:id', (req, res) => {
 /**
  * GET /api/school/videos/series-list/:id - 系列课详情(含剧集列表)
  */
-router.get('/videos/series-list/:id', (req, res) => {
+router.get('/videos/series-list/:id', async (req, res) => {
   ensureTables();
   const db = getDB();
   const series = db.prepare(`
@@ -594,15 +580,15 @@ router.get('/videos/series-list/:id', (req, res) => {
 /**
  * DELETE /api/school/videos/series-list/:id - 删除系列课(含所有剧集)
  */
-router.delete('/videos/series-list/:id', (req, res) => {
+router.delete('/videos/series-list/:id', async (req, res) => {
   try {
     ensureTables();
     const db = getDB();
-    const series = db.prepare('SELECT * FROM video_series WHERE id = ?').get(req.params.id);
+    const series = await db.prepare('SELECT * FROM video_series WHERE id = ?').get(req.params.id);
     if (!series) return error(res, '系列课不存在', 404);
 
     // 获取所有剧集，删除视频文件
-    const episodes = db.prepare('SELECT id, video_url, cover_url FROM videos WHERE series_id = ?').all(req.params.id);
+    const episodes = await db.prepare('SELECT id, video_url, cover_url FROM videos WHERE series_id = ?').all(req.params.id);
     episodes.forEach(ep => {
       if (ep.video_url) { const fp = path.join(__dirname, '../../data', ep.video_url); if (fs.existsSync(fp)) fs.unlinkSync(fp); }
       if (ep.cover_url) { const cp = path.join(__dirname, '../../data', ep.cover_url); if (fs.existsSync(cp)) fs.unlinkSync(cp); }
@@ -611,15 +597,15 @@ router.delete('/videos/series-list/:id', (req, res) => {
     // 删除剧集进度和订单
     const episodeIds = episodes.map(ep => ep.id);
     if (episodeIds.length > 0) {
-      db.prepare(`DELETE FROM video_progress WHERE video_id IN (${episodeIds.join(',')})`).run();
-      db.prepare(`DELETE FROM video_orders WHERE target_type = "video" AND target_id IN (${episodeIds.join(',')})`).run();
+      await db.prepare(`DELETE FROM video_progress WHERE video_id IN (${episodeIds.join(',')})`).run();
+      await db.prepare(`DELETE FROM video_orders WHERE target_type = "video" AND target_id IN (${episodeIds.join(',')})`).run();
     }
     // 删除系列课本身订单
-    db.prepare('DELETE FROM video_orders WHERE target_type = "series" AND target_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM video_orders WHERE target_type = "series" AND target_id = ?').run(req.params.id);
     // 删除剧集
-    db.prepare('DELETE FROM videos WHERE series_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM videos WHERE series_id = ?').run(req.params.id);
     // 删除系列课
-    db.prepare('DELETE FROM video_series WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM video_series WHERE id = ?').run(req.params.id);
 
     return success(res, null, `系列课已删除(共${episodes.length}集)`);
   } catch (err) {
@@ -632,7 +618,7 @@ router.delete('/videos/series-list/:id', (req, res) => {
 /**
  * GET /api/school/videos/orders - 订单列表
  */
-router.get('/videos/orders', (req, res) => {
+router.get('/videos/orders', async (req, res) => {
   ensureTables();
   const db = getDB();
   const { page = 1, pageSize = 20, status, user_id } = req.query;
@@ -645,7 +631,7 @@ router.get('/videos/orders', (req, res) => {
 
   const whereClause = where.length > 0 ? 'WHERE ' + where.join(' AND ') : '';
 
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM video_orders vo ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM video_orders vo ${whereClause}`).get(...params).cnt;
   const orders = db.prepare(`
     SELECT vo.*, COALESCE(u.real_name, u.username) as buyer_name, u.avatar_url
     FROM video_orders vo
@@ -663,14 +649,14 @@ router.get('/videos/orders', (req, res) => {
 /**
  * GET /api/school/videos/stats - 视频数据总览
  */
-router.get('/videos/stats', (req, res) => {
+router.get('/videos/stats', async (req, res) => {
   ensureTables();
   const db = getDB();
 
   // 基础数据
-  const totalVideos = db.prepare("SELECT COUNT(*) as c FROM videos WHERE status = 1").get().c;
-  const totalSeries = db.prepare("SELECT COUNT(*) as c FROM video_series WHERE status = 1").get().c;
-  const totalCategories = db.prepare("SELECT COUNT(*) as c FROM video_categories WHERE status = 1").get().c;
+  const totalVideos = await db.prepare("SELECT COUNT(*) as c FROM videos WHERE status = 1").get().c;
+  const totalSeries = await db.prepare("SELECT COUNT(*) as c FROM video_series WHERE status = 1").get().c;
+  const totalCategories = await db.prepare("SELECT COUNT(*) as c FROM video_categories WHERE status = 1").get().c;
 
   // 播放量、购买量
   const viewStats = db.prepare(`
@@ -687,9 +673,9 @@ router.get('/videos/stats', (req, res) => {
 
   // 今日新增
   const today = new Date().toISOString().split('T')[0];
-  const todayViews = db.prepare("SELECT SUM(view_count) as c FROM videos WHERE DATE(created_at) = ?").get(today).c || 0;
-  const todayOrders = db.prepare("SELECT COUNT(*) as c FROM video_orders WHERE DATE(created_at) = ? AND status = 'paid'").get(today).c;
-  const todayRevenue = db.prepare("SELECT COALESCE(SUM(amount), 0) as c FROM video_orders WHERE DATE(created_at) = ? AND status = 'paid'").get(today).c;
+  const todayViews = await db.prepare("SELECT SUM(view_count) as c FROM videos WHERE DATE(created_at) = ?").get(today).c || 0;
+  const todayOrders = await db.prepare("SELECT COUNT(*) as c FROM video_orders WHERE DATE(created_at) = ? AND status = 'paid'").get(today).c;
+  const todayRevenue = await db.prepare("SELECT COALESCE(SUM(amount), 0) as c FROM video_orders WHERE DATE(created_at) = ? AND status = 'paid'").get(today).c;
 
   // 热门视频 TOP10
   const topVideos = db.prepare(`
@@ -709,7 +695,7 @@ router.get('/videos/stats', (req, res) => {
   `).all();
 
   // 学习人数(有观看记录的用户数)
-  const learnerCount = db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM video_progress WHERE watch_count > 0').get().c;
+  const learnerCount = await db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM video_progress WHERE watch_count > 0').get().c;
 
   // 最近7天播放趋势
   const weeklyTrend = db.prepare(`
@@ -742,7 +728,7 @@ router.get('/videos/stats', (req, res) => {
 /**
  * GET /api/school/videos/stats/categories - 分类维度统计
  */
-router.get('/videos/stats/categories', (req, res) => {
+router.get('/videos/stats/categories', async (req, res) => {
   ensureTables();
   const db = getDB();
   const stats = db.prepare(`
@@ -763,7 +749,7 @@ router.get('/videos/stats/categories', (req, res) => {
 /**
  * GET /api/school/videos/stats/difficulties - 难度分布统计
  */
-router.get('/videos/stats/difficulties', (req, res) => {
+router.get('/videos/stats/difficulties', async (req, res) => {
   ensureTables();
   const db = getDB();
   const stats = db.prepare(`
@@ -779,7 +765,7 @@ router.get('/videos/stats/difficulties', (req, res) => {
 /**
  * GET /api/school/videos/learning-records - 学习记录列表
  */
-router.get('/videos/learning-records', (req, res) => {
+router.get('/videos/learning-records', async (req, res) => {
   ensureTables();
   const db = getDB();
   const { page = 1, pageSize = 20, user_id } = req.query;
@@ -790,7 +776,7 @@ router.get('/videos/learning-records', (req, res) => {
   if (user_id) { where.push('vp.user_id = ?'); params.push(user_id); }
 
   const whereClause = where.length > 0 ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM video_progress vp ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM video_progress vp ${whereClause}`).get(...params).cnt;
   const records = db.prepare(`
     SELECT vp.*, v.title as video_title, v.cover_url, v.duration,
            COALESCE(u.real_name, u.username) as learner_name
@@ -807,7 +793,7 @@ router.get('/videos/learning-records', (req, res) => {
 /**
  * GET /api/school/videos/user-progress - 用户学习进度概览
  */
-router.get('/videos/user-progress', (req, res) => {
+router.get('/videos/user-progress', async (req, res) => {
   ensureTables();
   const db = getDB();
   const { user_id } = req.query;
@@ -838,7 +824,7 @@ router.get('/videos/user-progress', (req, res) => {
 /**
  * POST /api/school/videos/batch-status - 批量修改视频状态(上下架)
  */
-router.post('/videos/batch-status', (req, res) => {
+router.post('/videos/batch-status', async (req, res) => {
   try {
     ensureTables();
     const db = getDB();
@@ -847,7 +833,7 @@ router.post('/videos/batch-status', (req, res) => {
     if (status === undefined) return error(res, '请指定目标状态');
 
     const newStatus = parseInt(status);
-    const stmt = db.prepare('UPDATE videos SET status = ?, updated_at = new Date().toISOString().replace("T", " ").slice(0, 19) WHERE id IN (' + ids.map('?').join(',') + ')');
+    const stmt = db.prepare('UPDATE videos SET status = ?, updated_at = datetime("now","localtime") WHERE id IN (' + ids.map('?').join(',') + ')');
     stmt.run(...ids, newStatus);
 
     return success(res, null, `已更新${ids.length}个视频状态`);

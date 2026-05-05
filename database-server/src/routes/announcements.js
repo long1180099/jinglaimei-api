@@ -10,7 +10,7 @@ const { success, error } = require('../utils/response');
 // 确保表存在
 function ensureTable() {
   const db = getDB();
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS announcements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL DEFAULT '',
@@ -34,7 +34,7 @@ function ensureTable() {
  * GET /api/announcements
  * 公告列表（管理后台，支持分页/搜索/筛选）
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   ensureTable();
   const db = getDB();
   const { page = 1, pageSize = 10, keyword, category, status } = req.query;
@@ -47,7 +47,7 @@ router.get('/', (req, res) => {
   if (status !== undefined && status !== '') { where.push('status = ?'); params.push(parseInt(status)); }
 
   const whereClause = where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM announcements WHERE ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM announcements WHERE ${whereClause}`).get(...params).cnt;
   const list = db.prepare(`
     SELECT * FROM announcements WHERE ${whereClause}
     ORDER BY is_top DESC, sort_order DESC, created_at DESC
@@ -61,14 +61,14 @@ router.get('/', (req, res) => {
  * GET /api/announcements/:id
  * 公告详情
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   ensureTable();
   const db = getDB();
-  const item = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
+  const item = await db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
   if (!item) return error(res, '公告不存在', 404);
 
   // 更新阅读量
-  db.prepare('UPDATE announcements SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?').run(req.params.id);
+  await db.prepare('UPDATE announcements SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?').run(req.params.id);
 
   return success(res, item);
 });
@@ -77,7 +77,7 @@ router.get('/:id', (req, res) => {
  * POST /api/announcements
  * 创建公告
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   ensureTable();
   const db = getDB();
   const { title, content, summary, category, cover_url, author, is_top, status, sort_order, published_at } = req.body;
@@ -99,7 +99,7 @@ router.post('/', (req, res) => {
       sort_order || 0,
       published_at || new Date().toISOString().slice(0, 10)
     );
-    const newItem = db.prepare('SELECT * FROM announcements WHERE id = ?').get(result.lastInsertRowid);
+    const newItem = await db.prepare('SELECT * FROM announcements WHERE id = ?').get(result.lastInsertRowid);
     return success(res, newItem, '公告创建成功', 201);
   } catch (err) {
     return error(res, '创建失败: ' + err.message);
@@ -110,38 +110,33 @@ router.post('/', (req, res) => {
  * PUT /api/announcements/:id
  * 更新公告
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   ensureTable();
   const db = getDB();
   const { title, content, summary, category, cover_url, author, is_top, status, sort_order, published_at } = req.body;
 
-  const existing = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
+  const existing = await db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
   if (!existing) return error(res, '公告不存在', 404);
 
-  db.prepare(`
-    UPDATE announcements SET
-      title = COALESCE(?, title),
-      content = COALESCE(?, content),
-      summary = COALESCE(?, summary),
-      category = COALESCE(?, category),
-      cover_url = COALESCE(?, cover_url),
-      author = COALESCE(?, author),
-      is_top = COALESCE(?, is_top),
-      status = COALESCE(?, status),
-      sort_order = COALESCE(?, sort_order),
-      published_at = COALESCE(?, published_at),
-      updated_at = datetime('now','localtime')
-    WHERE id = ?
-  `).run(
-    title, content,
-    summary || (content ? content.slice(0, 100) : null),
-    category, cover_url, author,
-    is_top !== undefined ? (is_top ? 1 : 0) : null,
-    status !== undefined ? parseInt(status) : null,
-    sort_order, published_at, req.params.id
-  );
+  // 动态构建 SET 子句
+  const setClauses = [];
+  const setParams = [];
+  if (title !== undefined) { setClauses.push('title = ?'); setParams.push(title); }
+  if (content !== undefined) { setClauses.push('content = ?'); setParams.push(content); }
+  if (summary !== undefined) { setClauses.push('summary = ?'); setParams.push(summary); }
+  else if (content !== undefined) { setClauses.push('summary = ?'); setParams.push(content.slice(0, 100)); }
+  if (category !== undefined) { setClauses.push('category = ?'); setParams.push(category); }
+  if (cover_url !== undefined) { setClauses.push('cover_url = ?'); setParams.push(cover_url); }
+  if (author !== undefined) { setClauses.push('author = ?'); setParams.push(author); }
+  if (is_top !== undefined) { setClauses.push('is_top = ?'); setParams.push(is_top ? 1 : 0); }
+  if (status !== undefined) { setClauses.push('status = ?'); setParams.push(parseInt(status)); }
+  if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+  if (published_at !== undefined) { setClauses.push('published_at = ?'); setParams.push(published_at); }
+  setClauses.push("updated_at = datetime('now','localtime')");
+  setParams.push(req.params.id);
+  await db.prepare(`UPDATE announcements SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
-  const updated = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
+  const updated = await db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
   return success(res, updated, '公告更新成功');
 });
 
@@ -149,10 +144,10 @@ router.put('/:id', (req, res) => {
  * DELETE /api/announcements/:id
  * 删除公告
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   ensureTable();
   const db = getDB();
-  db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id);
   return success(res, null, '公告已删除');
 });
 
@@ -160,7 +155,7 @@ router.delete('/:id', (req, res) => {
  * PUT /api/announcements/:id/top
  * 置顶/取消置顶
  */
-router.put('/:id/top', (req, res) => {
+router.put('/:id/top', async (req, res) => {
   ensureTable();
   const db = getDB();
   const { is_top } = req.body;

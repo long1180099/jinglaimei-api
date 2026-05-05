@@ -70,7 +70,7 @@ const upload = multer({
 // ==================== 确保books表存在 ====================
 function ensureBooksTable() {
   const db = getDB();
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS learning_books (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -166,7 +166,7 @@ router.post('/books/create-with-file', upload.single('file'), (req, res) => {
     );
     
     const newId = result.lastInsertRowid;
-    const newBook = db.prepare('SELECT * FROM learning_books WHERE id = ?').get(newId);
+    const newBook = await db.prepare('SELECT * FROM learning_books WHERE id = ?').get(newId);
     
     console.log(`[BOOK_CREATE_WITH_FILE] 创建成功 ID=${newId} file_url=${newBook.file_url}`);
     
@@ -240,7 +240,7 @@ router.post('/books/import', upload.single('file'), (req, res) => {
 });
 
 // GET /api/school/books - 电子书列表
-router.get('/books', (req, res) => {
+router.get('/books', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
@@ -259,7 +259,7 @@ router.get('/books', (req, res) => {
     const sortBy = allowedSort.includes(sort_by) ? sort_by : 'created_at';
     const sortOrder = sort_order === 'asc' ? 'ASC' : 'DESC';
 
-    const total = db.prepare(`SELECT COUNT(*) as cnt FROM learning_books ${whereClause}`).get(...params).cnt;
+    const total = await db.prepare(`SELECT COUNT(*) as cnt FROM learning_books ${whereClause}`).get(...params).cnt;
     const books = db.prepare(`
       SELECT * FROM learning_books ${whereClause}
       ORDER BY ${sortBy} ${sortOrder}
@@ -293,14 +293,14 @@ router.get('/books', (req, res) => {
 });
 
 // GET /api/school/books/:id - 电子书详情
-router.get('/books/:id', (req, res) => {
+router.get('/books/:id', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
-    const book = db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
+    const book = await db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
     if (!book) return error(res, '电子书不存在', 404);
 
-    db.prepare('UPDATE learning_books SET views = views + 1 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE learning_books SET views = views + 1 WHERE id = ?').run(req.params.id);
 
     return success(res, {
       ...book,
@@ -321,7 +321,7 @@ router.get('/books/:id', (req, res) => {
 });
 
 // POST /api/school/books - 创建电子书
-router.post('/books', (req, res) => {
+router.post('/books', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
@@ -352,7 +352,7 @@ router.post('/books', (req, res) => {
     );
 
     const newId = result.lastInsertRowid;
-    const newBook = db.prepare('SELECT * FROM learning_books WHERE id = ?').get(newId);
+    const newBook = await db.prepare('SELECT * FROM learning_books WHERE id = ?').get(newId);
     success(res, {
       ...newBook,
       id: String(newBook.id),
@@ -365,47 +365,44 @@ router.post('/books', (req, res) => {
 });
 
 // PUT /api/school/books/:id - 更新电子书
-router.put('/books/:id', (req, res) => {
+router.put('/books/:id', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
-    const book = db.prepare('SELECT id FROM learning_books WHERE id = ?').get(req.params.id);
+    const book = await db.prepare('SELECT id FROM learning_books WHERE id = ?').get(req.params.id);
     if (!book) return error(res, '电子书不存在', 404);
 
     const { title, author, description, category, difficulty, pages, reading_time, tags, summary, keyPoints, status, fileUrl, fileName, fileFormat, fileSize, coverUrl, access_level, is_top } = req.body;
 
-    db.prepare(`
-      UPDATE learning_books SET
-        title = COALESCE(?, title),
-        author = COALESCE(?, author),
-        description = COALESCE(?, description),
-        category = COALESCE(?, category),
-        difficulty = COALESCE(?, difficulty),
-        pages = COALESCE(?, pages),
-        reading_time = COALESCE(?, reading_time),
-        tags = COALESCE(?, tags),
-        summary = COALESCE(?, summary),
-        key_points = COALESCE(?, key_points),
-        status = COALESCE(?, status),
-        file_url = COALESCE(?, file_url),
-        file_name = COALESCE(?, file_name),
-        file_format = COALESCE(?, file_format),
-        file_size = COALESCE(?, file_size),
-        cover_url = COALESCE(?, cover_url),
-        access_level = COALESCE(?, access_level),
-        is_top = COALESCE(?, is_top),
-        updated_at = datetime('now','localtime')
-      WHERE id = ?
-    `).run(
-      title, author, description, category, difficulty,
-      pages, reading_time,
-      Array.isArray(tags) ? JSON.stringify(tags) : tags,
-      summary,
-      Array.isArray(keyPoints) ? JSON.stringify(keyPoints) : keyPoints,
-      status, fileUrl, fileName, fileFormat, fileSize, coverUrl,
-      access_level, is_top,
-      req.params.id
-    );
+    // 动态构建 SET 子句，只更新前端明确传递的字段
+    const setClauses = [];
+    const setParams = [];
+
+    if (title !== undefined) { setClauses.push('title = ?'); setParams.push(title); }
+    if (author !== undefined) { setClauses.push('author = ?'); setParams.push(author); }
+    if (description !== undefined) { setClauses.push('description = ?'); setParams.push(description); }
+    if (category !== undefined) { setClauses.push('category = ?'); setParams.push(category); }
+    if (difficulty !== undefined) { setClauses.push('difficulty = ?'); setParams.push(difficulty); }
+    if (pages !== undefined) { setClauses.push('pages = ?'); setParams.push(pages); }
+    if (reading_time !== undefined) { setClauses.push('reading_time = ?'); setParams.push(reading_time); }
+    if (tags !== undefined) { setClauses.push('tags = ?'); setParams.push(Array.isArray(tags) ? JSON.stringify(tags) : tags); }
+    if (summary !== undefined) { setClauses.push('summary = ?'); setParams.push(summary); }
+    if (keyPoints !== undefined) { setClauses.push('key_points = ?'); setParams.push(Array.isArray(keyPoints) ? JSON.stringify(keyPoints) : keyPoints); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    if (fileUrl !== undefined) { setClauses.push('file_url = ?'); setParams.push(fileUrl); }
+    if (fileName !== undefined) { setClauses.push('file_name = ?'); setParams.push(fileName); }
+    if (fileFormat !== undefined) { setClauses.push('file_format = ?'); setParams.push(fileFormat); }
+    if (fileSize !== undefined) { setClauses.push('file_size = ?'); setParams.push(fileSize); }
+    if (coverUrl !== undefined) { setClauses.push('cover_url = ?'); setParams.push(coverUrl); }
+    if (access_level !== undefined) { setClauses.push('access_level = ?'); setParams.push(access_level); }
+    if (is_top !== undefined) { setClauses.push('is_top = ?'); setParams.push(is_top); }
+
+    if (setClauses.length === 0) return error(res, '没有需要更新的字段');
+
+    setClauses.push("updated_at = datetime('now','localtime')");
+    setParams.push(req.params.id);
+
+    await db.prepare(`UPDATE learning_books SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
     success(res, null, '更新成功');
   } catch (err) {
@@ -424,7 +421,7 @@ function handleRecommend(req, res) {
     const { recommended } = req.body;
     const newStatus = recommended ? 'recommended' : 'available';
 
-    db.prepare('UPDATE learning_books SET status = ?, updated_at = datetime(\'now\',\'localtime\') WHERE id = ?').run(newStatus, req.params.id);
+    await db.prepare('UPDATE learning_books SET status = ?, updated_at = datetime(\'now\',\'localtime\') WHERE id = ?').run(newStatus, req.params.id);
     success(res, null, recommended ? '已设为推荐' : '已取消推荐');
   } catch (err) {
     error(res, err.message, 500);
@@ -432,11 +429,11 @@ function handleRecommend(req, res) {
 }
 
 // DELETE /api/school/books/:id - 删除电子书
-router.delete('/books/:id', (req, res) => {
+router.delete('/books/:id', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
-    const book = db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
+    const book = await db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
     if (!book) return error(res, '电子书不存在', 404);
 
     // 删除关联文件
@@ -449,7 +446,7 @@ router.delete('/books/:id', (req, res) => {
       if (fs.existsSync(coverPath)) fs.unlinkSync(coverPath);
     }
 
-    db.prepare('DELETE FROM learning_books WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM learning_books WHERE id = ?').run(req.params.id);
     success(res, null, '删除成功');
   } catch (err) {
     error(res, err.message, 500);
@@ -476,18 +473,18 @@ router.post('/books/check-format', upload.single('file'), (req, res) => {
 });
 
 // GET /api/school/books/:id/read - 在线阅读（返回文件URL或文本内容）
-router.get('/books/:id/read', (req, res) => {
+router.get('/books/:id/read', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
-    const book = db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
+    const book = await db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
     if (!book || !book.file_url) return error(res, '文件不存在', 404);
 
     const filePath = path.join(__dirname, '../../data', book.file_url);
     if (!fs.existsSync(filePath)) return error(res, '文件已被删除', 404);
 
     // 更新阅读量
-    db.prepare('UPDATE learning_books SET views = views + 1 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE learning_books SET views = views + 1 WHERE id = ?').run(req.params.id);
 
     const ext = (book.file_format || '').toLowerCase();
 
@@ -518,18 +515,18 @@ router.get('/books/:id/read', (req, res) => {
 });
 
 // GET /api/school/books/:id/download - 下载电子书
-router.get('/books/:id/download', (req, res) => {
+router.get('/books/:id/download', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
-    const book = db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
+    const book = await db.prepare('SELECT * FROM learning_books WHERE id = ?').get(req.params.id);
     if (!book || !book.file_url) return error(res, '文件不存在', 404);
 
     const filePath = path.join(__dirname, '../../data', book.file_url);
     if (!fs.existsSync(filePath)) return error(res, '文件已被删除', 404);
 
     // 更新下载量
-    db.prepare('UPDATE learning_books SET downloads = downloads + 1 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE learning_books SET downloads = downloads + 1 WHERE id = ?').run(req.params.id);
 
     res.download(filePath, book.file_name || `ebook_${book.id}.${book.file_format}`);
   } catch (err) {
@@ -542,10 +539,10 @@ module.exports = router;
 // ==================== 以下为附加在router上的分类管理 ====================
 
 // GET /api/school/books/categories - 获取分类列表
-router.get('/books/categories', (req, res) => {
+router.get('/books/categories', async (req, res) => {
   try {
     const db = getDB();
-    const categories = db.prepare('SELECT * FROM ebook_categories ORDER BY sort_order ASC').all();
+    const categories = await db.prepare('SELECT * FROM ebook_categories ORDER BY sort_order ASC').all();
     success(res, categories);
   } catch (err) {
     error(res, err.message, 500);
@@ -553,12 +550,12 @@ router.get('/books/categories', (req, res) => {
 });
 
 // POST /api/school/books/categories - 新增分类
-router.post('/books/categories', (req, res) => {
+router.post('/books/categories', async (req, res) => {
   try {
     const db = getDB();
     const { name, icon, sort_order } = req.body;
     if (!name) return error(res, '分类名称不能为空');
-    const result = db.prepare('INSERT INTO ebook_categories (name, icon, sort_order) VALUES (?, ?, ?)').run(
+    const result = await db.prepare('INSERT INTO ebook_categories (name, icon, sort_order) VALUES (?, ?, ?)').run(
       name, icon || '', sort_order || 0
     );
     success(res, { id: result.lastInsertRowid }, '分类创建成功', 201);
@@ -568,18 +565,17 @@ router.post('/books/categories', (req, res) => {
 });
 
 // PUT /api/school/books/categories/:id - 更新分类
-router.put('/books/categories/:id', (req, res) => {
+router.put('/books/categories/:id', async (req, res) => {
   try {
     const db = getDB();
     const { name, icon, sort_order, status } = req.body;
-    db.prepare(`
-      UPDATE ebook_categories SET
-        name = COALESCE(?, name),
-        icon = COALESCE(?, icon),
-        sort_order = COALESCE(?, sort_order),
-        status = COALESCE(?, status)
-      WHERE id = ?
-    `).run(name, icon, sort_order, status, req.params.id);
+    const setClauses = [];
+    const setParams = [];
+    if (name !== undefined) { setClauses.push('name = ?'); setParams.push(name); }
+    if (icon !== undefined) { setClauses.push('icon = ?'); setParams.push(icon); }
+    if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    await db.prepare(`UPDATE ebook_categories SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams, req.params.id);
     success(res, null, '分类更新成功');
   } catch (err) {
     error(res, err.message, 500);
@@ -587,10 +583,10 @@ router.put('/books/categories/:id', (req, res) => {
 });
 
 // DELETE /api/school/books/categories/:id - 删除分类
-router.delete('/books/categories/:id', (req, res) => {
+router.delete('/books/categories/:id', async (req, res) => {
   try {
     const db = getDB();
-    db.prepare('DELETE FROM ebook_categories WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM ebook_categories WHERE id = ?').run(req.params.id);
     success(res, null, '分类删除成功');
   } catch (err) {
     error(res, err.message, 500);
@@ -598,7 +594,7 @@ router.delete('/books/categories/:id', (req, res) => {
 });
 
 // PUT /api/school/books/:id/top - 置顶/取消置顶
-router.put('/books/:id/top', (req, res) => {
+router.put('/books/:id/top', async (req, res) => {
   try {
     ensureBooksTable();
     const db = getDB();
@@ -612,11 +608,11 @@ router.put('/books/:id/top', (req, res) => {
 });
 
 // GET /api/school/books/reading-stats - 阅读数据统计
-router.get('/books/reading-stats', (req, res) => {
+router.get('/books/reading-stats', async (req, res) => {
   try {
     const db = getDB();
     // 总阅读人数
-    const readerCount = db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM user_read_progress WHERE progress > 0').get().c;
+    const readerCount = await db.prepare('SELECT COUNT(DISTINCT user_id) as c FROM user_read_progress WHERE progress > 0').get().c;
     // 热门书籍 TOP10
     const topBooks = db.prepare(`
       SELECT b.id, b.title, b.author, b.category, b.cover_url, b.views, b.downloads,

@@ -38,7 +38,7 @@ const upload = multer({
 // ==================== 导出本地数据为 JSON ====================
 // GET /api/migrate/export-data
 // 将本地数据库中所有核心表数据导出为 JSON
-router.get('/export-data', (req, res) => {
+router.get('/export-data', async (req, res) => {
   try {
     const db = getDB();
 
@@ -67,7 +67,7 @@ router.get('/export-data', (req, res) => {
     const data = {};
     for (const table of tables) {
       try {
-        const rows = db.prepare(`SELECT * FROM ${table}`).all();
+        const rows = await db.prepare(`SELECT * FROM ${table}`).all();
         if (rows.length > 0) {
           data[table] = rows;
         }
@@ -97,7 +97,7 @@ router.get('/export-data', (req, res) => {
 // ==================== 导入数据（从 JSON） ====================
 // POST /api/migrate/import-data
 // 接收 JSON 数据，逐表导入
-router.post('/import-data', (req, res) => {
+router.post('/import-data', async (req, res) => {
   try {
     const Database = require('better-sqlite3');
     const db = new Database(DB_PATH);
@@ -141,7 +141,7 @@ router.post('/import-data', (req, res) => {
 // ==================== 创建缺失表 ====================
 // POST /api/migrate/create-missing-tables
 // 自动创建所有缺失的表（从本地的迁移SQL中读取）
-router.post('/create-missing-tables', (req, res) => {
+router.post('/create-missing-tables', async (req, res) => {
   try {
     const db = getDB();
     const results = [];
@@ -431,59 +431,14 @@ router.post('/create-missing-tables', (req, res) => {
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, script_id INTEGER NOT NULL,
         created_at TEXT DEFAULT (datetime('now','localtime')), UNIQUE(user_id, script_id)
       )`,
-      // ==================== 排行榜配置表 ====================
-      `CREATE TABLE IF NOT EXISTS ranking_configs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL UNIQUE,
-        rank_position INTEGER DEFAULT 0, display_name TEXT, highlight_color TEXT DEFAULT '#e94560',
-        badge_text TEXT, is_pinned INTEGER DEFAULT 0, is_hidden INTEGER DEFAULT 0, custom_note TEXT,
-        created_by INTEGER, updated_by INTEGER,
-        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS ranking_settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, setting_key TEXT NOT NULL UNIQUE,
-        setting_value TEXT, description TEXT,
-        updated_at TEXT DEFAULT (datetime('now','localtime'))
-      )`,
-      // ==================== 话术投喂表 ====================
-      `CREATE TABLE IF NOT EXISTS script_feeds (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, raw_content TEXT NOT NULL,
-        target_personality TEXT DEFAULT '', target_scene TEXT DEFAULT '', admin_notes TEXT DEFAULT '',
-        status TEXT DEFAULT 'pending', priority INTEGER DEFAULT 0,
-        optimized_content TEXT, optimization_prompt TEXT, optimized_at TEXT,
-        created_script_id TEXT, published_at TEXT, ai_raw_response TEXT,
-        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-      )`,
-      `CREATE TABLE IF NOT EXISTS sales_scripts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT DEFAULT '', content TEXT DEFAULT '',
-        category TEXT DEFAULT '', difficulty INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0,
-        status INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime'))
-      )`,
-      // ==================== 皮肤报告问题表 ====================
-      `CREATE TABLE IF NOT EXISTS skin_report_issues (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL,
-        issue_name TEXT NOT NULL DEFAULT '', category TEXT NOT NULL DEFAULT '',
-        severity INTEGER DEFAULT 1, confidence REAL DEFAULT 0, area TEXT DEFAULT '',
-        description TEXT DEFAULT '', cause_text TEXT DEFAULT '', advice_text TEXT DEFAULT '',
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (report_id) REFERENCES skin_reports(id) ON DELETE CASCADE
-      )`,
-      // ==================== 学习积分表 ====================
-      `CREATE TABLE IF NOT EXISTS study_points (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-        points INTEGER DEFAULT 0, available_points INTEGER DEFAULT 0, spent_points INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now','localtime')), updated_at TEXT DEFAULT (datetime('now','localtime')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`,
     ];
 
     for (const sql of createTableSQLs) {
       try {
         const tableName = sql.match(/CREATE TABLE IF NOT EXISTS (\w+)/)[1];
-        const exists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
+        const exists = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
         if (!exists) {
-          db.exec(sql);
+          await db.exec(sql);
           results.push({ table: tableName, status: 'created' });
         } else {
           results.push({ table: tableName, status: 'already_exists' });
@@ -502,17 +457,17 @@ router.post('/create-missing-tables', (req, res) => {
 // ==================== 替换 URL ====================
 // POST /api/migrate/fix-urls
 // 将数据库中所有 localhost URL 替换为正式域名
-router.post('/fix-urls', (req, res) => {
+router.post('/fix-urls', async (req, res) => {
   try {
     const db = getDB();
     const { from = 'http://localhost', to = 'https://api.jinglaimei.com' } = req.body;
 
     let totalFixed = 0;
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
 
     for (const t of tables) {
       try {
-        const cols = db.prepare(`PRAGMA table_info("${t.name}")`).all();
+        const cols = await db.prepare(`PRAGMA table_info("${t.name}")`).all();
         for (const col of cols) {
           if (col.type && col.type.toUpperCase().includes('TEXT')) {
             const result = db.prepare(`UPDATE "${t.name}" SET "${col.name}" = REPLACE("${col.name}", ?, ?) WHERE "${col.name}" LIKE ?`)
@@ -713,16 +668,16 @@ with zipfile.ZipFile('${uploadedPath}', 'r') as z:
 
 // ==================== 获取当前状态 ====================
 // GET /api/migrate/status
-router.get('/status', (req, res) => {
+router.get('/status', async (req, res) => {
   try {
     const db = getDB();
 
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+    const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
     const tableStats = {};
 
     for (const t of tables) {
       try {
-        const count = db.prepare(`SELECT COUNT(*) as cnt FROM "${t.name}"`).get();
+        const count = await db.prepare(`SELECT COUNT(*) as cnt FROM "${t.name}"`).get();
         tableStats[t.name] = count.cnt;
       } catch {
         tableStats[t.name] = -1; // 无法读取
@@ -763,7 +718,7 @@ router.get('/status', (req, res) => {
 // ==================== 执行SQL ====================
 // POST /api/migrate/execute-sql
 // 执行原始SQL（仅super_admin，用于修复表结构等紧急操作）
-router.post('/execute-sql', (req, res) => {
+router.post('/execute-sql', async (req, res) => {
   try {
     const db = getDB();
     const { sql } = req.body;
@@ -780,10 +735,10 @@ router.post('/execute-sql', (req, res) => {
     for (const stmt of statements) {
       try {
         if (stmt.toUpperCase().startsWith('SELECT')) {
-          const rows = db.prepare(stmt).all();
+          const rows = await db.prepare(stmt).all();
           results.push({ statement: stmt.substring(0, 80) + '...', type: 'query', rows: rows.length, data: rows });
         } else {
-          const info = db.exec(stmt);
+          const info = await db.exec(stmt);
           results.push({ statement: stmt.substring(0, 80) + '...', type: 'exec', success: true });
         }
       } catch (err) {
@@ -793,196 +748,6 @@ router.post('/execute-sql', (req, res) => {
     success(res, { executed: results.length, results });
   } catch (err) {
     error(res, '执行SQL失败: ' + err.message);
-  }
-});
-
-/**
- * POST /api/migrate/upload-to-cos
- * 将本地 uploads 目录下的所有文件批量上传到 COS（保持原始路径）
- * 上传完成后本地文件仍然保留，COS代理中间件会优先使用COS版本
- */
-router.post('/upload-to-cos', async (req, res) => {
-  try {
-    const { useCOS, uploadFromDisk } = require('../utils/cosUpload');
-
-    if (!useCOS) {
-      return error(res, 'COS 未配置，无法上传到 COS');
-    }
-
-    if (!fs.existsSync(UPLOADS_DIR)) {
-      return error(res, '本地 uploads 目录不存在');
-    }
-
-    // 收集所有文件
-    const allFiles = [];
-    function walkDir(dir, baseDir) {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          walkDir(fullPath, baseDir);
-        } else {
-          const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
-          const stat = fs.statSync(fullPath);
-          allFiles.push({ localPath: fullPath, cosKey: relPath, size: stat.size });
-        }
-      }
-    }
-    walkDir(UPLOADS_DIR, UPLOADS_DIR);
-
-    if (allFiles.length === 0) {
-      return success(res, { total: 0, uploaded: 0, message: '没有找到需要上传的文件' });
-    }
-
-    // 排除视频文件（太大）
-    const files = allFiles.filter(f => !f.localPath.toLowerCase().endsWith('.mp4'));
-
-    console.log(`[COS迁移] 开始上传 ${files.length} 个文件到 COS...`);
-    let uploaded = 0;
-    let failed = 0;
-    const errors = [];
-
-    for (const file of files) {
-      try {
-        const cosUrl = await uploadFromDisk(file.localPath, file.cosKey);
-        if (cosUrl) {
-          uploaded++;
-        } else {
-          failed++;
-          errors.push(file.cosKey + ': uploadFromDisk返回null');
-        }
-      } catch (err) {
-        failed++;
-        errors.push(file.cosKey + ': ' + err.message);
-      }
-    }
-
-    console.log(`[COS迁移] 完成: 成功 ${uploaded}, 失败 ${failed}`);
-
-    success(res, {
-      total: files.length,
-      uploaded,
-      failed,
-      errors: errors.slice(0, 20), // 最多返回20个错误
-      message: `已上传 ${uploaded} 个文件到 COS`
-    });
-  } catch (err) {
-    console.error('[COS迁移] 异常:', err);
-    error(res, 'COS迁移失败: ' + err.message);
-  }
-});
-
-// ==================== COS 诊断 ====================
-// GET /api/migrate/cos-diagnose - 诊断 COS 连接和上传状态
-router.get('/cos-diagnose', async (req, res) => {
-  try {
-    const result = {};
-
-    // 1. 检查环境变量
-    result.env = {
-      COS_BUCKET: process.env.COS_BUCKET || '未设置',
-      COS_REGION: process.env.COS_REGION || '未设置',
-      useCOS: !!(process.env.COS_BUCKET && process.env.COS_REGION),
-    };
-
-    // 2. 测试 getauth 接口
-    try {
-      const { getCOSAuth } = require('../utils/cosUpload');
-      const auth = await getCOSAuth();
-      result.getauth = {
-        success: true,
-        hasTmpSecretId: !!auth.TmpSecretId,
-        hasTmpSecretKey: !!auth.TmpSecretKey,
-        hasToken: !!auth.Token,
-        expiredTime: auth.ExpiredTime,
-      };
-    } catch (err) {
-      result.getauth = { success: false, error: err.message };
-    }
-
-    // 3. 测试 COS 上传一个测试文件
-    try {
-      const { uploadFile } = require('../utils/cosUpload');
-      const testContent = Buffer.from('COS diagnostic test ' + new Date().toISOString());
-      const testUrl = await uploadFile(testContent, 'uploads/__cos_test__.txt', 'text/plain');
-      result.uploadTest = {
-        success: !!testUrl,
-        url: testUrl,
-      };
-    } catch (err) {
-      result.uploadTest = { success: false, error: err.message };
-    }
-
-    // 4. 测试 COS 下载（getObject）
-    try {
-      const { getObject } = require('../utils/cosUpload');
-      const obj = await getObject('uploads/__cos_test__.txt');
-      result.downloadTest = {
-        success: !!obj,
-        hasBody: !!obj.Body,
-        contentType: obj.ContentType,
-      };
-    } catch (err) {
-      result.downloadTest = { success: false, error: err.message };
-    }
-
-    // 5. 测试一个真实商品图片的 COS 下载
-    try {
-      const { getObject } = require('../utils/cosUpload');
-      const obj = await getObject('products/8ae9471f-da45-4624-98f3-43c6d620ae60.jpg');
-      result.realImageTest = {
-        success: !!obj,
-        hasBody: !!obj.Body,
-        contentLength: obj.ContentLength,
-      };
-    } catch (err) {
-      result.realImageTest = { success: false, error: err.message };
-    }
-
-    // 6. 测试 COS 代理（模拟：先删本地文件，再通过HTTP访问）
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const testFile = path.join(__dirname, '../../data/uploads/products/8ae9471f-da45-4624-98f3-43c6d620ae60.jpg');
-      let localExists = fs.existsSync(testFile);
-      if (localExists) {
-        // 临时重命名，模拟文件不存在
-        fs.renameSync(testFile, testFile + '.bak');
-      }
-      try {
-        const http = require('http');
-        const result2 = await new Promise((resolve, reject) => {
-          const req = http.get('http://127.0.0.1:80/uploads/products/8ae9471f-da45-4624-98f3-43c6d620ae60.jpg', (res) => {
-            let data = [];
-            res.on('data', chunk => data.push(chunk));
-            res.on('end', () => resolve({
-              status: res.statusCode,
-              cosProxy: res.headers['x-cos-proxy'] || 'not present',
-              bodyLen: Buffer.concat(data).length,
-            }));
-          });
-          req.on('error', reject);
-          req.setTimeout(5000, () => { req.destroy(); reject(new Error('timeout')); });
-        });
-        result.proxyTest = {
-          localFileExisted: localExists,
-          proxyStatus: result2.status,
-          proxyCOSHeader: result2.cosProxy,
-          proxyBodyLen: result2.bodyLen,
-        };
-      } finally {
-        // 恢复文件
-        if (localExists) {
-          fs.renameSync(testFile + '.bak', testFile);
-        }
-      }
-    } catch (err) {
-      result.proxyTest = { error: err.message };
-    }
-
-    success(res, result);
-  } catch (err) {
-    error(res, 'COS诊断异常: ' + err.message);
   }
 });
 

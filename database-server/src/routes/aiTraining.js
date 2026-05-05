@@ -10,7 +10,7 @@ const { success, error, paginate } = require('../utils/response');
 // ==================== 关卡管理 ====================
 
 // 获取所有关卡
-router.get('/levels', (req, res) => {
+router.get('/levels', async (req, res) => {
   try {
     const db = getDB();
     const levels = db.prepare(`
@@ -23,10 +23,10 @@ router.get('/levels', (req, res) => {
 });
 
 // 获取单个关卡详情
-router.get('/levels/:id', (req, res) => {
+router.get('/levels/:id', async (req, res) => {
   try {
     const db = getDB();
-    const level = db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
+    const level = await db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
     if (!level) return error(res, '关卡不存在', 404);
 
     // 获取该关卡的题目
@@ -50,7 +50,7 @@ router.get('/levels/:id', (req, res) => {
 });
 
 // 创建关卡
-router.post('/levels', (req, res) => {
+router.post('/levels', async (req, res) => {
   try {
     const db = getDB();
     const { name, description, sort_order, pass_score, study_material, study_material_type } = req.body;
@@ -63,7 +63,7 @@ router.post('/levels', (req, res) => {
     `).run(name, description || '', sort_order || 0, pass_score || 80,
       study_material || '', study_material_type || 'text');
 
-    const newLevel = db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(result.lastInsertRowid);
+    const newLevel = await db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(result.lastInsertRowid);
     success(res, newLevel, '关卡创建成功', 201);
   } catch (err) {
     error(res, '创建关卡失败: ' + err.message, 500);
@@ -71,28 +71,28 @@ router.post('/levels', (req, res) => {
 });
 
 // 更新关卡
-router.put('/levels/:id', (req, res) => {
+router.put('/levels/:id', async (req, res) => {
   try {
     const db = getDB();
     const { name, description, sort_order, pass_score, study_material, study_material_type, status } = req.body;
 
-    const existing = db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
     if (!existing) return error(res, '关卡不存在', 404);
 
-    db.prepare(`
-      UPDATE ai_levels SET 
-        name = COALESCE(?, name),
-        description = COALESCE(?, description),
-        sort_order = COALESCE(?, sort_order),
-        pass_score = COALESCE(?, pass_score),
-        study_material = COALESCE(?, study_material),
-        study_material_type = COALESCE(?, study_material_type),
-        status = COALESCE(?, status),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(name, description, sort_order, pass_score, study_material, study_material_type, status, req.params.id);
+    const setClauses = [];
+    const setParams = [];
+    if (name !== undefined) { setClauses.push('name = ?'); setParams.push(name); }
+    if (description !== undefined) { setClauses.push('description = ?'); setParams.push(description); }
+    if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+    if (pass_score !== undefined) { setClauses.push('pass_score = ?'); setParams.push(pass_score); }
+    if (study_material !== undefined) { setClauses.push('study_material = ?'); setParams.push(study_material); }
+    if (study_material_type !== undefined) { setClauses.push('study_material_type = ?'); setParams.push(study_material_type); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    setClauses.push("updated_at = CURRENT_TIMESTAMP");
+    setParams.push(req.params.id);
+    await db.prepare(`UPDATE ai_levels SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
-    const updated = db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
+    const updated = await db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
     success(res, updated, '关卡更新成功');
   } catch (err) {
     error(res, '更新关卡失败: ' + err.message, 500);
@@ -100,13 +100,13 @@ router.put('/levels/:id', (req, res) => {
 });
 
 // 删除关卡
-router.delete('/levels/:id', (req, res) => {
+router.delete('/levels/:id', async (req, res) => {
   try {
     const db = getDB();
-    const existing = db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM ai_levels WHERE id = ?').get(req.params.id);
     if (!existing) return error(res, '关卡不存在', 404);
 
-    db.prepare('UPDATE ai_levels SET status = 0 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE ai_levels SET status = 0 WHERE id = ?').run(req.params.id);
     success(res, null, '关卡已删除');
   } catch (err) {
     error(res, '删除关卡失败: ' + err.message, 500);
@@ -116,7 +116,7 @@ router.delete('/levels/:id', (req, res) => {
 // ==================== 题目管理 ====================
 
 // 获取关卡题目
-router.get('/levels/:levelId/questions', (req, res) => {
+router.get('/levels/:levelId/questions', async (req, res) => {
   try {
     const db = getDB();
     const questions = db.prepare(`
@@ -129,7 +129,7 @@ router.get('/levels/:levelId/questions', (req, res) => {
 });
 
 // 创建题目
-router.post('/levels/:levelId/questions', (req, res) => {
+router.post('/levels/:levelId/questions', async (req, res) => {
   try {
     const db = getDB();
     const { question_type, scenario, options, correct_answer, answer_analysis,
@@ -146,7 +146,7 @@ router.post('/levels/:levelId/questions', (req, res) => {
       correct_answer || '', answer_analysis || '', score || 20,
       sort_order || 0, difficulty || 'medium', personality_type || '');
 
-    const newQuestion = db.prepare('SELECT * FROM ai_level_questions WHERE id = ?').get(result.lastInsertRowid);
+    const newQuestion = await db.prepare('SELECT * FROM ai_level_questions WHERE id = ?').get(result.lastInsertRowid);
     success(res, newQuestion, '题目创建成功', 201);
   } catch (err) {
     error(res, '创建题目失败: ' + err.message, 500);
@@ -154,31 +154,29 @@ router.post('/levels/:levelId/questions', (req, res) => {
 });
 
 // 更新题目
-router.put('/questions/:id', (req, res) => {
+router.put('/questions/:id', async (req, res) => {
   try {
     const db = getDB();
     const { scenario, options, correct_answer, answer_analysis,
             score, sort_order, difficulty, personality_type, status } = req.body;
 
-    const existing = db.prepare('SELECT * FROM ai_level_questions WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM ai_level_questions WHERE id = ?').get(req.params.id);
     if (!existing) return error(res, '题目不存在', 404);
 
     const opts = typeof options === 'string' ? options : JSON.stringify(options);
 
-    db.prepare(`
-      UPDATE ai_level_questions SET
-        scenario = COALESCE(?, scenario),
-        options = COALESCE(?, options),
-        correct_answer = COALESCE(?, correct_answer),
-        answer_analysis = COALESCE(?, answer_analysis),
-        score = COALESCE(?, score),
-        sort_order = COALESCE(?, sort_order),
-        difficulty = COALESCE(?, difficulty),
-        personality_type = COALESCE(?, personality_type),
-        status = COALESCE(?, status)
-      WHERE id = ?
-    `).run(scenario, opts, correct_answer, answer_analysis, score,
-      sort_order, difficulty, personality_type, status, req.params.id);
+    const setClauses = [];
+    const setParams = [];
+    if (scenario !== undefined) { setClauses.push('scenario = ?'); setParams.push(scenario); }
+    if (options !== undefined) { setClauses.push('options = ?'); setParams.push(opts); }
+    if (correct_answer !== undefined) { setClauses.push('correct_answer = ?'); setParams.push(correct_answer); }
+    if (answer_analysis !== undefined) { setClauses.push('answer_analysis = ?'); setParams.push(answer_analysis); }
+    if (score !== undefined) { setClauses.push('score = ?'); setParams.push(score); }
+    if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+    if (difficulty !== undefined) { setClauses.push('difficulty = ?'); setParams.push(difficulty); }
+    if (personality_type !== undefined) { setClauses.push('personality_type = ?'); setParams.push(personality_type); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    await db.prepare(`UPDATE ai_level_questions SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams, req.params.id);
 
     success(res, null, '题目更新成功');
   } catch (err) {
@@ -187,10 +185,10 @@ router.put('/questions/:id', (req, res) => {
 });
 
 // 删除题目
-router.delete('/questions/:id', (req, res) => {
+router.delete('/questions/:id', async (req, res) => {
   try {
     const db = getDB();
-    db.prepare('UPDATE ai_level_questions SET status = 0 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE ai_level_questions SET status = 0 WHERE id = ?').run(req.params.id);
     success(res, null, '题目已删除');
   } catch (err) {
     error(res, '删除题目失败: ' + err.message, 500);
@@ -200,7 +198,7 @@ router.delete('/questions/:id', (req, res) => {
 // ==================== 场景管理 ====================
 
 // 获取所有场景
-router.get('/scenarios', (req, res) => {
+router.get('/scenarios', async (req, res) => {
   try {
     const db = getDB();
     const scenarios = db.prepare(`
@@ -213,10 +211,10 @@ router.get('/scenarios', (req, res) => {
 });
 
 // 获取单个场景
-router.get('/scenarios/:id', (req, res) => {
+router.get('/scenarios/:id', async (req, res) => {
   try {
     const db = getDB();
-    const scenario = db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(req.params.id);
+    const scenario = await db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(req.params.id);
     if (!scenario) return error(res, '场景不存在', 404);
 
     // 获取场景使用统计
@@ -232,7 +230,7 @@ router.get('/scenarios/:id', (req, res) => {
 });
 
 // 创建场景
-router.post('/scenarios', (req, res) => {
+router.post('/scenarios', async (req, res) => {
   try {
     const db = getDB();
     const { name, personality_type, personality_name, description, initial_intent,
@@ -250,7 +248,7 @@ router.post('/scenarios', (req, res) => {
     `).run(name, personality_type, personality_name || '', description || '',
       initial_intent || '', difficulty || 'medium', opening_line, traits, tips || '');
 
-    const newScenario = db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(result.lastInsertRowid);
+    const newScenario = await db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(result.lastInsertRowid);
     success(res, newScenario, '场景创建成功', 201);
   } catch (err) {
     error(res, '创建场景失败: ' + err.message, 500);
@@ -258,36 +256,35 @@ router.post('/scenarios', (req, res) => {
 });
 
 // 更新场景
-router.put('/scenarios/:id', (req, res) => {
+router.put('/scenarios/:id', async (req, res) => {
   try {
     const db = getDB();
     const { name, personality_type, personality_name, description, initial_intent,
             difficulty, opening_line, personality_traits, tips, status, sort_order } = req.body;
 
-    const existing = db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(req.params.id);
     if (!existing) return error(res, '场景不存在', 404);
 
     const traits = personality_traits ? (typeof personality_traits === 'string' ? personality_traits : JSON.stringify(personality_traits)) : undefined;
 
-    db.prepare(`
-      UPDATE ai_coach_scenarios SET
-        name = COALESCE(?, name),
-        personality_type = COALESCE(?, personality_type),
-        personality_name = COALESCE(?, personality_name),
-        description = COALESCE(?, description),
-        initial_intent = COALESCE(?, initial_intent),
-        difficulty = COALESCE(?, difficulty),
-        opening_line = COALESCE(?, opening_line),
-        personality_traits = COALESCE(?, personality_traits),
-        tips = COALESCE(?, tips),
-        status = COALESCE(?, status),
-        sort_order = COALESCE(?, sort_order),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(name, personality_type, personality_name, description, initial_intent,
-      difficulty, opening_line, traits, tips, status, sort_order, req.params.id);
+    const setClauses = [];
+    const setParams = [];
+    if (name !== undefined) { setClauses.push('name = ?'); setParams.push(name); }
+    if (personality_type !== undefined) { setClauses.push('personality_type = ?'); setParams.push(personality_type); }
+    if (personality_name !== undefined) { setClauses.push('personality_name = ?'); setParams.push(personality_name); }
+    if (description !== undefined) { setClauses.push('description = ?'); setParams.push(description); }
+    if (initial_intent !== undefined) { setClauses.push('initial_intent = ?'); setParams.push(initial_intent); }
+    if (difficulty !== undefined) { setClauses.push('difficulty = ?'); setParams.push(difficulty); }
+    if (opening_line !== undefined) { setClauses.push('opening_line = ?'); setParams.push(opening_line); }
+    if (traits !== undefined) { setClauses.push('personality_traits = ?'); setParams.push(traits); }
+    if (tips !== undefined) { setClauses.push('tips = ?'); setParams.push(tips); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+    setClauses.push("updated_at = CURRENT_TIMESTAMP");
+    setParams.push(req.params.id);
+    await db.prepare(`UPDATE ai_coach_scenarios SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
-    const updated = db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(req.params.id);
+    const updated = await db.prepare('SELECT * FROM ai_coach_scenarios WHERE id = ?').get(req.params.id);
     success(res, updated, '场景更新成功');
   } catch (err) {
     error(res, '更新场景失败: ' + err.message, 500);
@@ -295,10 +292,10 @@ router.put('/scenarios/:id', (req, res) => {
 });
 
 // 删除场景
-router.delete('/scenarios/:id', (req, res) => {
+router.delete('/scenarios/:id', async (req, res) => {
   try {
     const db = getDB();
-    db.prepare('UPDATE ai_coach_scenarios SET status = 0 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE ai_coach_scenarios SET status = 0 WHERE id = ?').run(req.params.id);
     success(res, null, '场景已删除');
   } catch (err) {
     error(res, '删除场景失败: ' + err.message, 500);
@@ -308,7 +305,7 @@ router.delete('/scenarios/:id', (req, res) => {
 // ==================== 话术库管理 ====================
 
 // 获取话术列表
-router.get('/scripts', (req, res) => {
+router.get('/scripts', async (req, res) => {
   try {
     const db = getDB();
     const { category, personality_type } = req.query;
@@ -321,7 +318,7 @@ router.get('/scripts', (req, res) => {
 
     sql += ' ORDER BY sort_order ASC';
 
-    const scripts = db.prepare(sql).all(...params);
+    const scripts = await db.prepare(sql).all(...params);
     success(res, scripts);
   } catch (err) {
     error(res, '获取话术列表失败: ' + err.message, 500);
@@ -329,7 +326,7 @@ router.get('/scripts', (req, res) => {
 });
 
 // 创建话术
-router.post('/scripts', (req, res) => {
+router.post('/scripts', async (req, res) => {
   try {
     const db = getDB();
     const { category, personality_type, scenario, script_content, tips } = req.body;
@@ -341,7 +338,7 @@ router.post('/scripts', (req, res) => {
       VALUES (?, ?, ?, ?, ?)
     `).run(category, personality_type || '', scenario || '', script_content, tips || '');
 
-    const newScript = db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(result.lastInsertRowid);
+    const newScript = await db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(result.lastInsertRowid);
     success(res, newScript, '话术创建成功', 201);
   } catch (err) {
     error(res, '创建话术失败: ' + err.message, 500);
@@ -349,23 +346,23 @@ router.post('/scripts', (req, res) => {
 });
 
 // 更新话术
-router.put('/scripts/:id', (req, res) => {
+router.put('/scripts/:id', async (req, res) => {
   try {
     const db = getDB();
     const { category, personality_type, scenario, script_content, tips, status, sort_order } = req.body;
 
-    db.prepare(`
-      UPDATE ai_scripts SET
-        category = COALESCE(?, category),
-        personality_type = COALESCE(?, personality_type),
-        scenario = COALESCE(?, scenario),
-        script_content = COALESCE(?, script_content),
-        tips = COALESCE(?, tips),
-        status = COALESCE(?, status),
-        sort_order = COALESCE(?, sort_order),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(category, personality_type, scenario, script_content, tips, status, sort_order, req.params.id);
+    const setClauses = [];
+    const setParams = [];
+    if (category !== undefined) { setClauses.push('category = ?'); setParams.push(category); }
+    if (personality_type !== undefined) { setClauses.push('personality_type = ?'); setParams.push(personality_type); }
+    if (scenario !== undefined) { setClauses.push('scenario = ?'); setParams.push(scenario); }
+    if (script_content !== undefined) { setClauses.push('script_content = ?'); setParams.push(script_content); }
+    if (tips !== undefined) { setClauses.push('tips = ?'); setParams.push(tips); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+    setClauses.push("updated_at = CURRENT_TIMESTAMP");
+    setParams.push(req.params.id);
+    await db.prepare(`UPDATE ai_scripts SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
     success(res, null, '话术更新成功');
   } catch (err) {
@@ -374,10 +371,10 @@ router.put('/scripts/:id', (req, res) => {
 });
 
 // 删除话术
-router.delete('/scripts/:id', (req, res) => {
+router.delete('/scripts/:id', async (req, res) => {
   try {
     const db = getDB();
-    db.prepare('UPDATE ai_scripts SET status = 0 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE ai_scripts SET status = 0 WHERE id = ?').run(req.params.id);
     success(res, null, '话术已删除');
   } catch (err) {
     error(res, '删除话术失败: ' + err.message, 500);
@@ -387,7 +384,7 @@ router.delete('/scripts/:id', (req, res) => {
 // ==================== 数据报表 ====================
 
 // 获取仪表盘统计数据
-router.get('/dashboard/stats', (req, res) => {
+router.get('/dashboard/stats', async (req, res) => {
   try {
     const db = getDB();
 
@@ -455,7 +452,7 @@ router.get('/dashboard/stats', (req, res) => {
 });
 
 // 获取排行榜
-router.get('/rankings', (req, res) => {
+router.get('/rankings', async (req, res) => {
   try {
     const db = getDB();
     const { period = 'all', type = 'overall', limit = 20 } = req.query;
@@ -509,7 +506,7 @@ router.get('/rankings', (req, res) => {
       `;
     }
 
-    const rankings = db.prepare(sql).all(lim);
+    const rankings = await db.prepare(sql).all(lim);
     success(res, rankings);
   } catch (err) {
     error(res, '获取排行榜失败: ' + err.message, 500);

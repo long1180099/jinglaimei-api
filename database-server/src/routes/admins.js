@@ -34,7 +34,7 @@ function formatAdmin(row) {
 // ==================== 路由 ====================
 
 // GET /api/admins - 管理员列表
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 20, keyword, role, status } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -52,7 +52,7 @@ router.get('/', (req, res) => {
 
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM admins a ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM admins a ${whereClause}`).get(...params).cnt;
   const list = db.prepare(`
     SELECT a.*,
            (SELECT COUNT(*) FROM operation_logs WHERE operator_id = a.id AND operator_type='admin') as op_count
@@ -66,13 +66,13 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/admins/stats - 管理员统计
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
-  const total = db.prepare('SELECT COUNT(*) as cnt FROM admins').get().cnt;
-  const active = db.prepare("SELECT COUNT(*) as cnt FROM admins WHERE status = 1").get().cnt;
+  const total = await db.prepare('SELECT COUNT(*) as cnt FROM admins').get().cnt;
+  const active = await db.prepare("SELECT COUNT(*) as cnt FROM admins WHERE status = 1").get().cnt;
   
   // 各角色统计
-  const roles = db.prepare("SELECT role, COUNT(*) as cnt FROM admins GROUP BY role").all();
+  const roles = await db.prepare("SELECT role, COUNT(*) as cnt FROM admins GROUP BY role").all();
   const roleStats = {};
   roles.forEach(r => { roleStats[r.role] = r.cnt; });
 
@@ -90,7 +90,7 @@ router.get('/stats', (req, res) => {
 });
 
 // POST /api/admins - 创建管理员账号
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   const { username, password, real_name, email, phone, role = 'operator', permissions = [] } = req.body;
 
@@ -101,7 +101,7 @@ router.post('/', (req, res) => {
   if (password.length < 6) return error(res, '密码至少6个字符');
 
   // 检查用户名唯一性
-  const existing = db.prepare('SELECT id FROM admins WHERE username = ?').get(username);
+  const existing = await db.prepare('SELECT id FROM admins WHERE username = ?').get(username);
   if (existing) return error(res, '该用户名已存在');
 
   try {
@@ -111,7 +111,7 @@ router.post('/', (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, 1)
     `).run(username, hashedPwd, real_name || null, email || null, phone || null, role, JSON.stringify(permissions));
 
-    const created = db.prepare('SELECT * FROM admins WHERE id = ?').get(result.lastInsertRowid);
+    const created = await db.prepare('SELECT * FROM admins WHERE id = ?').get(result.lastInsertRowid);
     return success(res, formatAdmin(created), '管理员创建成功', 201);
   } catch (err) {
     if (err.message.includes('UNIQUE')) return error(res, '用户名或邮箱已存在');
@@ -119,189 +119,20 @@ router.post('/', (req, res) => {
   }
 });
 
-// ==================== 用户角色分配（必须在 /:id 之前） ====================
-
-// GET /api/admins/user-roles - 获取所有用户角色分配
-router.get('/user-roles', (req, res) => {
-  const db = getDB();
-  const list = db.prepare(`
-    SELECT ur.*, u.username, u.real_name, u.phone, u.avatar_url, u.agent_level
-    FROM user_admin_roles ur
-    LEFT JOIN users u ON u.id = ur.user_id
-    WHERE ur.status = 1
-    ORDER BY ur.created_at DESC
-  `).all().map(row => ({
-    id: String(row.id),
-    userId: String(row.user_id),
-    roleId: row.role,
-    userName: row.real_name || row.username || `用户${row.user_id}`,
-    userAvatar: row.avatar_url || '',
-    userPhone: row.phone || '',
-    agentLevel: row.agent_level || 0,
-    permissions: JSON.parse(row.permissions || '[]'),
-    assignedAt: row.created_at,
-    assignedBy: row.assigned_by,
-  }));
-
-  const roleCountMap = {};
-  list.forEach(item => {
-    roleCountMap[item.roleId] = (roleCountMap[item.roleId] || 0) + 1;
-  });
-
-  return success(res, { list, roleCounts: roleCountMap });
-});
-
-// POST /api/admins/user-roles - 批量分配角色给用户
-router.post('/user-roles', (req, res) => {
-  const db = getDB();
-  const { userIds, role, permissions = [] } = req.body;
-
-  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-    return error(res, '请选择要分配的用户');
-  }
-  if (!role) {
-    return error(res, '请选择角色');
-  }
-
-  const assignedBy = req.user?.id || null;
-  let added = 0;
-
-  const insertOrUpdate = db.prepare(`
-    INSERT INTO user_admin_roles (user_id, role, permissions, assigned_by, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 1, datetime('now','localtime'), datetime('now','localtime'))
-    ON CONFLICT(user_id) DO UPDATE SET
-      role = excluded.role,
-      permissions = excluded.permissions,
-      assigned_by = excluded.assigned_by,
-      status = 1,
-      updated_at = datetime('now','localtime')
-  `);
-
-  const transaction = db.transaction((ids) => {
-    for (const userId of ids) {
-      insertOrUpdate.run(parseInt(userId), role, JSON.stringify(permissions), assignedBy);
-      added++;
-    }
-  });
-
-  try {
-    transaction(userIds);
-    return success(res, { added }, `成功分配 ${added} 个用户`);
-  } catch (err) {
-    return error(res, '分配失败: ' + err.message);
-  }
-});
-
-// DELETE /api/admins/user-roles/:id - 移除用户角色分配
-router.delete('/user-roles/:id', (req, res) => {
-  const db = getDB();
-  const id = parseInt(req.params.id);
-
-  const existing = db.prepare('SELECT id, user_id FROM user_admin_roles WHERE id = ?').get(id);
-  if (!existing) return error(res, '分配记录不存在', 404);
-
-  db.prepare("UPDATE user_admin_roles SET status = 0, updated_at = datetime('now','localtime') WHERE id = ?").run(id);
-
-  return success(res, null, '已移除角色分配');
-});
-
-// ==================== 角色权限配置（必须在 /:id 之前注册） ====================
-
-/**
- * GET /api/admins/role-permissions
- * 获取角色权限配置（持久化在 system_configs 表中）
- */
-router.get('/role-permissions', (req, res) => {
-  const db = getDB();
-  const row = db.prepare("SELECT config_value FROM system_configs WHERE config_key = 'role_permissions'").get();
-  if (row && row.config_value) {
-    try {
-      return success(res, JSON.parse(row.config_value));
-    } catch (e) {
-      console.error('[role-permissions] JSON解析失败:', e.message);
-    }
-  }
-  // 没有配置时返回空对象，前端会使用默认值
-  return success(res, {});
-});
-
-/**
- * PUT /api/admins/role-permissions
- * 保存角色权限配置到 system_configs 表
- */
-router.put('/role-permissions', (req, res) => {
-  const db = getDB();
-  const { rolePermissionsMap } = req.body;
-  if (!rolePermissionsMap || typeof rolePermissionsMap !== 'object') {
-    return error(res, '参数无效，需要 rolePermissionsMap 对象');
-  }
-  const jsonValue = JSON.stringify(rolePermissionsMap);
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  db.prepare(`
-    INSERT INTO system_configs (config_key, config_value, config_type, description, updated_at)
-    VALUES ('role_permissions', ?, 'json', '角色权限映射配置', ?)
-    ON CONFLICT(config_key) DO UPDATE SET config_value = ?, updated_at = ?
-  `).run(jsonValue, now, jsonValue, now);
-  return success(res, rolePermissionsMap, '角色权限配置已保存');
-});
-
-// ==================== 角色列表配置（必须在 /:id 之前注册） ====================
-
-/**
- * GET /api/admins/roles-config
- * 获取角色列表配置（持久化在 system_configs 表中）
- */
-router.get('/roles-config', (req, res) => {
-  const db = getDB();
-  const row = db.prepare("SELECT config_value FROM system_configs WHERE config_key = 'roles_config'").get();
-  if (row && row.config_value) {
-    try {
-      const roles = JSON.parse(row.config_value);
-      console.log('[roles-config] 加载角色列表:', roles.length, '个角色');
-      return success(res, roles);
-    } catch (e) {
-      console.error('[roles-config] JSON解析失败:', e.message);
-    }
-  }
-  // 没有配置时返回 null，前端会使用默认角色列表
-  return success(res, null);
-});
-
-/**
- * PUT /api/admins/roles-config
- * 保存角色列表配置到 system_configs 表
- */
-router.put('/roles-config', (req, res) => {
-  const db = getDB();
-  const { roles } = req.body;
-  if (!roles || !Array.isArray(roles)) {
-    return error(res, '参数无效，需要 roles 数组');
-  }
-  const jsonValue = JSON.stringify(roles);
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  db.prepare(`
-    INSERT INTO system_configs (config_key, config_value, config_type, description, updated_at)
-    VALUES ('roles_config', ?, 'json', '角色列表配置', ?)
-    ON CONFLICT(config_key) DO UPDATE SET config_value = ?, updated_at = ?
-  `).run(jsonValue, now, jsonValue, now);
-  console.log('[roles-config] 保存角色列表:', roles.length, '个角色');
-  return success(res, roles, '角色列表已保存');
-});
-
 // GET /api/admins/:id - 获取单个管理员详情
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDB();
-  const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(req.params.id);
+  const admin = await db.prepare('SELECT * FROM admins WHERE id = ?').get(req.params.id);
   if (!admin) return error(res, '管理员不存在', 404);
   return success(res, formatAdmin(admin));
 });
 
 // PUT /api/admins/:id - 更新管理员信息（不含密码）
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = getDB();
   const { real_name, email, phone, role, permissions, status } = req.body;
 
-  const existing = db.prepare('SELECT id FROM admins WHERE id = ?').get(req.params.id);
+  const existing = await db.prepare('SELECT id FROM admins WHERE id = ?').get(req.params.id);
   if (!existing) return error(res, '管理员不存在', 404);
 
   // 如果修改用户名，检查唯一性
@@ -312,26 +143,26 @@ router.put('/:id', (req, res) => {
   }
 
   try {
-    db.prepare(`
-      UPDATE admins SET
-        real_name   = COALESCE(?, real_name),
-        email       = COALESCE(?, email),
-        phone       = COALESCE(?, phone),
-        role        = COALESCE(?, role),
-        permissions = COALESCE(?, permissions),
-        status      = COALESCE(?, status),
-        username    = ?,
-        updated_at  = datetime('now','localtime')
-      WHERE id = ?
-    `).run(
-      real_name || null, email || null, phone || null,
-      role || null, permissions ? JSON.stringify(permissions) : null,
-      status !== undefined ? status : null,
-      req.body.username || null,  // 允许改用户名但必须检查唯一性
-      req.params.id
-    );
+    // 动态构建 SET 子句，只更新前端明确传递的字段
+    const setClauses = [];
+    const setParams = [];
 
-    const updated = db.prepare('SELECT * FROM admins WHERE id = ?').get(req.params.id);
+    if (req.body.username !== undefined) { setClauses.push('username = ?'); setParams.push(req.body.username); }
+    if (real_name !== undefined) { setClauses.push('real_name = ?'); setParams.push(real_name); }
+    if (email !== undefined) { setClauses.push('email = ?'); setParams.push(email); }
+    if (phone !== undefined) { setClauses.push('phone = ?'); setParams.push(phone); }
+    if (role !== undefined) { setClauses.push('role = ?'); setParams.push(role); }
+    if (permissions !== undefined) { setClauses.push('permissions = ?'); setParams.push(JSON.stringify(permissions)); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+
+    if (setClauses.length === 0) return error(res, '没有需要更新的字段');
+
+    setClauses.push("updated_at = datetime('now','localtime')");
+    setParams.push(req.params.id);
+
+    await db.prepare(`UPDATE admins SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
+
+    const updated = await db.prepare('SELECT * FROM admins WHERE id = ?').get(req.params.id);
     return success(res, formatAdmin(updated), '更新成功');
   } catch (err) {
     return error(res, '更新失败: ' + err.message);
@@ -339,9 +170,9 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/admins/:id - 禁用/删除管理员
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = getDB();
-  const admin = db.prepare('SELECT id, username, role FROM admins WHERE id = ?').get(req.params.id);
+  const admin = await db.prepare('SELECT id, username, role FROM admins WHERE id = ?').get(req.params.id);
   if (!admin) return error(res, '管理员不存在', 404);
 
   // 不允许删除超级管理员自己（安全检查：通过中间件判断当前操作者）
@@ -350,24 +181,24 @@ router.delete('/:id', (req, res) => {
   }
 
   // 软删除（禁用）而非物理删除，保留审计记录
-  db.prepare("UPDATE admins SET status = 0, updated_at = datetime('now','localtime') WHERE id = ?")
+  await db.prepare("UPDATE admins SET status = 0, updated_at = datetime('now','localtime') WHERE id = ?")
     .run(req.params.id);
 
   return success(res, null, `管理员「${admin.username}」已禁用`);
 });
 
 // POST /api/admins/:id/reset-password - 重置密码
-router.post('/:id/reset-password', (req, res) => {
+router.post('/:id/reset-password', async (req, res) => {
   const db = getDB();
   const { newPassword } = req.body;
 
   if (!newPassword || newPassword.length < 6) return error(res, '新密码至少6个字符');
 
-  const admin = db.prepare('SELECT id, username FROM admins WHERE id = ?').get(req.params.id);
+  const admin = await db.prepare('SELECT id, username FROM admins WHERE id = ?').get(req.params.id);
   if (!admin) return error(res, '管理员不存在', 404);
 
   const hashedPwd = bcrypt.hashSync(newPassword, 10);
-  db.prepare("UPDATE admins SET password = ?, updated_at = datetime('now','localtime') WHERE id = ?")
+  await db.prepare("UPDATE admins SET password = ?, updated_at = datetime('now','localtime') WHERE id = ?")
     .run(hashedPwd, req.params.id);
 
   return success(res, null, `管理员「${admin.username}」的密码已重置`);

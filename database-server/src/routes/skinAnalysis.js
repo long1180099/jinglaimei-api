@@ -68,7 +68,7 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
 
     // 获取用户信息（含agent信息）
     const db = getDb();
-    const user = db.prepare('SELECT id, parent_id FROM users WHERE id = ?').get(userId);
+    const user = await db.prepare('SELECT id, parent_id FROM users WHERE id = ?').get(userId);
     
     // 构建图片URL（返回给小程序）
     const imageUrl = `/uploads/skin-analysis/${req.file.filename}`;
@@ -112,7 +112,7 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
  * GET /api/mp/skin-analysis/reports?user_id=&page=&pageSize=
  * 获取用户历史报告列表
  */
-router.get('/reports', (req, res) => {
+router.get('/reports', async (req, res) => {
   try {
     const db = getDb();
     const userId = parseInt(req.query.user_id);
@@ -136,7 +136,7 @@ router.get('/reports', (req, res) => {
  * GET /api/mp/skin-analysis/report/:id
  * 获取报告详情
  */
-router.get('/report/:id', (req, res) => {
+router.get('/report/:id', async (req, res) => {
   try {
     const db = getDb();
     const reportId = parseInt(req.params.id);
@@ -159,7 +159,7 @@ router.get('/report/:id', (req, res) => {
  * GET /api/mp/skin-analysis/issues
  * 获取皮肤问题库（供前端展示）
  */
-router.get('/issues', (req, res) => {
+router.get('/issues', async (req, res) => {
   try {
     const db = getDb();
     const issues = skinAnalysisService.getSkinIssues();
@@ -173,7 +173,7 @@ router.get('/issues', (req, res) => {
  * GET /api/mp/skin-analysis/issue/:id/detail
  * 获取问题详情（含成因+养护方案+产品推荐）
  */
-router.get('/issue/:id/detail', (req, res) => {
+router.get('/issue/:id/detail', async (req, res) => {
   try {
     const db = getDb();
     const detail = skinAnalysisService.getIssueDetail(parseInt(req.params.id));
@@ -192,7 +192,7 @@ router.get('/issue/:id/detail', (req, res) => {
  * GET /api/admin/skin-analysis/stats?agent_id=
  * 管理后台 - 数据统计
  */
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
     const db = getDb();
     const agentId = parseInt(req.query.agent_id || '0');
@@ -232,7 +232,7 @@ router.get('/stats', (req, res) => {
  */
 
 // GET /api/admin/skin-issues - 问题列表
-router.get('/admin/issues', (req, res) => {
+router.get('/admin/issues', async (req, res) => {
   try {
     const db = getDb();
     const category = req.query.category || '';
@@ -243,7 +243,7 @@ router.get('/admin/issues', (req, res) => {
       params.push(category);
     }
     sql += ' ORDER BY sort_order, id';
-    const list = db.prepare(sql).all(...params);
+    const list = await db.prepare(sql).all(...params);
     res.json({ success: true, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -251,7 +251,7 @@ router.get('/admin/issues', (req, res) => {
 });
 
 // POST /api/admin/skin-issues - 新增问题
-router.post('/admin/issues', (req, res) => {
+router.post('/admin/issues', async (req, res) => {
   try {
     const db = getDb();
     const { category, name, icon, color, description, severity_range, sort_order } = req.body;
@@ -267,7 +267,7 @@ router.post('/admin/issues', (req, res) => {
 });
 
 // PUT /api/admin/skin-issues/:id - 编辑问题
-router.put('/admin/issues/:id', (req, res) => {
+router.put('/admin/issues/:id', async (req, res) => {
   try {
     const db = getDb();
     const id = parseInt(req.params.id);
@@ -286,7 +286,7 @@ router.put('/admin/issues/:id', (req, res) => {
     }
     
     values.push(id);
-    db.prepare(`UPDATE skin_issues SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...values);
+    await db.prepare(`UPDATE skin_issues SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...values);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -294,10 +294,10 @@ router.put('/admin/issues/:id', (req, res) => {
 });
 
 // DELETE /api/admin/skin-issues/:id - 删除问题
-router.delete('/admin/issues/:id', (req, res) => {
+router.delete('/admin/issues/:id', async (req, res) => {
   try {
     const db = getDb();
-    db.prepare("UPDATE skin_issues SET status = 0 WHERE id = ?").run(parseInt(req.params.id));
+    await db.prepare("UPDATE skin_issues SET status = 0 WHERE id = ?").run(parseInt(req.params.id));
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -309,7 +309,7 @@ router.delete('/admin/issues/:id', (req, res) => {
  */
 
 // GET /api/admin/skin-causes - 成因列表（可按issue_id筛选）
-router.get('/admin/causes', (req, res) => {
+router.get('/admin/causes', async (req, res) => {
   try {
     const db = getDb();
     const issueId = req.query.issue_id ? parseInt(req.query.issue_id) : null;
@@ -323,7 +323,7 @@ router.get('/admin/causes', (req, res) => {
       sql += ' AND c.issue_id = ' + issueId;
     }
     sql += ' ORDER BY c.id';
-    const list = db.prepare(sql).all();
+    const list = await db.prepare(sql).all();
     res.json({ success: true, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -331,7 +331,7 @@ router.get('/admin/causes', (req, res) => {
 });
 
 // POST /api/admin/skin-causes - 新增成因
-router.post('/admin/causes', (req, res) => {
+router.post('/admin/causes', async (req, res) => {
   try {
     const db = getDb();
     const { issue_id, cause_text, advice_text } = req.body;
@@ -346,7 +346,7 @@ router.post('/admin/causes', (req, res) => {
 });
 
 // PUT /api/admin/skin-causes/:id - 编辑成因
-router.put('/admin/causes/:id', (req, res) => {
+router.put('/admin/causes/:id', async (req, res) => {
   try {
     const db = getDb();
     const id = parseInt(req.params.id);
@@ -365,10 +365,10 @@ router.put('/admin/causes/:id', (req, res) => {
 });
 
 // DELETE /api/admin/skin-causes/:id - 删除成因
-router.delete('/admin/causes/:id', (req, res) => {
+router.delete('/admin/causes/:id', async (req, res) => {
   try {
     const db = getDb();
-    db.prepare("DELETE FROM skin_issue_causes WHERE id = ?").run(parseInt(req.params.id));
+    await db.prepare("DELETE FROM skin_issue_causes WHERE id = ?").run(parseInt(req.params.id));
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -380,10 +380,10 @@ router.delete('/admin/causes/:id', (req, res) => {
  */
 
 // GET /api/admin/care-plans - 养护方案列表
-router.get('/admin/care-plans', (req, res) => {
+router.get('/admin/care-plans', async (req, res) => {
   try {
     const db = getDb();
-    const list = db.prepare('SELECT * FROM skin_care_plans ORDER BY care_type, sort_order').all();
+    const list = await db.prepare('SELECT * FROM skin_care_plans ORDER BY care_type, sort_order').all();
     res.json({ success: true, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -391,7 +391,7 @@ router.get('/admin/care-plans', (req, res) => {
 });
 
 // POST /api/admin/care-plans - 新增方案
-router.post('/admin/care-plans', (req, res) => {
+router.post('/admin/care-plans', async (req, res) => {
   try {
     const db = getDb();
     const { care_type, title, content, steps, frequency, duration } = req.body;
@@ -406,7 +406,7 @@ router.post('/admin/care-plans', (req, res) => {
 });
 
 // PUT /api/admin/care-plans/:id - 编辑方案
-router.put('/admin/care-plans/:id', (req, res) => {
+router.put('/admin/care-plans/:id', async (req, res) => {
   try {
     const db = getDb();
     const id = parseInt(req.params.id);
@@ -428,10 +428,10 @@ router.put('/admin/care-plans/:id', (req, res) => {
 });
 
 // DELETE /api/admin/care-plans/:id - 删除方案
-router.delete('/admin/care-plans/:id', (req, res) => {
+router.delete('/admin/care-plans/:id', async (req, res) => {
   try {
     const db = getDb();
-    db.prepare("DELETE FROM skin_care_plans WHERE id = ?").run(parseInt(req.params.id));
+    await db.prepare("DELETE FROM skin_care_plans WHERE id = ?").run(parseInt(req.params.id));
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -443,7 +443,7 @@ router.delete('/admin/care-plans/:id', (req, res) => {
  */
 
 // GET /api/admin/product-matches?issue_id= - 匹配列表
-router.get('/admin/product-matches', (req, res) => {
+router.get('/admin/product-matches', async (req, res) => {
   try {
     const db = getDb();
     const issueId = req.query.issue_id ? parseInt(req.query.issue_id) : null;
@@ -458,7 +458,7 @@ router.get('/admin/product-matches', (req, res) => {
       sql += ' AND pm.issue_id = ' + issueId;
     }
     sql += ' ORDER BY pm.id DESC';
-    const list = db.prepare(sql).all();
+    const list = await db.prepare(sql).all();
     res.json({ success: true, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -466,7 +466,7 @@ router.get('/admin/product-matches', (req, res) => {
 });
 
 // POST /api/admin/product-matches - 绑定产品
-router.post('/admin/product-matches', (req, res) => {
+router.post('/admin/product-matches', async (req, res) => {
   try {
     const db = getDb();
     const { issue_id, product_id, recommend_reason, usage_method } = req.body;
@@ -491,10 +491,10 @@ router.post('/admin/product-matches', (req, res) => {
 });
 
 // DELETE /api/admin/product-matches/:id - 解绑产品
-router.delete('/admin/product-matches/:id', (req, res) => {
+router.delete('/admin/product-matches/:id', async (req, res) => {
   try {
     const db = getDb();
-    db.prepare("DELETE FROM skin_products WHERE id = ?").run(parseInt(req.params.id));
+    await db.prepare("DELETE FROM skin_products WHERE id = ?").run(parseInt(req.params.id));
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -502,10 +502,10 @@ router.delete('/admin/product-matches/:id', (req, res) => {
 });
 
 // GET /api/admin/products-for-skin - 可选商品列表
-router.get('/admin/products', (req, res) => {
+router.get('/admin/products', async (req, res) => {
   try {
     const db = getDb();
-    const list = db.prepare('SELECT id, product_name, retail_price as price FROM products WHERE status = 1 ORDER BY product_name').all();
+    const list = await db.prepare('SELECT id, product_name, retail_price as price FROM products WHERE status = 1 ORDER BY product_name').all();
     res.json({ success: true, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -517,7 +517,7 @@ router.get('/admin/products', (req, res) => {
  */
 
 // GET /api/admin/reports?page=&pageSize=&userId=&keyword= - 报告列表（管理端）
-router.get('/admin/reports', (req, res) => {
+router.get('/admin/reports', async (req, res) => {
   try {
     const db = getDb();
     const page = parseInt(req.query.page || '1');
@@ -538,7 +538,7 @@ router.get('/admin/reports', (req, res) => {
     }
 
     // 查总数
-    const countResult = db.prepare(`SELECT COUNT(*) as total FROM skin_reports r ${whereSql}`).get(...params);
+    const countResult = await db.prepare(`SELECT COUNT(*) as total FROM skin_reports r ${whereSql}`).get(...params);
 
     // 查列表
     const reports = db.prepare(`
@@ -572,16 +572,16 @@ router.get('/admin/reports', (req, res) => {
  */
 
 // GET /api/admin/stats/overview - 总览统计
-router.get('/admin/stats/overview', (req, res) => {
+router.get('/admin/stats/overview', async (req, res) => {
   try {
     const db = getDb();
 
-    const totalReports = db.prepare('SELECT COUNT(*) as cnt FROM skin_reports').get().cnt;
-    const todayReports = db.prepare(`SELECT COUNT(*) as cnt FROM skin_reports WHERE date(created_at) = date('now')`).get().cnt;
-    const yesterdayReports = db.prepare(`SELECT COUNT(*) as cnt FROM skin_reports WHERE date(created_at) = date('now','-1')`).get().cnt;
+    const totalReports = await db.prepare('SELECT COUNT(*) as cnt FROM skin_reports').get().cnt;
+    const todayReports = await db.prepare(`SELECT COUNT(*) as cnt FROM skin_reports WHERE date(created_at) = date('now')`).get().cnt;
+    const yesterdayReports = await db.prepare(`SELECT COUNT(*) as cnt FROM skin_reports WHERE date(created_at) = date('now','-1')`).get().cnt;
     const todayGrowth = yesterdayReports > 0 ? Math.round(((todayReports - yesterdayReports) / yesterdayReports) * 100) : 0;
-    const issueTypes = db.prepare('SELECT COUNT(DISTINCT issue_name) as cnt FROM skin_report_issues').get().cnt;
-    const productMatches = db.prepare('SELECT COUNT(*) as cnt FROM skin_products').get().cnt;
+    const issueTypes = await db.prepare('SELECT COUNT(DISTINCT issue_name) as cnt FROM skin_report_issues').get().cnt;
+    const productMatches = await db.prepare('SELECT COUNT(*) as cnt FROM skin_products').get().cnt;
 
     res.json({
       success: true,
@@ -600,7 +600,7 @@ router.get('/admin/stats/overview', (req, res) => {
 });
 
 // GET /api/admin/stats/issues - 问题类型分布
-router.get('/admin/stats/issues', (req, res) => {
+router.get('/admin/stats/issues', async (req, res) => {
   try {
     const db = getDb();
     const dist = db.prepare(`
@@ -622,7 +622,7 @@ router.get('/admin/stats/issues', (req, res) => {
 });
 
 // GET /api/admin/stats/trend?period=daily|monthly|yearly - 趋势数据
-router.get('/admin/stats/trend', (req, res) => {
+router.get('/admin/stats/trend', async (req, res) => {
   try {
     const db = getDb();
     const period = req.query.period || 'daily';
@@ -650,7 +650,7 @@ router.get('/admin/stats/trend', (req, res) => {
 });
 
 // GET /api/admin/stats/products?limit= - 产品推荐排行
-router.get('/admin/stats/products', (req, res) => {
+router.get('/admin/stats/products', async (req, res) => {
   try {
     const db = getDb();
     const limit = parseInt(req.query.limit || '10');
@@ -676,7 +676,7 @@ router.get('/admin/stats/products', (req, res) => {
 });
 
 // GET /api/admin/reports/agent/:agentId - 代理商客户报告
-router.get('/admin/reports/agent/:agentId', (req, res) => {
+router.get('/admin/reports/agent/:agentId', async (req, res) => {
   try {
     const db = getDb();
     const agentId = parseInt(req.params.agentId);

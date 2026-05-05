@@ -7,7 +7,7 @@ const { getDB } = require('../utils/db');
 const { success, error } = require('../utils/response');
 
 // GET /api/teams - 团队列表
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, keyword } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -20,7 +20,7 @@ router.get('/', (req, res) => {
   }
   
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM teams t LEFT JOIN users u ON t.leader_id = u.id ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM teams t LEFT JOIN users u ON t.leader_id = u.id ${whereClause}`).get(...params).cnt;
   const teams = db.prepare(`
     SELECT t.*, u.username as leader_name, u.real_name as leader_real_name, u.phone as leader_phone,
            (SELECT COUNT(*) FROM users m WHERE m.team_id = t.id AND m.is_deleted = 0) as actual_member_count
@@ -35,18 +35,18 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/teams/stats - 团队统计
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
-  const total = db.prepare('SELECT COUNT(*) as cnt FROM teams WHERE status = 1').get().cnt;
-  const totalMembers = db.prepare('SELECT COUNT(*) as cnt FROM users WHERE is_deleted = 0 AND team_id IS NOT NULL').get().cnt;
-  const totalSales = db.prepare('SELECT COALESCE(SUM(total_sales), 0) as val FROM teams WHERE status = 1').get().val;
-  const avgPerformance = db.prepare('SELECT COALESCE(AVG(performance_rating), 0) as val FROM teams WHERE status = 1').get().val;
+  const total = await db.prepare('SELECT COUNT(*) as cnt FROM teams WHERE status = 1').get().cnt;
+  const totalMembers = await db.prepare('SELECT COUNT(*) as cnt FROM users WHERE is_deleted = 0 AND team_id IS NOT NULL').get().cnt;
+  const totalSales = await db.prepare('SELECT COALESCE(SUM(total_sales), 0) as val FROM teams WHERE status = 1').get().val;
+  const avgPerformance = await db.prepare('SELECT COALESCE(AVG(performance_rating), 0) as val FROM teams WHERE status = 1').get().val;
   
   return success(res, { total, totalMembers, totalSales, avgPerformance });
 });
 
 // GET /api/teams/:id - 团队详情
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDB();
   const team = db.prepare(`
     SELECT t.*, u.username as leader_name, u.real_name as leader_real_name, u.phone as leader_phone, u.avatar_url as leader_avatar
@@ -76,7 +76,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/teams - 创建团队
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   const { team_name, leader_id, description, monthly_target } = req.body;
   if (!team_name || !leader_id) return error(res, '团队名称和负责人不能为空');
@@ -96,24 +96,24 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/teams/:id - 更新团队
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = getDB();
   const { team_name, description, monthly_target, performance_rating, status } = req.body;
-  db.prepare(`
-    UPDATE teams SET 
-      team_name = COALESCE(?, team_name),
-      description = COALESCE(?, description),
-      monthly_target = COALESCE(?, monthly_target),
-      performance_rating = COALESCE(?, performance_rating),
-      status = COALESCE(?, status),
-      updated_at = datetime('now','localtime')
-    WHERE id = ?
-  `).run(team_name, description, monthly_target, performance_rating, status, req.params.id);
+  const setClauses = [];
+  const setParams = [];
+  if (team_name !== undefined) { setClauses.push('team_name = ?'); setParams.push(team_name); }
+  if (description !== undefined) { setClauses.push('description = ?'); setParams.push(description); }
+  if (monthly_target !== undefined) { setClauses.push('monthly_target = ?'); setParams.push(monthly_target); }
+  if (performance_rating !== undefined) { setClauses.push('performance_rating = ?'); setParams.push(performance_rating); }
+  if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+  setClauses.push("updated_at = datetime('now','localtime')");
+  setParams.push(req.params.id);
+  await db.prepare(`UPDATE teams SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
   return success(res, null, '更新成功');
 });
 
 // GET /api/teams/:id/ranking - 团队成员排行
-router.get('/:id/ranking', (req, res) => {
+router.get('/:id/ranking', async (req, res) => {
   const db = getDB();
   const ranking = db.prepare(`
     SELECT u.id, u.username, u.real_name, u.avatar_url, u.agent_level, u.total_income,

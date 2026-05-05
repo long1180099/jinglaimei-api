@@ -7,7 +7,7 @@ const { getDB } = require('../utils/db');
 const { success, error } = require('../utils/response');
 
 // GET /api/commissions - 收益列表
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, userId, status, type, startDate, endDate } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -21,7 +21,7 @@ router.get('/', (req, res) => {
   if (endDate) { where.push('c.created_at <= ?'); params.push(endDate + ' 23:59:59'); }
   
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM commissions c ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM commissions c ${whereClause}`).get(...params).cnt;
   const commissions = db.prepare(`
     SELECT c.*, u.username, u.real_name, u.agent_level,
            o.order_no, o.order_time
@@ -37,12 +37,12 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/commissions/stats - 收益概览
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
-  const totalSettled = db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE commission_status = 1").get().val;
-  const totalPending = db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE commission_status = 0").get().val;
-  const todayIncome = db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE date(created_at) = date('now') AND commission_status = 1").get().val;
-  const monthIncome = db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m','now') AND commission_status = 1").get().val;
+  const totalSettled = await db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE commission_status = 1").get().val;
+  const totalPending = await db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE commission_status = 0").get().val;
+  const todayIncome = await db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE date(created_at) = date('now') AND commission_status = 1").get().val;
+  const monthIncome = await db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m','now') AND commission_status = 1").get().val;
   
   // 月度收益趋势（近6个月）
   const monthlyTrend = db.prepare(`
@@ -72,7 +72,7 @@ router.get('/stats', (req, res) => {
 });
 
 // GET /api/commissions/withdrawals - 提现列表
-router.get('/withdrawals', (req, res) => {
+router.get('/withdrawals', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, status, userId } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -83,7 +83,7 @@ router.get('/withdrawals', (req, res) => {
   if (userId) { where.push('w.user_id = ?'); params.push(parseInt(userId)); }
   
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM withdrawals w ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM withdrawals w ${whereClause}`).get(...params).cnt;
   const withdrawals = db.prepare(`
     SELECT w.*, u.username, u.real_name, u.phone
     FROM withdrawals w LEFT JOIN users u ON w.user_id = u.id
@@ -95,7 +95,7 @@ router.get('/withdrawals', (req, res) => {
 });
 
 // PUT /api/commissions/withdrawals/:id/audit - 审核提现
-router.put('/withdrawals/:id/audit', (req, res) => {
+router.put('/withdrawals/:id/audit', async (req, res) => {
   const db = getDB();
   const { status, remark, auditUserId } = req.body; // status: 1=通过, 2=拒绝
   
@@ -108,12 +108,12 @@ router.put('/withdrawals/:id/audit', (req, res) => {
 });
 
 // POST /api/commissions/withdrawals - 申请提现
-router.post('/withdrawals', (req, res) => {
+router.post('/withdrawals', async (req, res) => {
   const db = getDB();
   const { user_id, withdrawal_amount, bank_name, bank_card_no, account_name } = req.body;
   if (!user_id || !withdrawal_amount) return error(res, '用户ID和提现金额不能为空');
   
-  const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(user_id);
+  const user = await db.prepare('SELECT balance FROM users WHERE id = ?').get(user_id);
   if (!user || user.balance < withdrawal_amount) return error(res, '余额不足');
   
   const serviceFee = parseFloat((withdrawal_amount * 0.005).toFixed(2));

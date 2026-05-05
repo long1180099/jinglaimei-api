@@ -49,7 +49,7 @@ const uploadVideo = multer({
 });
 
 // GET /api/school/courses - 课程列表
-router.get('/courses', (req, res) => {
+router.get('/courses', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, type, status, keyword } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -61,7 +61,7 @@ router.get('/courses', (req, res) => {
   if (keyword) { where.push('course_title LIKE ?'); params.push(`%${keyword}%`); }
   
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM school_courses ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM school_courses ${whereClause}`).get(...params).cnt;
   const courses = db.prepare(`
     SELECT * FROM school_courses ${whereClause}
     ORDER BY sort_order ASC, created_at DESC
@@ -72,13 +72,13 @@ router.get('/courses', (req, res) => {
 });
 
 // GET /api/school/stats - 商学院概览统计
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
-  const totalCourses = db.prepare('SELECT COUNT(*) as cnt FROM school_courses WHERE status = 1').get().cnt;
-  const totalStudents = db.prepare('SELECT COUNT(DISTINCT user_id) as cnt FROM study_progress').get().cnt;
-  const completedCount = db.prepare('SELECT COUNT(*) as cnt FROM study_progress WHERE study_status = 2').get().cnt;
-  const avgProgress = db.prepare('SELECT COALESCE(AVG(progress_percent), 0) as val FROM study_progress').get().val;
-  const totalViewCount = db.prepare('SELECT COALESCE(SUM(view_count), 0) as val FROM school_courses').get().val;
+  const totalCourses = await db.prepare('SELECT COUNT(*) as cnt FROM school_courses WHERE status = 1').get().cnt;
+  const totalStudents = await db.prepare('SELECT COUNT(DISTINCT user_id) as cnt FROM study_progress').get().cnt;
+  const completedCount = await db.prepare('SELECT COUNT(*) as cnt FROM study_progress WHERE study_status = 2').get().cnt;
+  const avgProgress = await db.prepare('SELECT COALESCE(AVG(progress_percent), 0) as val FROM study_progress').get().val;
+  const totalViewCount = await db.prepare('SELECT COALESCE(SUM(view_count), 0) as val FROM school_courses').get().val;
   
   // 各类型课程数量
   const courseTypeStats = db.prepare(`
@@ -95,13 +95,13 @@ router.get('/stats', (req, res) => {
 });
 
 // GET /api/school/courses/:id - 课程详情
-router.get('/courses/:id', (req, res) => {
+router.get('/courses/:id', async (req, res) => {
   const db = getDB();
-  const course = db.prepare('SELECT * FROM school_courses WHERE id = ?').get(req.params.id);
+  const course = await db.prepare('SELECT * FROM school_courses WHERE id = ?').get(req.params.id);
   if (!course) return error(res, '课程不存在', 404);
   
   // 更新浏览量
-  db.prepare('UPDATE school_courses SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
+  await db.prepare('UPDATE school_courses SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
   
   const progress = db.prepare(`
     SELECT sp.*, u.username, u.real_name
@@ -113,7 +113,7 @@ router.get('/courses/:id', (req, res) => {
 });
 
 // POST /api/school/courses - 新增课程
-router.post('/courses', (req, res) => {
+router.post('/courses', async (req, res) => {
   const db = getDB();
   const { course_type, course_title, course_subtitle, cover_image, video_url, content, required_time, difficulty_level, credit_points, sort_order } = req.body;
   if (!course_type || !course_title) return error(res, '课程类型和标题不能为空');
@@ -126,26 +126,26 @@ router.post('/courses', (req, res) => {
 });
 
 // PUT /api/school/courses/:id - 更新课程
-router.put('/courses/:id', (req, res) => {
+router.put('/courses/:id', async (req, res) => {
   const db = getDB();
   const { course_title, course_subtitle, content, status, sort_order, required_time, credit_points } = req.body;
-  db.prepare(`
-    UPDATE school_courses SET 
-      course_title = COALESCE(?, course_title),
-      course_subtitle = COALESCE(?, course_subtitle),
-      content = COALESCE(?, content),
-      status = COALESCE(?, status),
-      sort_order = COALESCE(?, sort_order),
-      required_time = COALESCE(?, required_time),
-      credit_points = COALESCE(?, credit_points),
-      updated_at = datetime('now','localtime')
-    WHERE id = ?
-  `).run(course_title, course_subtitle, content, status, sort_order, required_time, credit_points, req.params.id);
+  const setClauses = [];
+  const setParams = [];
+  if (course_title !== undefined) { setClauses.push('course_title = ?'); setParams.push(course_title); }
+  if (course_subtitle !== undefined) { setClauses.push('course_subtitle = ?'); setParams.push(course_subtitle); }
+  if (content !== undefined) { setClauses.push('content = ?'); setParams.push(content); }
+  if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+  if (sort_order !== undefined) { setClauses.push('sort_order = ?'); setParams.push(sort_order); }
+  if (required_time !== undefined) { setClauses.push('required_time = ?'); setParams.push(required_time); }
+  if (credit_points !== undefined) { setClauses.push('credit_points = ?'); setParams.push(credit_points); }
+  setClauses.push("updated_at = datetime('now','localtime')");
+  setParams.push(req.params.id);
+  await db.prepare(`UPDATE school_courses SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
   return success(res, null, '更新成功');
 });
 
 // GET /api/school/progress - 学习进度列表
-router.get('/progress', (req, res) => {
+router.get('/progress', async (req, res) => {
   const db = getDB();
   const { userId, courseId } = req.query;
   let where = [];
@@ -167,7 +167,7 @@ router.get('/progress', (req, res) => {
 });
 
 // POST /api/school/progress - 更新学习进度
-router.post('/progress', (req, res) => {
+router.post('/progress', async (req, res) => {
   const db = getDB();
   const { user_id, course_id, progress_percent, study_duration, study_status } = req.body;
   if (!user_id || !course_id) return error(res, 'user_id 和 course_id 不能为空');
@@ -190,18 +190,18 @@ router.post('/progress', (req, res) => {
 // ============ 学习统计路由 (前端 SchoolManagement 调用) ============
 
 // GET /api/school/statistics/learning - 学习统计总览
-router.get('/statistics/learning', (req, res) => {
+router.get('/statistics/learning', async (req, res) => {
   const db = getDB();
   const { userId } = req.query;
 
   // 视频课程统计
-  const totalCourses = db.prepare("SELECT COUNT(*) as cnt FROM school_courses WHERE status = 1").get().cnt;
+  const totalCourses = await db.prepare("SELECT COUNT(*) as cnt FROM school_courses WHERE status = 1").get().cnt;
   // study_progress 中 course_type 对应视频课程，study_status=2 表示完成
   let completedVideos = 0;
   let totalVideoTime = 0;
   try {
-    completedVideos = db.prepare("SELECT COUNT(*) as cnt FROM study_progress WHERE study_status = 2").get().cnt || 0;
-    totalVideoTime = db.prepare("SELECT COALESCE(SUM(study_duration), 0) as val FROM study_progress").get().val || 0;
+    completedVideos = await db.prepare("SELECT COUNT(*) as cnt FROM study_progress WHERE study_status = 2").get().cnt || 0;
+    totalVideoTime = await db.prepare("SELECT COALESCE(SUM(study_duration), 0) as val FROM study_progress").get().val || 0;
   } catch(e) { /* 表可能无数据 */ }
 
   // 电子书统计
@@ -209,9 +209,9 @@ router.get('/statistics/learning', (req, res) => {
   let completedBooks = 0;
   let totalReadingTime = 0;
   try {
-    totalBooks = db.prepare("SELECT COUNT(*) as cnt FROM learning_books WHERE status IN ('1','active','available',NULL)").get().cnt || 0;
+    totalBooks = await db.prepare("SELECT COUNT(*) as cnt FROM learning_books WHERE status IN ('1','active','available',NULL)").get().cnt || 0;
     // 阅读进度表(如果有)
-    const readingRows = db.prepare("SELECT COALESCE(SUM(COALESCE(reading_time, pages)), 0) as val FROM learning_books WHERE status IN ('1','active',NULL)").get();
+    const readingRows = await db.prepare("SELECT COALESCE(SUM(COALESCE(reading_time, pages)), 0) as val FROM learning_books WHERE status IN ('1','active',NULL)").get();
     totalReadingTime = readingRows ? (readingRows.val || 0) : 0;
   } catch(e) { /* 表可能不存在 */ }
 
@@ -219,21 +219,21 @@ router.get('/statistics/learning', (req, res) => {
   let totalActionLogs = 0;
   let completedActionLogs = 0;
   try {
-    totalActionLogs = db.prepare("SELECT COUNT(*) as cnt FROM action_daily_logs").get().cnt || 0;
-    completedActionLogs = db.prepare("SELECT COUNT(*) as cnt FROM action_daily_logs WHERE is_completed = 1").get().cnt || 0;
+    totalActionLogs = await db.prepare("SELECT COUNT(*) as cnt FROM action_daily_logs").get().cnt || 0;
+    completedActionLogs = await db.prepare("SELECT COUNT(*) as cnt FROM action_daily_logs WHERE is_completed = 1").get().cnt || 0;
   } catch(e) {}
 
   // 学习积分
   let totalPoints = 0, availablePoints = 0, spentPoints = 0;
   try {
-    const pt = db.prepare("SELECT COALESCE(SUM(points), 0) as t, COALESCE(SUM(available_points), 0) as a, COALESCE(SUM(spent_points), 0) as s FROM study_points LIMIT 1").get();
+    const pt = await db.prepare("SELECT COALESCE(SUM(points), 0) as t, COALESCE(SUM(available_points), 0) as a, COALESCE(SUM(spent_points), 0) as s FROM study_points LIMIT 1").get();
     if (pt) { totalPoints = pt.t||0; availablePoints = pt.a||0; spentPoints = pt.s||0; }
   } catch(e) {}
 
   // 连续学习天数
   let learningStreak = 0;
   try {
-    const lastStudy = db.prepare("SELECT MAX(updated_at) as d FROM study_progress").get();
+    const lastStudy = await db.prepare("SELECT MAX(updated_at) as d FROM study_progress").get();
     if (lastStudy && lastStudy.d) {
       // 简化：有记录就给个默认值
       learningStreak = 3;
@@ -262,59 +262,59 @@ router.get('/statistics/learning', (req, res) => {
 });
 
 // GET /api/school/statistics/weekly-progress - 周进度
-router.get('/statistics/weekly-progress', (req, res) => {
+router.get('/statistics/weekly-progress', async (req, res) => {
   return success(res, []);
 });
 
 // GET /api/school/statistics/category-progress - 分类进度
-router.get('/statistics/category-progress', (req, res) => {
+router.get('/statistics/category-progress', async (req, res) => {
   return success(res, []);
 });
 
 // ============ 商学院总览路由 (前端 SchoolManagement 调用) ============
 
 // GET /api/school/overview/stats - 商学院总览统计
-router.get('/overview/stats', (req, res) => {
+router.get('/overview/stats', async (req, res) => {
   const db = getDB();
   
   // 课程统计
   let totalCourses = 0, activeCourses = 0;
   try {
-    totalCourses = db.prepare("SELECT COUNT(*) as cnt FROM school_courses").get().cnt || 0;
-    activeCourses = db.prepare("SELECT COUNT(*) as cnt FROM school_courses WHERE status = 1").get().cnt || 0;
+    totalCourses = await db.prepare("SELECT COUNT(*) as cnt FROM school_courses").get().cnt || 0;
+    activeCourses = await db.prepare("SELECT COUNT(*) as cnt FROM school_courses WHERE status = 1").get().cnt || 0;
   } catch(e) {}
   
   // 电子书统计
   let totalBooks = 0, availableBooks = 0;
   try {
-    totalBooks = db.prepare("SELECT COUNT(*) as cnt FROM learning_books").get().cnt || 0;
-    availableBooks = db.prepare("SELECT COUNT(*) as cnt FROM learning_books WHERE status IN ('1','active','available')").get().cnt || 0;
+    totalBooks = await db.prepare("SELECT COUNT(*) as cnt FROM learning_books").get().cnt || 0;
+    availableBooks = await db.prepare("SELECT COUNT(*) as cnt FROM learning_books WHERE status IN ('1','active','available')").get().cnt || 0;
   } catch(e) {}
   
   // 话术统计
   let totalScripts = 0;
   try {
-    totalScripts = db.prepare("SELECT COUNT(*) as cnt FROM sales_scripts").get().cnt || 0;
+    totalScripts = await db.prepare("SELECT COUNT(*) as cnt FROM sales_scripts").get().cnt || 0;
   } catch(e) {}
   
   // 用户统计
   let totalUsers = 0, activeUsers = 0;
   try {
-    totalUsers = db.prepare("SELECT COUNT(*) as cnt FROM users").get().cnt || 0;
-    activeUsers = db.prepare("SELECT COUNT(*) as cnt FROM users WHERE status = 1").get().cnt || 0;
+    totalUsers = await db.prepare("SELECT COUNT(*) as cnt FROM users").get().cnt || 0;
+    activeUsers = await db.prepare("SELECT COUNT(*) as cnt FROM users WHERE status = 1").get().cnt || 0;
   } catch(e) {}
   
   // 学习记录
   let totalLearningRecords = 0, completedLearning = 0;
   try {
-    totalLearningRecords = db.prepare("SELECT COUNT(*) as cnt FROM study_progress").get().cnt || 0;
-    completedLearning = db.prepare("SELECT COUNT(*) as cnt FROM study_progress WHERE study_status = 2").get().cnt || 0;
+    totalLearningRecords = await db.prepare("SELECT COUNT(*) as cnt FROM study_progress").get().cnt || 0;
+    completedLearning = await db.prepare("SELECT COUNT(*) as cnt FROM study_progress WHERE study_status = 2").get().cnt || 0;
   } catch(e) {}
   
   // 积分统计
   let totalPoints = 0;
   try {
-    totalPoints = db.prepare("SELECT COALESCE(SUM(points), 0) as val FROM study_points LIMIT 1").get().val || 0;
+    totalPoints = await db.prepare("SELECT COALESCE(SUM(points), 0) as val FROM study_points LIMIT 1").get().val || 0;
   } catch(e) {}
 
   return success(res, {
@@ -333,7 +333,7 @@ router.get('/overview/stats', (req, res) => {
 });
 
 // GET /api/school/overview/recent-activities - 最新学习活动
-router.get('/overview/recent-activities', (req, res) => {
+router.get('/overview/recent-activities', async (req, res) => {
   const db = getDB();
   const limit = parseInt(req.query.limit) || 10;
   let activities = [];
@@ -353,7 +353,7 @@ router.get('/overview/recent-activities', (req, res) => {
 });
 
 // GET /api/school/overview/popular-content - 热门学习内容
-router.get('/overview/popular-content', (req, res) => {
+router.get('/overview/popular-content', async (req, res) => {
   const db = getDB();
   const { type, limit = 10 } = req.query;
   let content = [];
@@ -379,17 +379,17 @@ router.get('/overview/popular-content', (req, res) => {
 });
 
 // GET /api/school/overview/reminders - 学习提醒
-router.get('/overview/reminders', (req, res) => {
+router.get('/overview/reminders', async (req, res) => {
   return success(res, []);
 });
 
 // GET /api/school/overview/next-recommendation - 推荐下一项学习
-router.get('/overview/next-recommendation', (req, res) => {
+router.get('/overview/next-recommendation', async (req, res) => {
   return success(res, null);
 });
 
 // GET /api/school/videos - 视频列表（前端 videoApi.getVideos 调用）
-router.get('/videos', (req, res) => {
+router.get('/videos', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, type, status, keyword } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -400,7 +400,7 @@ router.get('/videos', (req, res) => {
   if (keyword) { where.push('course_title LIKE ?'); params.push(`%${keyword}%`); }
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM school_courses ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM school_courses ${whereClause}`).get(...params).cnt;
   const videos = db.prepare(`
     SELECT * FROM school_courses ${whereClause}
     ORDER BY sort_order ASC, created_at DESC
@@ -411,15 +411,15 @@ router.get('/videos', (req, res) => {
 });
 
 // GET /api/school/videos/:id - 视频详情
-router.get('/videos/:id', (req, res) => {
+router.get('/videos/:id', async (req, res) => {
   const db = getDB();
-  const video = db.prepare('SELECT * FROM school_courses WHERE id = ? AND course_type = 1').get(req.params.id);
+  const video = await db.prepare('SELECT * FROM school_courses WHERE id = ? AND course_type = 1').get(req.params.id);
   if (!video) return error(res, '视频不存在', 404);
   return success(res, video);
 });
 
 // POST /api/school/videos - 新增视频
-router.post('/videos', (req, res) => {
+router.post('/videos', async (req, res) => {
   const db = getDB();
   const { course_title, course_subtitle, cover_image, video_url, content, required_time, difficulty_level, credit_points, sort_order } = req.body;
   if (!course_title) return error(res, '视频标题不能为空');
@@ -432,7 +432,7 @@ router.post('/videos', (req, res) => {
 });
 
 // PUT /api/school/videos/:id - 更新视频
-router.put('/videos/:id', (req, res) => {
+router.put('/videos/:id', async (req, res) => {
   const db = getDB();
   const { course_title, course_subtitle, content, status, sort_order, required_time, credit_points } = req.body;
   db.prepare(`
@@ -451,9 +451,9 @@ router.put('/videos/:id', (req, res) => {
 });
 
 // DELETE /api/school/videos/:id - 删除视频
-router.delete('/videos/:id', (req, res) => {
+router.delete('/videos/:id', async (req, res) => {
   const db = getDB();
-  const result = db.prepare('DELETE FROM school_courses WHERE id = ? AND course_type = 1').run(req.params.id);
+  const result = await db.prepare('DELETE FROM school_courses WHERE id = ? AND course_type = 1').run(req.params.id);
   if (result.changes === 0) return error(res, '视频不存在', 404);
   return success(res, null, '删除成功');
 });
@@ -508,7 +508,7 @@ router.post('/videos/create-with-file', uploadVideo.single('file'), (req, res) =
       instructorName, instructorTitle, order, now, now
     );
 
-    const video = db.prepare('SELECT * FROM school_courses WHERE id = ?').get(result.lastInsertRowid);
+    const video = await db.prepare('SELECT * FROM school_courses WHERE id = ?').get(result.lastInsertRowid);
 
     return success(res, { ...video, fileUrl }, '视频创建成功');
   } catch (err) {
@@ -518,7 +518,7 @@ router.post('/videos/create-with-file', uploadVideo.single('file'), (req, res) =
 });
 
 // GET /api/school/scripts - 话术列表（前端 scriptApi.getScripts 调用）
-router.get('/scripts', (req, res) => {
+router.get('/scripts', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, scene, personality, difficulty, status, keyword } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -532,7 +532,7 @@ router.get('/scripts', (req, res) => {
   if (keyword) { where.push('(s.scenario LIKE ? OR s.script_content LIKE ?)'); params.push(`%${keyword}%`, `%${keyword}%`); }
 
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM ai_scripts s ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM ai_scripts s ${whereClause}`).get(...params).cnt;
   const scripts = db.prepare(`
     SELECT s.*
     FROM ai_scripts s
@@ -545,9 +545,9 @@ router.get('/scripts', (req, res) => {
 });
 
 // GET /api/school/scripts/:id - 话术详情
-router.get('/scripts/:id', (req, res) => {
+router.get('/scripts/:id', async (req, res) => {
   const db = getDB();
-  const script = db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(req.params.id);
+  const script = await db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(req.params.id);
   if (!script) return error(res, '话术不存在', 404);
   return success(res, script);
 });
@@ -557,7 +557,7 @@ router.get('/scripts/:id', (req, res) => {
 /**
  * POST /api/script-feeds - 新建投喂
  */
-router.post('/script-feeds', (req, res) => {
+router.post('/script-feeds', async (req, res) => {
   const db = getDB();
   const { raw_content, target_personality, target_scene, admin_notes } = req.body;
 
@@ -571,7 +571,7 @@ router.post('/script-feeds', (req, res) => {
       VALUES (?, ?, ?, ?, 'pending')
     `).run(raw_content.trim(), target_personality || '', target_scene || '', admin_notes || '');
 
-    const feed = db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(result.lastInsertRowid);
+    const feed = await db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(result.lastInsertRowid);
     return success(res, feed, '投喂创建成功', 201);
   } catch (err) {
     return error(res, '创建投喂失败: ' + err.message, 500);
@@ -581,7 +581,7 @@ router.post('/script-feeds', (req, res) => {
 /**
  * GET /api/script-feeds - 投喂列表
  */
-router.get('/script-feeds', (req, res) => {
+router.get('/script-feeds', async (req, res) => {
   const db = getDB();
   const { status, personality, scene, page = 1, pageSize = 20 } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -593,7 +593,7 @@ router.get('/script-feeds', (req, res) => {
   if (scene) { where.push('(f.target_scene = ? OR f.target_scene = "")'); params.push(scene); }
 
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM script_feeds f ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM script_feeds f ${whereClause}`).get(...params).cnt;
 
   const feeds = db.prepare(`
     SELECT f.*,
@@ -610,34 +610,32 @@ router.get('/script-feeds', (req, res) => {
 /**
  * PUT /api/script-feeds/:id - 更新投喂
  */
-router.put('/script-feeds/:id', (req, res) => {
+router.put('/script-feeds/:id', async (req, res) => {
   const db = getDB();
   const feedId = req.params.id;
-  const feed = db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(feedId);
+  const feed = await db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(feedId);
   if (!feed) return error(res, '投喂不存在', 404);
 
   const { raw_content, target_personality, target_scene, admin_notes, status, priority } = req.body;
 
   try {
-    db.prepare(`
-      UPDATE script_feeds SET
-        raw_content = COALESCE(?, raw_content),
-        target_personality = COALESCE(?, target_personality),
-        target_scene = COALESCE(?, target_scene),
-        admin_notes = COALESCE(?, admin_notes),
-        status = COALESCE(?, status),
-        priority = COALESCE(?, priority),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(
-      raw_content ? raw_content.trim() : undefined,
-      target_personality || undefined,
-      target_scene || undefined,
-      admin_notes || undefined,
-      status || undefined,
-      priority !== undefined ? priority : undefined,
-      feedId
-    );
+    // 动态构建 SET 子句，只更新前端明确传递的字段
+    const setClauses = [];
+    const setParams = [];
+
+    if (raw_content !== undefined) { setClauses.push('raw_content = ?'); setParams.push(raw_content ? raw_content.trim() : raw_content); }
+    if (target_personality !== undefined) { setClauses.push('target_personality = ?'); setParams.push(target_personality); }
+    if (target_scene !== undefined) { setClauses.push('target_scene = ?'); setParams.push(target_scene); }
+    if (admin_notes !== undefined) { setClauses.push('admin_notes = ?'); setParams.push(admin_notes); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    if (priority !== undefined) { setClauses.push('priority = ?'); setParams.push(priority); }
+
+    if (setClauses.length === 0) return error(res, '没有需要更新的字段');
+
+    setClauses.push("updated_at = CURRENT_TIMESTAMP");
+    setParams.push(feedId);
+
+    await db.prepare(`UPDATE script_feeds SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
 
     return success(res, null, '投喂更新成功');
   } catch (err) {
@@ -648,13 +646,13 @@ router.put('/script-feeds/:id', (req, res) => {
 /**
  * DELETE /api/script-feeds/:id - 删除投喂
  */
-router.delete('/script-feeds/:id', (req, res) => {
+router.delete('/script-feeds/:id', async (req, res) => {
   const db = getDB();
   const feedId = req.params.id;
-  const feed = db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(feedId);
+  const feed = await db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(feedId);
   if (!feed) return error(res, '投喂不存在', 404);
 
-  db.prepare('DELETE FROM script_feeds WHERE id = ?').run(feedId);
+  await db.prepare('DELETE FROM script_feeds WHERE id = ?').run(feedId);
   return success(res, null, '投喂已删除');
 });
 
@@ -664,11 +662,11 @@ router.delete('/script-feeds/:id', (req, res) => {
 router.post('/script-feeds/:id/optimize', async (req, res) => {
   const db = getDB();
   const feedId = req.params.id;
-  const feed = db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(feedId);
+  const feed = await db.prepare('SELECT * FROM script_feeds WHERE id = ?').get(feedId);
   if (!feed) return error(res, '投喂不存在', 404);
 
   // 检查是否已有优化结果
-  const existingOptimized = db.prepare('SELECT * FROM ai_scripts WHERE feed_id = ? AND status = 1 LIMIT 5').get(feedId);
+  const existingOptimized = await db.prepare('SELECT * FROM ai_scripts WHERE feed_id = ? AND status = 1 LIMIT 5').get(feedId);
   
   const personalityNames = {
     red: '红色（热情活泼型）',
@@ -770,7 +768,8 @@ ${feed.raw_content}
     }
 
     // 更新投喂状态
-    db.prepare(`
+    const joinedIds = createdIds.join(',');
+    await db.prepare(`
       UPDATE script_feeds SET
         status = 'optimized',
         optimized_content = ?,
@@ -781,12 +780,12 @@ ${feed.raw_content}
     `).run(
       JSON.stringify(optimizedScripts),
       systemPrompt,
-      feedId,
-      createdIds.join(','),
+      joinedIds,
+      joinedIds,
       feedId
     );
 
-    const newScripts = db.prepare('SELECT * FROM ai_scripts WHERE id IN (' + createdIds.join(',') + ')').all();
+    const newScripts = await db.prepare('SELECT * FROM ai_scripts WHERE id IN (' + createdIds.join(',') + ')').all();
 
     return success(res, {
       feedId,
@@ -799,7 +798,7 @@ ${feed.raw_content}
     console.error('[AI优化] 失败:', err);
 
     // 更新状态为优化失败
-    db.prepare("UPDATE script_feeds SET status = 'optimize_failed' WHERE id = ?").run(feedId);
+    await db.prepare("UPDATE script_feeds SET status = 'optimize_failed' WHERE id = ?").run(feedId);
 
     return error(res, 'AI优化失败: ' + err.message + '。可能原因：DeepSeek API不可用或网络问题。', 500);
   }
@@ -808,14 +807,14 @@ ${feed.raw_content}
 /**
  * POST /api/script-feeds/:id/publish - 发布优化后的话术到小程序
  */
-router.post('/script-feeds/:id/publish', (req, res) => {
+router.post('/script-feeds/:id/publish', async (req, res) => {
   const db = getDB();
   const feedId = req.params.id;
 
   // 将该投喂下所有优化话术设为active
-  const result = db.prepare("UPDATE ai_scripts SET status = 1, published_at = datetime('now','localtime') WHERE feed_id = ? AND is_optimized = 1").run(feedId);
+  const result = await db.prepare("UPDATE ai_scripts SET status = 1, published_at = datetime('now','localtime') WHERE feed_id = ? AND is_optimized = 1").run(feedId);
 
-  db.prepare("UPDATE script_feeds SET status = 'published', published_at = datetime('now','localtime') WHERE id = ?").run(feedId);
+  await db.prepare("UPDATE script_feeds SET status = 'published', published_at = datetime('now','localtime') WHERE id = ?").run(feedId);
 
   return success(res, { updatedCount: result.changes }, `已发布${result.changes}条优化话术`);
 });
@@ -932,13 +931,13 @@ router.post('/admin/personality/scripts/feed-and-optimize', async (req, res) => 
       optimize_style || 'natural'  // optimize_style
     );
 
-    const newScript = db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(insertResult.lastInsertRowid);
+    const newScript = await db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(insertResult.lastInsertRowid);
 
     console.log(`[FeedAndOptimize] ✅ 话术已保存 ID=${insertResult.lastInsertRowid}`);
 
     return success(res, {
       ...newScript,
-      improvement_summary: optimizedData.improvement_summ
+      improvement_summary: optimizedData.improvement_summary
     }, '话术已投喂并AI优化完成');
 
   } catch(err) {
@@ -953,7 +952,7 @@ router.post('/admin/personality/scripts/feed-and-optimize', async (req, res) => 
         VALUES (?, ?, ?, ?, ?, 1, 0, 'admin_feed', 0, 0, ?, datetime('now','localtime'), datetime('now','localtime'))
       `).run('personality_based', personality_type, scenario, raw_content, tips || '', raw_content);
       
-      return success(res, db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(insertResult.lastInsertRowid), '话术已保存（AI优化未生效，使用原始内容）');
+      return success(res, await db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(insertResult.lastInsertRowid), '话术已保存（AI优化未生效，使用原始内容）');
     } catch(e2) {
       return error(res, '保存失败: ' + e2.message, 500);
     }
@@ -970,7 +969,7 @@ router.post('/admin/personality/scripts/:id/optimize', async (req, res) => {
     const scriptId = req.params.id;
     const { optimize_style } = req.body;
 
-    const existing = db.prepare('SELECT * FROM ai_scripts WHERE id = ? AND status = 1').get(scriptId);
+    const existing = await db.prepare('SELECT * FROM ai_scripts WHERE id = ? AND status = 1').get(scriptId);
     if (!existing) return error(res, '话术不存在', 404);
 
     const {
@@ -986,18 +985,18 @@ router.post('/admin/personality/scripts/:id/optimize', async (req, res) => {
     );
 
     if (result && result.content) {
-      db.prepare(`
+      await db.prepare(`
         UPDATE ai_scripts SET
           script_content = ?,
-          tips = COALESCE(?, tips),
+          tips = ?,
           is_optimized = 1,
           optimize_count = COALESCE(optimize_count, 0) + 1,
           updated_at = datetime('now','localtime')
         WHERE id = ?
-      `).run(result.content, result.tips, existing.tips, scriptId);
+      `).run(result.content, result.tips || existing.tips, scriptId);
 
       return success(res, {
-        ...db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(scriptId),
+        ...await db.prepare('SELECT * FROM ai_scripts WHERE id = ?').get(scriptId),
         improvement_summary: '二次优化完成，话术已更新'
       }, 'AI二次优化成功');
     } else {
@@ -1013,20 +1012,20 @@ router.post('/admin/personality/scripts/:id/optimize', async (req, res) => {
 // ==================== 商学院概览路由（SchoolManagementNew 调用）====================
 
 // GET /api/school/overview/stats - 商学院总览统计（fetchSchoolStats）
-router.get('/overview/stats', (req, res) => {
+router.get('/overview/stats', async (req, res) => {
   const db = getDB();
 
   // 统计各模块数量（使用实际存在的表）
-  const courseCount = db.prepare("SELECT COUNT(*) as c FROM school_courses WHERE status = 1").get().c;
-  const bookCount = db.prepare("SELECT COUNT(*) as c FROM learning_books WHERE status = 'available'").get().c;
-  const scriptCount = db.prepare("SELECT COUNT(*) as c FROM ai_scripts WHERE status = 1").get().c;
+  const courseCount = await db.prepare("SELECT COUNT(*) as c FROM school_courses WHERE status = 1").get().c;
+  const bookCount = await db.prepare("SELECT COUNT(*) as c FROM learning_books WHERE status = 'available'").get().c;
+  const scriptCount = await db.prepare("SELECT COUNT(*) as c FROM ai_scripts WHERE status = 1").get().c;
 
   // 总学习记录数
   var totalLearningRecords = 0;
-  try { totalLearningRecords = db.prepare("SELECT COUNT(*) as c FROM study_progress").get().c; } catch(e) {}
+  try { totalLearningRecords = await db.prepare("SELECT COUNT(*) as c FROM study_progress").get().c; } catch(e) {}
 
   // 视频数量(从school_courses中筛选course_type=1的视频)
-  const videoCount = db.prepare("SELECT COUNT(*) as c FROM school_courses WHERE course_type = 1 AND status = 1").get().c;
+  const videoCount = await db.prepare("SELECT COUNT(*) as c FROM school_courses WHERE course_type = 1 AND status = 1").get().c;
 
   return success(res, {
     totalStudents: 0,
@@ -1042,7 +1041,7 @@ router.get('/overview/stats', (req, res) => {
 });
 
 // GET /api/school/overview/recent-activities - 最新学习活动
-router.get('/overview/recent-activities', (req, res) => {
+router.get('/overview/recent-activities', async (req, res) => {
   const db = getDB();
   const limit = parseInt(req.query.limit) || 10;
 
@@ -1065,7 +1064,7 @@ router.get('/overview/recent-activities', (req, res) => {
 });
 
 // GET /api/school/overview/popular-content - 热门内容
-router.get('/overview/popular-content', (req, res) => {
+router.get('/overview/popular-content', async (req, res) => {
   const db = getDB();
   const limit = parseInt(req.query.limit) || 5;
 
@@ -1089,17 +1088,17 @@ router.get('/overview/popular-content', (req, res) => {
 });
 
 // GET /api/school/overview/reminders - 学习提醒
-router.get('/overview/reminders', (req, res) => {
+router.get('/overview/reminders', async (req, res) => {
   return success(res, []);
 });
 
 // GET /api/school/overview/next-recommendation - 推荐内容
-router.get('/overview/next-recommendation', (req, res) => {
+router.get('/overview/next-recommendation', async (req, res) => {
   const db = getDB();
   const limit = parseInt(req.query.limit) || 3;
 
-  const books = db.prepare("SELECT id, title, author, cover_url as coverUrl FROM learning_books WHERE status = 'available' ORDER BY RANDOM() LIMIT ?").all(limit);
-  const courses = db.prepare("SELECT id, course_title as title, cover_image as coverImage FROM school_courses WHERE status = 1 ORDER BY RANDOM() LIMIT ?").all(limit);
+  const books = await db.prepare("SELECT id, title, author, cover_url as coverUrl FROM learning_books WHERE status = 'available' ORDER BY RANDOM() LIMIT ?").all(limit);
+  const courses = await db.prepare("SELECT id, course_title as title, cover_image as coverImage FROM school_courses WHERE status = 1 ORDER BY RANDOM() LIMIT ?").all(limit);
 
   return success(res, { books, courses });
 });
@@ -1107,7 +1106,7 @@ router.get('/overview/next-recommendation', (req, res) => {
 // ==================== 学习统计路由（第三轮补全）====================
 
 // GET /api/school/statistics/learning - 学习统计
-router.get('/statistics/learning', (req, res) => {
+router.get('/statistics/learning', async (req, res) => {
   const db = getDB();
 
   try {
@@ -1140,7 +1139,7 @@ router.get('/statistics/learning', (req, res) => {
 });
 
 // GET /api/school/statistics/weekly-progress - 周进度
-router.get('/statistics/weekly-progress', (req, res) => {
+router.get('/statistics/weekly-progress', async (req, res) => {
   const db = getDB();
 
   try {
@@ -1159,7 +1158,7 @@ router.get('/statistics/weekly-progress', (req, res) => {
 });
 
 // GET /api/school/statistics/category-progress - 分类进度
-router.get('/statistics/category-progress', (req, res) => {
+router.get('/statistics/category-progress', async (req, res) => {
   const db = getDB();
 
   try {
@@ -1173,7 +1172,7 @@ router.get('/statistics/category-progress', (req, res) => {
     // 使用learning_books的category字段统计
     const progress = categories.map(cat => {
       try {
-        const count = db.prepare("SELECT COUNT(*) as c FROM learning_books WHERE category = ? AND status = 'available'").get(cat.key).c;
+        const count = await db.prepare("SELECT COUNT(*) as c FROM learning_books WHERE category = ? AND status = 'available'").get(cat.key).c;
         return { ...cat, completedCount: count };
       } catch(e2) {
         return { ...cat, completedCount: 0 };
@@ -1197,17 +1196,17 @@ router.get('/statistics/category-progress', (req, res) => {
  * GET /api/admin/action-log/overview
  * 全部代理商行动日志总览
  */
-router.get('/admin/action-log/overview', (req, res) => {
+router.get('/admin/action-log/overview', async (req, res) => {
   const db = getDB();
   try {
-    const activeUsers30d = (db.prepare(`SELECT COUNT(DISTINCT user_id) as c FROM action_daily_logs WHERE log_date >= date('now','-30 days')`).get() || {}).c || 0;
-    const monthCheckins = (db.prepare(`SELECT COUNT(*) as c FROM action_daily_logs WHERE strftime('%Y-%m',log_date)=strftime('%Y-%m','now')`).get() || {}).c || 0;
-    const todayCheckins = (db.prepare(`SELECT COUNT(DISTINCT user_id) as c FROM action_daily_logs WHERE log_date=date('now','localtime')`).get() || {}).c || 0;
-    const annualTotal = (db.prepare(`SELECT COUNT(*) as c FROM action_goals WHERE goal_type='annual'`).get() || {}).c || 0;
-    const annualCompleted = (db.prepare(`SELECT COUNT(*) as c FROM action_goals WHERE goal_type='annual' AND (status=1 OR progress>=100)`).get() || {}).c || 0;
-    const monthlyGoalTotal = (db.prepare(`SELECT COUNT(*) as c FROM action_goals WHERE goal_type='monthly'`).get() || {}).c || 0;
-    const commitmentTotal = (db.prepare(`SELECT COUNT(*) as c FROM action_commitments`).get() || {}).c || 0;
-    const activeCommitments = (db.prepare(`SELECT COUNT(*) as c FROM action_commitments WHERE status=1`).get() || {}).c || 0;
+    const activeUsers30d = await (db.prepare(`SELECT COUNT(DISTINCT user_id) as c FROM action_daily_logs WHERE log_date >= date('now','-30 days')`).get() || {}).c || 0;
+    const monthCheckins = await (db.prepare(`SELECT COUNT(*) as c FROM action_daily_logs WHERE strftime('%Y-%m',log_date)=strftime('%Y-%m','now')`).get() || {}).c || 0;
+    const todayCheckins = await (db.prepare(`SELECT COUNT(DISTINCT user_id) as c FROM action_daily_logs WHERE log_date=date('now','localtime')`).get() || {}).c || 0;
+    const annualTotal = await (db.prepare(`SELECT COUNT(*) as c FROM action_goals WHERE goal_type='annual'`).get() || {}).c || 0;
+    const annualCompleted = await (db.prepare(`SELECT COUNT(*) as c FROM action_goals WHERE goal_type='annual' AND (status=1 OR progress>=100)`).get() || {}).c || 0;
+    const monthlyGoalTotal = await (db.prepare(`SELECT COUNT(*) as c FROM action_goals WHERE goal_type='monthly'`).get() || {}).c || 0;
+    const commitmentTotal = await (db.prepare(`SELECT COUNT(*) as c FROM action_commitments`).get() || {}).c || 0;
+    const activeCommitments = await (db.prepare(`SELECT COUNT(*) as c FROM action_commitments WHERE status=1`).get() || {}).c || 0;
 
     return success(res, {
       activeUsers30d,
@@ -1224,7 +1223,7 @@ router.get('/admin/action-log/overview', (req, res) => {
  * GET /api/admin/action-log/users
  * 获取所有有行动日志记录的代理商列表（分页）
  */
-router.get('/admin/action-log/users', (req, res) => {
+router.get('/admin/action-log/users', async (req, res) => {
   const db = getDB();
   try {
     const { page=1, pageSize=20, keyword='', sortBy='lastActive' } = req.query;
@@ -1273,7 +1272,7 @@ router.get('/admin/action-log/users', (req, res) => {
 
     // 计算连续打卡
     users.forEach(u => {
-      var checkinDates = db.prepare("SELECT DISTINCT log_date d FROM action_daily_logs WHERE user_id=? ORDER BY d DESC LIMIT 60").all(u.user_id);
+      var checkinDates = await db.prepare("SELECT DISTINCT log_date d FROM action_daily_logs WHERE user_id=? ORDER BY d DESC LIMIT 60").all(u.user_id);
       var streak = 0; var today = new Date().toISOString().split('T')[0]; var checkDate = today;
       for (var i=0;i<365;i++) {
         var found = false;
@@ -1293,21 +1292,21 @@ router.get('/admin/action-log/users', (req, res) => {
  * GET /api/admin/action-log/user/:userId
  * 获取某个代理商的行动日志完整数据
  */
-router.get('/admin/action-log/user/:userId', (req, res) => {
+router.get('/admin/action-log/user/:userId', async (req, res) => {
   const db = getDB();
   try {
     const userId = req.params.userId;
 
     // 用户基本信息
-    const user = db.prepare('SELECT id, username, real_name, phone, agent_level, avatar_url FROM users WHERE id=?').get(userId);
+    const user = await db.prepare('SELECT id, username, real_name, phone, agent_level, avatar_url FROM users WHERE id=?').get(userId);
     if (!user) return error(res, '用户不存在', 404);
 
     // 年度目标
-    const annualGoals = db.prepare("SELECT * FROM action_goals WHERE user_id=? AND goal_type='annual' ORDER BY created_at DESC").all(userId);
+    const annualGoals = await db.prepare("SELECT * FROM action_goals WHERE user_id=? AND goal_type='annual' ORDER BY created_at DESC").all(userId);
 
     // 月度目标（当前月）
     const currentMonth = new Date().toISOString().slice(0,7);
-    const monthlyGoals = db.prepare("SELECT * FROM action_goals WHERE user_id=? AND goal_type='monthly' AND start_date LIKE ? ORDER BY priority").all(userId, currentMonth+'%');
+    const monthlyGoals = await db.prepare("SELECT * FROM action_goals WHERE user_id=? AND goal_type='monthly' AND start_date LIKE ? ORDER BY priority").all(userId, currentMonth+'%');
 
     // 最近7天日志
     const recentLogs = db.prepare(
@@ -1318,10 +1317,10 @@ router.get('/admin/action-log/user/:userId', (req, res) => {
     const todayLog = db.prepare(
       "SELECT * FROM action_daily_logs WHERE user_id=? AND log_date=date('now','localtime')"
     ).get(userId);
-    const todayItems = todayLog ? db.prepare('SELECT * FROM action_daily_items WHERE user_id=? AND log_date=? ORDER BY priority, id').all(userId, todayLog.log_date) : [];
+    const todayItems = await todayLog ? db.prepare('SELECT * FROM action_daily_items WHERE user_id=? AND log_date=? ORDER BY priority, id').all(userId, todayLog.log_date) : [];
 
     // 承诺书
-    const commitments = db.prepare('SELECT * FROM action_commitments WHERE user_id=? ORDER BY created_at DESC').all(userId);
+    const commitments = await db.prepare('SELECT * FROM action_commitments WHERE user_id=? ORDER BY created_at DESC').all(userId);
 
     // 月度追踪数据（最近6个月）
     const trackingData = db.prepare(
@@ -1330,9 +1329,9 @@ router.get('/admin/action-log/user/:userId', (req, res) => {
 
     // 统计概要
     const stats = {
-      totalCheckins: (db.prepare('SELECT COUNT(DISTINCT log_date) as c FROM action_daily_logs WHERE user_id=?').get(userId)||{}).c||0,
-      avgScore: (db.prepare('SELECT AVG(score) as s FROM action_daily_logs WHERE user_id=? AND score>0').get(userId)||{}).s||0,
-      thisMonthCheckins: (db.prepare("SELECT COUNT(DISTINCT log_date) as c FROM action_daily_logs WHERE user_id=? AND strftime('%Y-%m',log_date)=strftime('%Y-%m','now')").get(userId)||{}).c||0,
+      totalCheckins: (await db.prepare('SELECT COUNT(DISTINCT log_date) as c FROM action_daily_logs WHERE user_id=?').get(userId)||{}).c||0,
+      avgScore: (await db.prepare('SELECT AVG(score) as s FROM action_daily_logs WHERE user_id=? AND score>0').get(userId)||{}).s||0,
+      thisMonthCheckins: (await db.prepare("SELECT COUNT(DISTINCT log_date) as c FROM action_daily_logs WHERE user_id=? AND strftime('%Y-%m',log_date)=strftime('%Y-%m','now')").get(userId)||{}).c||0,
     };
 
     return success(res, { user, stats, annualGoals, monthlyGoals, recentLogs, todayLog, todayItems, commitments, trackingData });
@@ -1343,7 +1342,7 @@ router.get('/admin/action-log/user/:userId', (req, res) => {
  * GET /api/admin/action-log/export
  * 导出全部代理商行动日志汇总（CSV格式）
  */
-router.get('/admin/action-log/export', (req, res) => {
+router.get('/admin/action-log/export', async (req, res) => {
   const db = getDB();
   try {
     const users = db.prepare(`

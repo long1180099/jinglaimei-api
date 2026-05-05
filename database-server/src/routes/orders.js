@@ -17,7 +17,7 @@ function generateOrderNo() {
 }
 
 // GET /api/orders - 订单列表
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, keyword, status, userId, startDate, endDate } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -34,7 +34,7 @@ router.get('/', (req, res) => {
   if (endDate) { where.push("o.order_time <= ?"); params.push(endDate + ' 23:59:59'); }
   
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM orders o LEFT JOIN users u ON o.user_id = u.id ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM orders o LEFT JOIN users u ON o.user_id = u.id ${whereClause}`).get(...params).cnt;
   const orders = db.prepare(`
     SELECT o.*, u.username, u.phone, u.real_name, u.agent_level
     FROM orders o
@@ -48,14 +48,14 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/orders/stats - 订单统计
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
-  const total = db.prepare('SELECT COUNT(*) as cnt FROM orders').get().cnt;
-  const pending = db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status = 0').get().cnt;
-  const processing = db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status IN (1, 2)').get().cnt;
-  const completed = db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status = 3').get().cnt;
-  const todayAmount = db.prepare(`SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE date(order_time) = date('now') AND order_status != 4`).get().val;
-  const monthAmount = db.prepare(`SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE strftime('%Y-%m', order_time) = strftime('%Y-%m','now') AND order_status != 4`).get().val;
+  const total = await db.prepare('SELECT COUNT(*) as cnt FROM orders').get().cnt;
+  const pending = await db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status = 0').get().cnt;
+  const processing = await db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status IN (1, 2)').get().cnt;
+  const completed = await db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status = 3').get().cnt;
+  const todayAmount = await db.prepare(`SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE date(order_time) = date('now') AND order_status != 4`).get().val;
+  const monthAmount = await db.prepare(`SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE strftime('%Y-%m', order_time) = strftime('%Y-%m','now') AND order_status != 4`).get().val;
   
   // 最近7天趋势
   const trend = db.prepare(`
@@ -68,7 +68,7 @@ router.get('/stats', (req, res) => {
 });
 
 // GET /api/orders/:id - 订单详情
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDB();
   const order = db.prepare(`
     SELECT o.*, u.username, u.phone as user_phone, u.real_name, u.agent_level, u.balance
@@ -83,13 +83,13 @@ router.get('/:id', (req, res) => {
     WHERE oi.order_id = ?
   `).all(req.params.id);
   
-  const commission = db.prepare('SELECT * FROM commissions WHERE order_id = ?').all(req.params.id);
+  const commission = await db.prepare('SELECT * FROM commissions WHERE order_id = ?').all(req.params.id);
   
   return success(res, { ...order, items, commission });
 });
 
 // POST /api/orders - 创建订单
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   const { user_id, items, receiver_name, receiver_phone, receiver_address, shipping_fee = 0, discount_amount = 0, payment_method } = req.body;
   if (!user_id || !items?.length) return error(res, '用户ID和商品列表不能为空');
@@ -99,14 +99,14 @@ router.post('/', (req, res) => {
     const orderItems = [];
     
     // 获取用户等级
-    const orderUser = db.prepare('SELECT agent_level FROM users WHERE id = ?').get(user_id);
+    const orderUser = await db.prepare('SELECT agent_level FROM users WHERE id = ?').get(user_id);
     const userLevel = orderUser ? (orderUser.agent_level || 1) : 1;
     
     const priceFieldMap = { 1: 'retail_price', 2: 'vip_price', 3: 'agent_price', 4: 'wholesale_price', 5: 'chief_price', 6: 'division_price' };
     const priceField = priceFieldMap[userLevel] || 'retail_price';
     
     for (const item of items) {
-      const product = db.prepare('SELECT * FROM products WHERE id = ? AND status = 1').get(item.product_id);
+      const product = await db.prepare('SELECT * FROM products WHERE id = ? AND status = 1').get(item.product_id);
       if (!product) throw new Error(`商品不存在: ${item.product_id}`);
       if ((product.stock_quantity - product.sold_quantity) < item.quantity) throw new Error(`商品库存不足: ${product.product_name}`);
       
@@ -135,7 +135,7 @@ router.post('/', (req, res) => {
         .run(quantity, product.id);
       
       // 同步扣减库存管理表（inventory_stock）
-      const invStock = db.prepare("SELECT id, quantity FROM inventory_stock WHERE product_id = ?").get(product.id);
+      const invStock = await db.prepare("SELECT id, quantity FROM inventory_stock WHERE product_id = ?").get(product.id);
       if (invStock) {
         db.prepare("UPDATE inventory_stock SET quantity = quantity - ?, total_out = total_out + ?, updated_at = datetime('now','localtime') WHERE id = ?")
           .run(quantity, quantity, invStock.id);
@@ -162,10 +162,10 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/orders/:id/status - 更新订单状态
-router.put('/:id/status', (req, res) => {
+router.put('/:id/status', async (req, res) => {
   const db = getDB();
   const { status, remark, shippingNo } = req.body;
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  const order = await db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
   if (!order) return error(res, '订单不存在', 404);
   
   const updateOrder = db.transaction(() => {
@@ -188,13 +188,13 @@ router.put('/:id/status', (req, res) => {
       extraFields = ", cancel_time = datetime('now','localtime')";
       
       // 恢复 products 表的 sold_quantity
-      const orderItems = db.prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?").all(order.id);
+      const orderItems = await db.prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?").all(order.id);
       for (const item of orderItems) {
         db.prepare("UPDATE products SET sold_quantity = MAX(0, sold_quantity - ?), updated_at = datetime('now','localtime') WHERE id = ?")
           .run(item.quantity, item.product_id);
         
         // 同步恢复 inventory_stock
-        const invStock = db.prepare("SELECT id, quantity FROM inventory_stock WHERE product_id = ?").get(item.product_id);
+        const invStock = await db.prepare("SELECT id, quantity FROM inventory_stock WHERE product_id = ?").get(item.product_id);
         if (invStock) {
           db.prepare("UPDATE inventory_stock SET quantity = quantity + ?, total_out = MAX(0, total_out - ?), updated_at = datetime('now','localtime') WHERE id = ?")
             .run(item.quantity, item.quantity, invStock.id);

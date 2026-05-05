@@ -32,7 +32,7 @@ function verifyUser(req, res, callback) {
 /**
  * GET /api/mp/videos/categories - 获取视频分类列表
  */
-router.get('/videos/categories', (req, res) => {
+router.get('/videos/categories', async (req, res) => {
   ensureTables();
   const db = getDB();
   const categories = db.prepare(`
@@ -51,7 +51,7 @@ router.get('/videos/categories', (req, res) => {
  * GET /api/mp/videos - 视频列表（权限过滤+分页）
  * 支持: 分类筛选、搜索、排序、系列课筛选、推荐Tab等
  */
-router.get('/videos', (req, res) => {
+router.get('/videos', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -115,7 +115,7 @@ router.get('/videos', (req, res) => {
     const whereClause = 'WHERE ' + where.join(' AND ');
 
     // 统计总数
-    const total = db.prepare(`SELECT COUNT(*) as cnt FROM videos v ${whereClause}`).get(...params).cnt;
+    const total = await db.prepare(`SELECT COUNT(*) as cnt FROM videos v ${whereClause}`).get(...params).cnt;
 
     // 排序
     const allowedSort = ['created_at', 'view_count', 'like_count', 'purchase_count', 'duration'];
@@ -216,7 +216,7 @@ function formatVideoForMP(v) {
 /**
  * GET /api/mp/videos/:id - 视频详情
  */
-router.get('/videos/:id', (req, res) => {
+router.get('/videos/:id', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -267,13 +267,13 @@ router.get('/videos/:id', (req, res) => {
 /**
  * POST /api/mp/videos/:id/buy - 购买视频（代理商余额支付）
  */
-router.post('/videos/:id/buy', (req, res) => {
+router.post('/videos/:id/buy', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
     const videoId = req.params.id;
 
-    const video = db.prepare('SELECT * FROM videos WHERE id = ? AND status = 1').get(videoId);
+    const video = await db.prepare('SELECT * FROM videos WHERE id = ? AND status = 1').get(videoId);
     if (!video) return error(res, '视频不存在或已下架', 404);
 
     const price = parseFloat(video.price) || 0;
@@ -286,7 +286,7 @@ router.post('/videos/:id/buy', (req, res) => {
     if (existingOrder) return success(res, { orderId: existingOrder.id }, '您已购买过此视频');
 
     // 查询用户余额
-    const user = db.prepare('SELECT id, balance FROM users WHERE id = ?').get(decoded.id);
+    const user = await db.prepare('SELECT id, balance FROM users WHERE id = ?').get(decoded.id);
     if (!user) return error(res, '用户信息异常');
     if ((user.balance || 0) < price) return error(res, `余额不足，当前余额 ¥${user.balance || 0}，需要 ¥${price}`);
 
@@ -295,14 +295,14 @@ router.post('/videos/:id/buy', (req, res) => {
 
     const transaction = db.transaction(() => {
       // 扣减余额
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(price, decoded.id);
+      await db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(price, decoded.id);
       // 创建订单
       db.prepare(`
         INSERT INTO video_orders (order_no, user_id, target_type, target_id, target_title, amount, payment_method, status, paid_at)
         VALUES (?, ?, 'video', ?, ?, ?, 'balance', 'paid', datetime('now','localtime'))
       `).run(orderNo, decoded.id, videoId, video.title, price);
       // 增加购买计数
-      db.prepare('UPDATE videos SET purchase_count = purchase_count + 1 WHERE id = ?').run(videoId);
+      await db.prepare('UPDATE videos SET purchase_count = purchase_count + 1 WHERE id = ?').run(videoId);
     });
 
     try {
@@ -318,7 +318,7 @@ router.post('/videos/:id/buy', (req, res) => {
 /**
  * POST /api/mp/videos/:id/progress - 保存播放进度
  */
-router.post('/videos/:id/progress', (req, res) => {
+router.post('/videos/:id/progress', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -326,7 +326,7 @@ router.post('/videos/:id/progress', (req, res) => {
     const { progress_seconds, total_seconds, progress_percent } = req.body;
 
     // 验证视频存在
-    const video = db.prepare('SELECT id, duration FROM videos WHERE id = ?').get(videoId);
+    const video = await db.prepare('SELECT id, duration FROM videos WHERE id = ?').get(videoId);
     if (!video) return error(res, '视频不存在', 404);
 
     const pSeconds = parseInt(progress_seconds) || 0;
@@ -360,7 +360,7 @@ router.post('/videos/:id/progress', (req, res) => {
     );
 
     // 首次观看时增加视频view_count
-    const existingProgress = db.prepare('SELECT id FROM video_progress WHERE user_id = ? AND video_id = ?').get(decoded.id, videoId);
+    const existingProgress = await db.prepare('SELECT id FROM video_progress WHERE user_id = ? AND video_id = ?').get(decoded.id, videoId);
     // view_count由前端首次进入播放页触发一次即可，这里不做自动累加
 
     return success(res, {
@@ -376,7 +376,7 @@ router.post('/videos/:id/progress', (req, res) => {
 /**
  * GET /api/mp/videos/series-list - 系列课列表
  */
-router.get('/videos/series-list', (req, res) => {
+router.get('/videos/series-list', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -393,7 +393,7 @@ router.get('/videos/series-list', (req, res) => {
     }
 
     const whereClause = 'WHERE ' + where.join(' AND ');
-    const total = db.prepare(`SELECT COUNT(*) as cnt FROM video_series s ${whereClause}`).get(...params).cnt;
+    const total = await db.prepare(`SELECT COUNT(*) as cnt FROM video_series s ${whereClause}`).get(...params).cnt;
 
     const seriesList = db.prepare(`
       SELECT s.*,
@@ -437,7 +437,7 @@ router.get('/videos/series-list', (req, res) => {
 /**
  * GET /api/mp/videos/series-list/:id - 系列课详情（含剧集列表+购买状态）
  */
-router.get('/videos/series-list/:id', (req, res) => {
+router.get('/videos/series-list/:id', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -478,13 +478,13 @@ router.get('/videos/series-list/:id', (req, res) => {
 /**
  * POST /api/mp/videos/series-list/:id/buy - 购买系列课
  */
-router.post('/videos/series-list/:id/buy', (req, res) => {
+router.post('/videos/series-list/:id/buy', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
     const seriesId = req.params.id;
 
-    const series = db.prepare('SELECT * FROM video_series WHERE id = ? AND status = 1').get(seriesId);
+    const series = await db.prepare('SELECT * FROM video_series WHERE id = ? AND status = 1').get(seriesId);
     if (!series) return error(res, '系列课不存在或已下架', 404);
 
     const price = parseFloat(series.price) || 0;
@@ -497,7 +497,7 @@ router.post('/videos/series-list/:id/buy', (req, res) => {
     if (existing) return success(res, { orderId: existing.id }, '您已购买过此系列课');
 
     // 查余额
-    const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(decoded.id);
+    const user = await db.prepare('SELECT balance FROM users WHERE id = ?').get(decoded.id);
     if (!user || (user.balance || 0) < price) {
       return error(res, `余额不足，需要 ¥${price}，当前余额 ¥${user?.balance || 0}`);
     }
@@ -505,12 +505,12 @@ router.post('/videos/series-list/:id/buy', (req, res) => {
     const orderNo = 'SER' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
 
     const transaction = db.transaction(() => {
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(price, decoded.id);
+      await db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(price, decoded.id);
       db.prepare(`
         INSERT INTO video_orders (order_no, user_id, target_type, target_id, target_title, amount, payment_method, status, paid_at)
         VALUES (?, ?, 'series', ?, ?, ?, 'balance', 'paid', datetime('now','localtime'))
       `).run(orderNo, decoded.id, seriesId, series.title, price);
-      db.prepare('UPDATE video_series SET purchase_count = purchase_count + 1, student_count = student_count + 1 WHERE id = ?').run(seriesId);
+      await db.prepare('UPDATE video_series SET purchase_count = purchase_count + 1, student_count = student_count + 1 WHERE id = ?').run(seriesId);
     });
 
     try {
@@ -528,7 +528,7 @@ router.post('/videos/series-list/:id/buy', (req, res) => {
  * GET /api/mp/videos/learning-center - 我的学习中心
  * 包含: 正在学习、已完成、收藏推荐、学习统计
  */
-router.get('/videos/learning-center', (req, res) => {
+router.get('/videos/learning-center', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -631,7 +631,7 @@ function calculateStudyStreak(db, userId) {
 /**
  * GET /api/mp/videos/my-notes - 我的笔记列表
  */
-router.get('/videos/my-notes', (req, res) => {
+router.get('/videos/my-notes', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -655,7 +655,7 @@ router.get('/videos/my-notes', (req, res) => {
 /**
  * POST /api/mp/videos/:id/notes - 保存笔记
  */
-router.post('/videos/:id/notes', (req, res) => {
+router.post('/videos/:id/notes', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -677,7 +677,7 @@ router.post('/videos/:id/notes', (req, res) => {
 /**
  * GET /api/mp/videos/search - 视频搜索
  */
-router.get('/videos/search', (req, res) => {
+router.get('/videos/search', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();

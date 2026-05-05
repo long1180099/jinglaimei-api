@@ -9,26 +9,24 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const { getDB } = require('../utils/db');
 const { success, error } = require('../utils/response');
-const { uploadFile, deleteFile, toFullUrl, useCOS } = require('../utils/cosUpload');
 
 // ==================== 图片上传配置 ====================
 const PRODUCT_IMAGE_DIR = path.join(__dirname, '../../data/uploads/products');
 
-// 确保商品图片目录存在（本地存储时需要）
+// 确保商品图片目录存在
 if (!fs.existsSync(PRODUCT_IMAGE_DIR)) {
   fs.mkdirSync(PRODUCT_IMAGE_DIR, { recursive: true });
 }
 
-// multer 存储：COS 用内存存储，本地用磁盘存储
-const imageStorage = useCOS
-  ? multer.memoryStorage()
-  : multer.diskStorage({
-      destination: (_req, _file, cb) => cb(null, PRODUCT_IMAGE_DIR),
-      filename: (_req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `${uuidv4()}${ext}`);
-      }
-    });
+// multer 存储
+const imageStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, PRODUCT_IMAGE_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const filename = `${uuidv4()}${ext}`;
+    cb(null, filename);
+  }
+});
 
 // 图片文件过滤（仅允许常见图片格式）
 const imageFilter = (_req, file, cb) => {
@@ -45,7 +43,7 @@ const uploadImage = multer({
 });
 
 // GET /api/products - 商品列表
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, keyword, status, categoryId, isHot } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -61,7 +59,7 @@ router.get('/', (req, res) => {
   if (isHot !== undefined && isHot !== '') { where.push('p.is_hot = ?'); params.push(parseInt(isHot)); }
   
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM products p ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM products p ${whereClause}`).get(...params).cnt;
   const products = db.prepare(`
     SELECT p.*, c.category_name,
            (p.stock_quantity - p.sold_quantity) as available_stock
@@ -76,25 +74,25 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/products/stats - 商品统计
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
-  const total = db.prepare('SELECT COUNT(*) as cnt FROM products').get().cnt;
-  const active = db.prepare('SELECT COUNT(*) as cnt FROM products WHERE status = 1').get().cnt;
-  const lowStock = db.prepare('SELECT COUNT(*) as cnt FROM products WHERE (stock_quantity - sold_quantity) <= min_stock_alert AND status = 1').get().cnt;
-  const totalSales = db.prepare('SELECT COALESCE(SUM(sold_quantity * agent_price), 0) as val FROM products').get().val;
+  const total = await db.prepare('SELECT COUNT(*) as cnt FROM products').get().cnt;
+  const active = await db.prepare('SELECT COUNT(*) as cnt FROM products WHERE status = 1').get().cnt;
+  const lowStock = await db.prepare('SELECT COUNT(*) as cnt FROM products WHERE (stock_quantity - sold_quantity) <= min_stock_alert AND status = 1').get().cnt;
+  const totalSales = await db.prepare('SELECT COALESCE(SUM(sold_quantity * agent_price), 0) as val FROM products').get().val;
   
   return success(res, { total, active, lowStock, totalSales });
 });
 
 // GET /api/products/categories - 商品分类
-router.get('/categories', (req, res) => {
+router.get('/categories', async (req, res) => {
   const db = getDB();
-  const categories = db.prepare('SELECT * FROM product_categories WHERE status = 1 ORDER BY sort_order').all();
+  const categories = await db.prepare('SELECT * FROM product_categories WHERE status = 1 ORDER BY sort_order').all();
   return success(res, categories);
 });
 
 // GET /api/products/:id - 商品详情
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDB();
   const product = db.prepare(`
     SELECT p.*, c.category_name FROM products p
@@ -133,7 +131,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/products - 新增商品
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   const { product_code, product_name, category_id, brand, retail_price, agent_price, vip_price, partner_price,
           wholesale_price, chief_price, division_price, cost_price,
@@ -141,10 +139,10 @@ router.post('/', (req, res) => {
           status, is_hot, is_recommend, sort_order, commission_rate } = req.body;
   if (!product_code || !product_name || !category_id) return error(res, '商品编码、名称、分类不能为空');
   if (!retail_price) return error(res, '零售价不能为空');
-
+  
   // 确保 commission_rate 列存在（兼容旧数据库）
-  try { db.prepare('ALTER TABLE products ADD COLUMN commission_rate REAL DEFAULT 0').run(); } catch(e) {}
-
+  try { await db.prepare('ALTER TABLE products ADD COLUMN commission_rate REAL DEFAULT 0').run(); } catch(e) {}
+  
   try {
     const result = db.prepare(`
       INSERT INTO products (product_code, product_name, category_id, brand, retail_price, agent_price, vip_price, partner_price,
@@ -164,10 +162,10 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/products/:id - 更新商品
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = getDB();
   // 确保 commission_rate 列存在（兼容旧数据库）
-  try { db.prepare('ALTER TABLE products ADD COLUMN commission_rate REAL DEFAULT 0').run(); } catch(e) {}
+  try { await db.prepare('ALTER TABLE products ADD COLUMN commission_rate REAL DEFAULT 0').run(); } catch(e) {}
   
   const fields = ['product_name', 'retail_price', 'agent_price', 'vip_price', 'partner_price', 'stock_quantity',
                   'min_stock_alert', 'description', 'status', 'is_hot', 'is_recommend', 'sort_order', 'main_image',
@@ -186,12 +184,12 @@ router.put('/:id', (req, res) => {
   updates.push("updated_at = datetime('now','localtime')");
   params.push(req.params.id);
   
-  db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  await db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
   return success(res, null, '更新成功');
 });
 
 // PUT /api/products/:id/stock - 更新库存
-router.put('/:id/stock', (req, res) => {
+router.put('/:id/stock', async (req, res) => {
   const db = getDB();
   const { quantity, type } = req.body; // type: 'add' | 'set'
   if (type === 'set') {
@@ -207,21 +205,11 @@ router.put('/:id/stock', (req, res) => {
 // ==================== 商品图片上传 ====================
 
 // POST /api/products/upload-image - 上传单张商品图片
-router.post('/upload-image', uploadImage.single('image'), async (req, res) => {
+router.post('/upload-image', uploadImage.single('image'), (req, res) => {
   try {
     if (!req.file) return error(res, '请选择要上传的图片');
 
-    let imageUrl;
-
-    if (useCOS && req.file.buffer) {
-      // COS 上传
-      const ext = path.extname(req.file.originalname).toLowerCase();
-      const key = `products/${uuidv4()}${ext}`;
-      imageUrl = await uploadFile(req.file.buffer, key, req.file.mimetype);
-    } else {
-      // 本地磁盘上传
-      imageUrl = `/uploads/products/${req.file.filename}`;
-    }
+    const imageUrl = `/uploads/products/${req.file.filename}`;
 
     success(res, {
       url: imageUrl,
@@ -239,15 +227,14 @@ router.post('/upload-image', uploadImage.single('image'), async (req, res) => {
 const BANNER_DIR = path.join(__dirname, '../../data/uploads/banners');
 if (!fs.existsSync(BANNER_DIR)) fs.mkdirSync(BANNER_DIR, { recursive: true });
 
-const bannerStorage = useCOS
-  ? multer.memoryStorage()
-  : multer.diskStorage({
-      destination: (_req, _file, cb) => cb(null, BANNER_DIR),
-      filename: (_req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `banner_${Date.now()}_${uuidv4().slice(0,8)}${ext}`);
-      }
-    });
+const bannerStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, BANNER_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const filename = `banner_${Date.now()}_${uuidv4().slice(0,8)}${ext}`;
+    cb(null, filename);
+  }
+});
 const uploadBanner = multer({
   storage: bannerStorage,
   fileFilter: imageFilter,
@@ -255,19 +242,11 @@ const uploadBanner = multer({
 });
 
 // POST /api/upload/banner - 轮播图/通用图片上传（前端BannerManagement调用）
-router.post('/upload/banner', uploadBanner.single('image'), async (req, res) => {
+router.post('/upload/banner', uploadBanner.single('image'), (req, res) => {
   try {
     if (!req.file) return error(res, '请选择要上传的图片');
 
-    let fileUrl;
-
-    if (useCOS && req.file.buffer) {
-      const ext = path.extname(req.file.originalname).toLowerCase();
-      const key = `banners/banner_${Date.now()}_${uuidv4().slice(0,8)}${ext}`;
-      fileUrl = await uploadFile(req.file.buffer, key, req.file.mimetype);
-    } else {
-      fileUrl = `/uploads/banners/${req.file.filename}`;
-    }
+    const fileUrl = `/uploads/banners/${req.file.filename}`;
 
     console.log('[BANNER_UPLOAD]', { fileUrl, originalName: req.file.originalname, size: req.file.size });
 
@@ -282,25 +261,15 @@ router.post('/upload/banner', uploadBanner.single('image'), async (req, res) => 
 });
 
 // POST /api/products/upload-images - 批量上传多张商品图片（最多9张）
-router.post('/upload-images', uploadImage.array('images', 9), async (req, res) => {
+router.post('/upload-images', uploadImage.array('images', 9), (req, res) => {
   try {
     if (!req.files || req.files.length === 0) return error(res, '请选择要上传的图片');
 
-    const images = [];
-    for (const file of req.files) {
-      if (useCOS && file.buffer) {
-        const ext = path.extname(file.originalname).toLowerCase();
-        const key = `products/${uuidv4()}${ext}`;
-        const url = await uploadFile(file.buffer, key, file.mimetype);
-        images.push({ url, filename: file.originalname, size: file.size });
-      } else {
-        images.push({
-          url: `/uploads/products/${file.filename}`,
-          filename: file.originalname,
-          size: file.size,
-        });
-      }
-    }
+    const images = req.files.map(file => ({
+      url: `/uploads/products/${file.filename}`,
+      filename: file.originalname,
+      size: file.size,
+    }));
 
     success(res, { images }, `成功上传 ${images.length} 张图片`);
   } catch (err) {
@@ -309,19 +278,19 @@ router.post('/upload-images', uploadImage.array('images', 9), async (req, res) =
 });
 
 // DELETE /api/products/:id - 删除商品（物理删除）
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = getDB();
   
   // 1. 检查商品是否存在
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+  const product = await db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!product) return error(res, '商品不存在', 404);
 
   // 2. 删除关联的订单明细（级联清理）
-  db.prepare('DELETE FROM order_items WHERE product_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM order_items WHERE product_id = ?').run(req.params.id);
 
   // 2.1 删除关联的库存记录（inventory_stock有外键约束，必须先删）
   try {
-    db.prepare('DELETE FROM inventory_stock WHERE product_id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM inventory_stock WHERE product_id = ?').run(req.params.id);
   } catch(e) {
     console.warn('[删除商品] 清理inventory_stock失败:', e.message);
   }
@@ -329,21 +298,17 @@ router.delete('/:id', (req, res) => {
   // 3. 删除关联的物理图片
   try {
     if (product.main_image) {
-      deleteFile(product.main_image); // COS 环境删除 COS 对象
       const mainPath = path.join(__dirname, '../..', product.main_image);
-      if (fs.existsSync(mainPath)) fs.unlinkSync(mainPath); // 本地也清
+      if (fs.existsSync(mainPath)) fs.unlinkSync(mainPath);
     }
     if (product.image_gallery) {
       try {
         const gallery = JSON.parse(product.image_gallery);
         if (Array.isArray(gallery)) {
           gallery.forEach(imgUrl => {
-            if (!imgUrl) return;
-            deleteFile(imgUrl); // COS 环境删除
-            if (imgUrl.startsWith('/uploads/products/')) {
-              const imgPath = path.join(__dirname, '../..', imgUrl);
-              if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-            }
+            if (!imgUrl || !imgUrl.startsWith('/uploads/products/')) return;
+            const imgPath = path.join(__dirname, '../..', imgUrl);
+            if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
           });
         }
       } catch(e) { /* image_gallery解析失败，跳过 */ }
@@ -353,12 +318,12 @@ router.delete('/:id', (req, res) => {
   }
 
   // 4. 从数据库物理删除商品
-  db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
   return success(res, null, '商品删除成功');
 });
 
 // DELETE /api/products/delete-image - 删除商品物理图片文件
-router.delete('/delete-image', (req, res) => {
+router.delete('/delete-image', async (req, res) => {
   try {
     const { imageUrl } = req.body;
     if (!imageUrl) return error(res, '缺少imageUrl参数');
@@ -380,7 +345,7 @@ router.delete('/delete-image', (req, res) => {
 });
 
 // GET /api/product-images - 获取所有已上传的商品图片列表（图片库浏览）
-router.get('/product-images', (req, res) => {
+router.get('/product-images', async (req, res) => {
   try {
     const { page = 1, pageSize = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(pageSize);

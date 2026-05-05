@@ -7,23 +7,23 @@ const { getDB } = require('../utils/db');
 const { success } = require('../utils/response');
 
 // GET /api/dashboard/overview - 总览数据
-router.get('/overview', (req, res) => {
+router.get('/overview', async (req, res) => {
   const db = getDB();
   
-  const totalUsers = db.prepare('SELECT COUNT(*) as cnt FROM users WHERE is_deleted = 0').get().cnt;
-  const newUsersToday = db.prepare("SELECT COUNT(*) as cnt FROM users WHERE date(registered_at) = date('now') AND is_deleted = 0").get().cnt;
-  const newUsersMonth = db.prepare("SELECT COUNT(*) as cnt FROM users WHERE strftime('%Y-%m', registered_at) = strftime('%Y-%m','now') AND is_deleted = 0").get().cnt;
+  const totalUsers = await db.prepare('SELECT COUNT(*) as cnt FROM users WHERE is_deleted = 0').get().cnt;
+  const newUsersToday = await db.prepare("SELECT COUNT(*) as cnt FROM users WHERE date(registered_at) = date('now') AND is_deleted = 0").get().cnt;
+  const newUsersMonth = await db.prepare("SELECT COUNT(*) as cnt FROM users WHERE strftime('%Y-%m', registered_at) = strftime('%Y-%m','now') AND is_deleted = 0").get().cnt;
   
-  const totalOrders = db.prepare('SELECT COUNT(*) as cnt FROM orders').get().cnt;
-  const pendingOrders = db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status = 0').get().cnt;
-  const todayOrders = db.prepare("SELECT COUNT(*) as cnt FROM orders WHERE date(order_time) = date('now')").get().cnt;
+  const totalOrders = await db.prepare('SELECT COUNT(*) as cnt FROM orders').get().cnt;
+  const pendingOrders = await db.prepare('SELECT COUNT(*) as cnt FROM orders WHERE order_status = 0').get().cnt;
+  const todayOrders = await db.prepare("SELECT COUNT(*) as cnt FROM orders WHERE date(order_time) = date('now')").get().cnt;
   
-  const totalSales = db.prepare("SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE order_status = 3").get().val;
-  const todaySales = db.prepare("SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE date(order_time) = date('now') AND order_status != 4").get().val;
-  const monthSales = db.prepare("SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE strftime('%Y-%m', order_time) = strftime('%Y-%m','now') AND order_status != 4").get().val;
+  const totalSales = await db.prepare("SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE order_status = 3").get().val;
+  const todaySales = await db.prepare("SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE date(order_time) = date('now') AND order_status != 4").get().val;
+  const monthSales = await db.prepare("SELECT COALESCE(SUM(actual_amount), 0) as val FROM orders WHERE strftime('%Y-%m', order_time) = strftime('%Y-%m','now') AND order_status != 4").get().val;
   
-  const totalCommission = db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE commission_status = 1").get().val;
-  const pendingWithdrawal = db.prepare("SELECT COALESCE(SUM(withdrawal_amount), 0) as val FROM withdrawals WHERE withdrawal_status = 0").get().val;
+  const totalCommission = await db.prepare("SELECT COALESCE(SUM(commission_amount), 0) as val FROM commissions WHERE commission_status = 1").get().val;
+  const pendingWithdrawal = await db.prepare("SELECT COALESCE(SUM(withdrawal_amount), 0) as val FROM withdrawals WHERE withdrawal_status = 0").get().val;
   
   return success(res, {
     users: { total: totalUsers, newToday: newUsersToday, newThisMonth: newUsersMonth },
@@ -34,7 +34,7 @@ router.get('/overview', (req, res) => {
 });
 
 // GET /api/dashboard/sales-trend - 销售趋势（近30天）
-router.get('/sales-trend', (req, res) => {
+router.get('/sales-trend', async (req, res) => {
   const db = getDB();
   const { days = 30 } = req.query;
   
@@ -53,7 +53,7 @@ router.get('/sales-trend', (req, res) => {
 });
 
 // GET /api/dashboard/top-products - 热销商品TOP10
-router.get('/top-products', (req, res) => {
+router.get('/top-products', async (req, res) => {
   const db = getDB();
   const topProducts = db.prepare(`
     SELECT p.id, p.product_name, p.main_image, p.agent_price,
@@ -72,7 +72,7 @@ router.get('/top-products', (req, res) => {
 });
 
 // GET /api/dashboard/agent-rank - 代理商业绩排行
-router.get('/agent-rank', (req, res) => {
+router.get('/agent-rank', async (req, res) => {
   const db = getDB();
   const { period = 'month' } = req.query; // month | quarter | year | all
   
@@ -98,7 +98,7 @@ router.get('/agent-rank', (req, res) => {
 });
 
 // GET /api/dashboard/team-performance - 团队业绩对比
-router.get('/team-performance', (req, res) => {
+router.get('/team-performance', async (req, res) => {
   const db = getDB();
   const performance = db.prepare(`
     SELECT t.id, t.team_name, t.monthly_target, t.total_sales, t.performance_rating,
@@ -116,7 +116,7 @@ router.get('/team-performance', (req, res) => {
 });
 
 // GET /api/dashboard/user-growth - 用户增长趋势
-router.get('/user-growth', (req, res) => {
+router.get('/user-growth', async (req, res) => {
   const db = getDB();
   const growth = db.prepare(`
     SELECT strftime('%Y-%m', registered_at) as month,

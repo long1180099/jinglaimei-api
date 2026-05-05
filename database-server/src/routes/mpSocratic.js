@@ -39,7 +39,7 @@ function verifyUser(req, res, callback) {
 
 function ensureTables() {
   const db = getDB();
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS socratic_scenarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -524,7 +524,7 @@ function calculateSessionScore(sessionId) {
  * GET /api/mp/socratic/question-types
  * 获取5种提问类型的说明
  */
-router.get('/question-types', (req, res) => {
+router.get('/question-types', async (req, res) => {
   return success(res, {
     types: QUESTION_TYPES,
     tip: '苏格拉底式提问的核心：不是告诉客户答案，而是通过提问让她自己找到答案！'
@@ -535,7 +535,7 @@ router.get('/question-types', (req, res) => {
  * GET /api/mp/socratic/scenarios
  * 获取训练场景列表
  */
-router.get('/scenarios', (req, res) => {
+router.get('/scenarios', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -586,11 +586,11 @@ router.get('/scenarios', (req, res) => {
  * GET /api/mp/socratic/scenarios/:id
  * 获取场景详情（含标准问题列表）
  */
-router.get('/scenarios/:id', (req, res) => {
+router.get('/scenarios/:id', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
-    const scenario = db.prepare('SELECT * FROM socratic_scenarios WHERE id = ?').get(req.params.id);
+    const scenario = await db.prepare('SELECT * FROM socratic_scenarios WHERE id = ?').get(req.params.id);
     if (!scenario) return error(res, '场景不存在', 404);
 
     const questions = db.prepare(`
@@ -621,17 +621,17 @@ router.get('/scenarios/:id', (req, res) => {
  * POST /api/mp/socratic/sessions
  * 创建新的训练会话
  */
-router.post('/sessions', (req, res) => {
+router.post('/sessions', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
     const { scenario_id, personality_type } = req.body;
 
-    const scenario = db.prepare('SELECT * FROM socratic_scenarios WHERE id = ? AND status = 1').get(scenario_id);
+    const scenario = await db.prepare('SELECT * FROM socratic_scenarios WHERE id = ? AND status = 1').get(scenario_id);
     if (!scenario) return error(res, '场景不存在', 404);
 
     // 更新使用次数
-    db.prepare('UPDATE socratic_scenarios SET usage_count = usage_count + 1 WHERE id = ?').run(scenario_id);
+    await db.prepare('UPDATE socratic_scenarios SET usage_count = usage_count + 1 WHERE id = ?').run(scenario_id);
 
     // 创建会话
     const result = db.prepare(`
@@ -651,7 +651,7 @@ router.post('/sessions', (req, res) => {
     generateSocraticOpening(personality, scenario).then(aiOpening => {
       if (aiOpening) openingContent = aiOpening;
       // 更新数据库中的开场白
-      db.prepare('UPDATE socratic_messages SET content = ? WHERE id = (SELECT id FROM socratic_messages WHERE session_id = ? AND round_num = 0)').run(openingContent, sessionId);
+      await db.prepare('UPDATE socratic_messages SET content = ? WHERE id = (SELECT id FROM socratic_messages WHERE session_id = ? AND round_num = 0)').run(openingContent, sessionId);
     }).catch(err => {
       console.warn('AI开场白生成失败，使用硬编码:', err.message);
     });
@@ -725,7 +725,7 @@ router.post('/sessions/:id/message', async (req, res) => {
     `).run(sessionId, currentRound, content, 'pending'); // 暂时标记为pending，后面AI识别后更新
 
     // 更新轮次
-    db.prepare('UPDATE socratic_sessions SET total_rounds = ? WHERE id = ?').run(currentRound, sessionId);
+    await db.prepare('UPDATE socratic_sessions SET total_rounds = ? WHERE id = ?').run(currentRound, sessionId);
 
     // 获取对话历史（用于AI上下文）
     const history = db.prepare(`
@@ -734,7 +734,7 @@ router.post('/sessions/:id/message', async (req, res) => {
     `).all(sessionId);
 
     // 获取场景信息
-    const scenarioInfo = db.prepare('SELECT * FROM socratic_scenarios WHERE id = ?').get(session.scenario_id);
+    const scenarioInfo = await db.prepare('SELECT * FROM socratic_scenarios WHERE id = ?').get(session.scenario_id);
 
     // ========== AI增强：优先调用DeepSeek ==========
     let aiContent, questionTypeInfo, responseType, hint;
@@ -840,7 +840,7 @@ router.post('/sessions/:id/end', async (req, res) => {
     console.log(`[苏格拉底End] step4 对话消息数: ${messages.length}`);
 
     // 获取场景信息
-    const scenarioInfo = db.prepare('SELECT * FROM socratic_scenarios WHERE id = ?').get(session.scenario_id);
+    const scenarioInfo = await db.prepare('SELECT * FROM socratic_scenarios WHERE id = ?').get(session.scenario_id);
 
     // ========== AI增强评分 ==========
     let evaluation;
@@ -1043,7 +1043,7 @@ router.post('/sessions/:id/end', async (req, res) => {
  * GET /api/mp/socratic/history
  * 获取训练历史记录
  */
-router.get('/history', (req, res) => {
+router.get('/history', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -1091,7 +1091,7 @@ router.get('/history', (req, res) => {
  * GET /api/mp/socratic/history/:id
  * 获取单次训练详情
  */
-router.get('/history/:id', (req, res) => {
+router.get('/history/:id', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -1118,7 +1118,7 @@ router.get('/history/:id', (req, res) => {
  * GET /api/mp/socratic/overview
  * 获取训练总览数据（仪表盘）
  */
-router.get('/overview', (req, res) => {
+router.get('/overview', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     ensureTables();
     const db = getDB();
@@ -1205,7 +1205,7 @@ const academyService = require('../services/socraticAcademyService');
  * GET /api/mp/socratic/academy/dashboard
  * 🆕 AI销售学院仪表盘（首页数据）
  */
-router.get('/academy/dashboard', (req, res) => {
+router.get('/academy/dashboard', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const overview = academyService.getDashboardOverview(decoded.id);
     return success(res, overview);
@@ -1216,7 +1216,7 @@ router.get('/academy/dashboard', (req, res) => {
  * GET /api/mp/socratic/academy/level-info
  * 🆕 获取用户等级和经验值信息
  */
-router.get('/academy/level-info', (req, res) => {
+router.get('/academy/level-info', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const levelInfo = academyService.getUserLevelInfo(decoded.id);
     return success(res, {
@@ -1230,7 +1230,7 @@ router.get('/academy/level-info', (req, res) => {
  * GET /api/mp/socratic/academy/achievements
  * 🆕 获取成就列表（含解锁状态和进度）
  */
-router.get('/academy/achievements', (req, res) => {
+router.get('/academy/achievements', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const achievements = academyService.getUserAchievements(decoded.id);
     // 按类别分组
@@ -1255,7 +1255,7 @@ router.get('/academy/achievements', (req, res) => {
  * GET /api/mp/socratic/academy/paths
  * 🆕 获取学习路径列表及用户进度
  */
-router.get('/academy/paths', (req, res) => {
+router.get('/academy/paths', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const paths = academyService.getUserPathProgress(decoded.id);
     return success(res, { list: paths });
@@ -1266,7 +1266,7 @@ router.get('/academy/paths', (req, res) => {
  * POST /api/mp/socratic/academy/paths/:id/start
  * 🆕 开始学习路径
  */
-router.post('/academy/paths/:id/start', (req, res) => {
+router.post('/academy/paths/:id/start', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     try {
       academyService.startPath(decoded.id, parseInt(req.params.id));
@@ -1281,7 +1281,7 @@ router.post('/academy/paths/:id/start', (req, res) => {
  * GET /api/mp/socratic/academy/daily-tasks
  * 🆕 获取今日任务
  */
-router.get('/academy/daily-tasks', (req, res) => {
+router.get('/academy/daily-tasks', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const tasks = academyService.getDailyTasks(decoded.id);
     const completedCount = tasks.filter(t => t.completed).length;
@@ -1298,7 +1298,7 @@ router.get('/academy/daily-tasks', (req, res) => {
  * POST /api/mp/socratic/academy/daily-tasks/:key/claim
  * 🆕 领取每日任务奖励
  */
-router.post('/academy/daily-tasks/:key/claim', (req, res) => {
+router.post('/academy/daily-tasks/:key/claim', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     try {
       const result = academyService.claimDailyTaskReward(decoded.id, req.params.key);
@@ -1313,7 +1313,7 @@ router.post('/academy/daily-tasks/:key/claim', (req, res) => {
  * GET /api/mp/socratic/academy/trend
  * 🆕 获取训练趋势数据（用于历史页趋势图）
  */
-router.get('/academy/trend', (req, res) => {
+router.get('/academy/trend', async (req, res) => {
   verifyUser(req, res, (decoded) => {
     const { days = 30 } = req.query;
     const snapshots = academyService.getSessionSnapshots(decoded.id, parseInt(days));

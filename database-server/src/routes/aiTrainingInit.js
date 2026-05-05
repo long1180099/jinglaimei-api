@@ -3,11 +3,11 @@
  */
 const { getDB } = require('../utils/db');
 
-function initAITrainingDB() {
+async function initAITrainingDB() {
   const db = getDB();
 
   // 1. 关卡表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_levels (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -23,7 +23,7 @@ function initAITrainingDB() {
   `);
 
   // 2. 考核题目表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_level_questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       level_id INTEGER NOT NULL,
@@ -43,7 +43,7 @@ function initAITrainingDB() {
   `);
 
   // 3. 代理商通关记录表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_level_progress (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
@@ -61,7 +61,7 @@ function initAITrainingDB() {
   `);
 
   // 4. 单次挑战详情表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_level_attempts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
@@ -76,7 +76,7 @@ function initAITrainingDB() {
   `);
 
   // 5. AI教练场景表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_coach_scenarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -96,7 +96,7 @@ function initAITrainingDB() {
   `);
 
   // 6. AI教练对话记录表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_coach_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
@@ -121,7 +121,7 @@ function initAITrainingDB() {
   `);
 
   // 7. AI教练对话消息表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_coach_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER NOT NULL,
@@ -135,7 +135,7 @@ function initAITrainingDB() {
   `);
 
   // 8. 话术库表
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_scripts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category TEXT NOT NULL,
@@ -151,7 +151,7 @@ function initAITrainingDB() {
   `);
 
   // 9. 话术排行榜表（预计算缓存）
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS ai_rankings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
@@ -168,7 +168,7 @@ function initAITrainingDB() {
   `);
 
   // 创建索引
-  db.exec(`
+  await db.exec(`
     CREATE INDEX IF NOT EXISTS idx_level_progress_user ON ai_level_progress(user_id);
     CREATE INDEX IF NOT EXISTS idx_level_progress_level ON ai_level_progress(level_id);
     CREATE INDEX IF NOT EXISTS idx_level_attempts_user ON ai_level_attempts(user_id);
@@ -191,7 +191,7 @@ function initAITrainingDB() {
 }
 
 function seedLevels(db) {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM ai_levels').get().cnt;
+  const count = await db.prepare('SELECT COUNT(*) as cnt FROM ai_levels').get().cnt;
   if (count > 0) return;
 
   const levels = [
@@ -460,7 +460,7 @@ function seedLevels(db) {
 }
 
 function seedQuestions(db) {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM ai_level_questions').get().cnt;
+  const count = await db.prepare('SELECT COUNT(*) as cnt FROM ai_level_questions').get().cnt;
   if (count > 0) return;
 
   const questions = [
@@ -714,7 +714,7 @@ function seedQuestions(db) {
 }
 
 function seedScenarios(db) {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM ai_coach_scenarios').get().cnt;
+  const count = await db.prepare('SELECT COUNT(*) as cnt FROM ai_coach_scenarios').get().cnt;
   if (count > 0) return;
 
   const scenarios = [
@@ -804,7 +804,7 @@ function seedScenarios(db) {
 }
 
 function seedScripts(db) {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM ai_scripts').get().cnt;
+  const count = await db.prepare('SELECT COUNT(*) as cnt FROM ai_scripts').get().cnt;
   if (count > 0) return;
 
   const scripts = [

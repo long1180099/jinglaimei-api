@@ -9,16 +9,16 @@ const { success, error } = require('../utils/response');
 // ==================== 系统设置 ====================
 
 // GET /api/print-logs/settings — 获取发货人默认名等设置
-router.get('/settings', (req, res) => {
+router.get('/settings', async (req, res) => {
   const db = getDB();
-  const row = db.prepare('SELECT * FROM system_settings WHERE id=1').get();
+  const row = await db.prepare('SELECT * FROM system_settings WHERE id=1').get();
   return success(res, {
     defaultShipper: row?.default_shipper || '',
   });
 });
 
 // PUT /api/print-logs/settings — 更新发货人默认名
-router.put('/settings', (req, res) => {
+router.put('/settings', async (req, res) => {
   const db = getDB();
   const { defaultShipper } = req.body;
   if (typeof defaultShipper !== 'string') return error(res, '参数错误');
@@ -31,7 +31,7 @@ router.put('/settings', (req, res) => {
 // ==================== 打印记录 CRUD ====================
 
 // POST /api/print-logs — 创建打印记录（打印成功后调用）
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   const { orderId, orderNo, printType, shipperName, reviewerName, receiverName, operatorId, operatorName } = req.body;
   
@@ -45,14 +45,14 @@ router.post('/', (req, res) => {
          reviewerName || '', receiverName, operatorId || 0, operatorName || '');
   
   // 同步更新订单状态为"已发货"
-  db.prepare(`UPDATE orders SET order_status=2, shipping_time=datetime('now','localtime'), updated_at=datetime('now','localtime') WHERE id=? AND order_status < 2`).run(orderId);
+  await db.prepare(`UPDATE orders SET order_status=2, shipping_time=datetime('now','localtime'), updated_at=datetime('now','localtime') WHERE id=? AND order_status < 2`).run(orderId);
   
-  const logId = db.prepare('SELECT last_insert_rowid() as id').get().id;
+  const logId = await db.prepare('SELECT last_insert_rowid() as id').get().id;
   return success(res, { id: logId }, '打印记录已保存');
 });
 
 // GET /api/print-logs — 打印记录列表（支持分页/搜索）
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page=1, pageSize=20, keyword, startDate, endDate, orderStatus } = req.query;
   const offset = (parseInt(page)-1)*parseInt(pageSize);
@@ -67,7 +67,7 @@ router.get('/', (req, res) => {
   if (endDate) { where.push('pl.created_at <= ?'); params.push(endDate + ' 23:59:59'); }
   
   const wc = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM print_logs pl ${wc}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM print_logs pl ${wc}`).get(...params).cnt;
   
   const logs = db.prepare(`
     SELECT pl.*, o.receiver_name as order_receiver, o.receiver_phone,
@@ -84,7 +84,7 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/print-logs/:orderId — 查询某订单的打印记录
-router.get('/order/:orderId', (req, res) => {
+router.get('/order/:orderId', async (req, res) => {
   const db = getDB();
   const logs = db.prepare(
     'SELECT * FROM print_logs WHERE order_id = ? ORDER BY created_at DESC'
@@ -93,9 +93,9 @@ router.get('/order/:orderId', (req, res) => {
 });
 
 // DELETE /api/print-logs/:id — 删除打印记录
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = getDB();
-  db.prepare('DELETE FROM print_logs WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM print_logs WHERE id = ?').run(req.params.id);
   return success(res, null, '记录已删除');
 });
 

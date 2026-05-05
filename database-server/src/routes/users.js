@@ -7,7 +7,7 @@ const { getDB } = require('../utils/db');
 const { success, error } = require('../utils/response');
 
 // GET /api/users - 获取用户列表
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, keyword, status, agentLevel, teamId } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -33,7 +33,7 @@ router.get('/', (req, res) => {
   }
   
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM users u ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM users u ${whereClause}`).get(...params).cnt;
   const users = db.prepare(`
     SELECT u.*, t.team_name,
            (SELECT COUNT(*) FROM users sub WHERE sub.parent_id = u.id AND sub.is_deleted = 0) as direct_members
@@ -53,22 +53,22 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/users/stats - 用户统计（扩展到全部6级）
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
-  const total = db.prepare('SELECT COUNT(*) as cnt FROM users WHERE is_deleted = 0').get().cnt;
-  const active = db.prepare('SELECT COUNT(*) as cnt FROM users WHERE status = 1 AND is_deleted = 0').get().cnt;
+  const total = await db.prepare('SELECT COUNT(*) as cnt FROM users WHERE is_deleted = 0').get().cnt;
+  const active = await db.prepare('SELECT COUNT(*) as cnt FROM users WHERE status = 1 AND is_deleted = 0').get().cnt;
   // 全部6级统计
   const levels = {};
   for (let i = 1; i <= 6; i++) {
-    levels['level' + i] = db.prepare('SELECT COUNT(*) as cnt FROM users WHERE agent_level = ? AND is_deleted = 0').get(i).cnt;
+    levels['level' + i] = await db.prepare('SELECT COUNT(*) as cnt FROM users WHERE agent_level = ? AND is_deleted = 0').get(i).cnt;
   }
-  const newThisMonth = db.prepare(`SELECT COUNT(*) as cnt FROM users WHERE strftime('%Y-%m', registered_at) = strftime('%Y-%m','now') AND is_deleted = 0`).get().cnt;
+  const newThisMonth = await db.prepare(`SELECT COUNT(*) as cnt FROM users WHERE strftime('%Y-%m', registered_at) = strftime('%Y-%m','now') AND is_deleted = 0`).get().cnt;
   
   return success(res, { total, active, ...levels, newThisMonth });
 });
 
 // GET /api/users/level-distribution - 用户等级分布（必须在 :/id 之前！）
-router.get('/level-distribution', (req, res) => {
+router.get('/level-distribution', async (req, res) => {
   const db = getDB();
   
   const distribution = db.prepare(`
@@ -90,7 +90,7 @@ router.get('/level-distribution', (req, res) => {
 });
 
 // GET /api/users/:id - 获取用户详情
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDB();
   const user = db.prepare(`
     SELECT u.*, t.team_name, t.team_level,
@@ -123,7 +123,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/users - 新增用户
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   const { username, phone, real_name, gender, agent_level, parent_id, team_id, invite_code } = req.body;
   if (!username || !phone) return error(res, '用户名和手机号不能为空');
@@ -138,10 +138,10 @@ router.post('/', (req, res) => {
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
       // 检查是否是已被删除的用户占用了该手机号
-      const deletedUser = db.prepare('SELECT id, username, is_deleted FROM users WHERE phone = ?').get(phone);
+      const deletedUser = await db.prepare('SELECT id, username, is_deleted FROM users WHERE phone = ?').get(phone);
       if (deletedUser && deletedUser.is_deleted === 1) {
         // 清除已删除用户的手机号，释放给新用户使用
-        db.prepare("UPDATE users SET phone = NULL WHERE id = ?").run(deletedUser.id);
+        await db.prepare("UPDATE users SET phone = NULL WHERE id = ?").run(deletedUser.id);
         // 重新插入
         const retryResult = db.prepare(`
           INSERT INTO users (username, phone, real_name, gender, agent_level, parent_id, team_id, invite_code, registered_at, status)
@@ -156,33 +156,41 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/users/:id - 更新用户（支持改等级、改上级、改状态等）
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = getDB();
   const { username, phone, real_name, gender, agent_level, status, team_id, balance, parent_id } = req.body;
   
-  // 如果要修改parent_id，做合法性校验
+  // 如果要修改parent_id，做合法性校验（仅当前端明确传递了 parent_id 字段时才校验和更新）
   if (parent_id !== undefined) {
-    const targetUser = db.prepare('SELECT id FROM users WHERE id = ? AND is_deleted = 0').get(parent_id);
-    if (!targetUser && parent_id !== null) return error(res, '目标上级用户不存在');
-    // 不能设置自己为上级
-    if (parseInt(parent_id) === parseInt(req.params.id)) return error(res, '不能将自己设为上级');
+    if (parent_id !== null) {
+      const targetUser = await db.prepare('SELECT id FROM users WHERE id = ? AND is_deleted = 0').get(parent_id);
+      if (!targetUser) return error(res, '目标上级用户不存在');
+      // 不能设置自己为上级
+      if (parseInt(parent_id) === parseInt(req.params.id)) return error(res, '不能将自己设为上级');
+    }
   }
   
   try {
-    db.prepare(`
-      UPDATE users SET 
-        username = COALESCE(?, username),
-        phone = COALESCE(?, phone),
-        real_name = COALESCE(?, real_name),
-        gender = COALESCE(?, gender),
-        agent_level = COALESCE(?, agent_level),
-        status = COALESCE(?, status),
-        team_id = COALESCE(?, team_id),
-        balance = COALESCE(?, balance),
-        parent_id = ?,
-        updated_at = datetime('now','localtime')
-      WHERE id = ?
-    `).run(username, phone, real_name, gender, agent_level, status, team_id, balance, parent_id ?? null, req.params.id);
+    // 构建 SET 子句和参数，只更新前端明确传递的字段
+    const setClauses = [];
+    const setParams = [];
+    
+    if (username !== undefined) { setClauses.push('username = ?'); setParams.push(username); }
+    if (phone !== undefined) { setClauses.push('phone = ?'); setParams.push(phone); }
+    if (real_name !== undefined) { setClauses.push('real_name = ?'); setParams.push(real_name); }
+    if (gender !== undefined) { setClauses.push('gender = ?'); setParams.push(gender); }
+    if (agent_level !== undefined) { setClauses.push('agent_level = ?'); setParams.push(agent_level); }
+    if (status !== undefined) { setClauses.push('status = ?'); setParams.push(status); }
+    if (team_id !== undefined) { setClauses.push('team_id = ?'); setParams.push(team_id); }
+    if (balance !== undefined) { setClauses.push('balance = ?'); setParams.push(balance); }
+    if (parent_id !== undefined) { setClauses.push('parent_id = ?'); setParams.push(parent_id ?? null); }
+    
+    if (setClauses.length === 0) return error(res, '没有需要更新的字段');
+    
+    setClauses.push("updated_at = datetime('now','localtime')");
+    setParams.push(req.params.id);
+    
+    await db.prepare(`UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`).run(...setParams);
     
     // 返回更新后的完整数据
     const updated = db.prepare(`
@@ -201,23 +209,23 @@ router.put('/:id', (req, res) => {
 });
 
 // POST /api/users/:id/bind-parent - 管理员手动绑定/更换/解绑上级
-router.post('/:id/bind-parent', (req, res) => {
+router.post('/:id/bind-parent', async (req, res) => {
   const db = getDB();
   const { parent_id, reason } = req.body;
   
-  const user = db.prepare('SELECT id, username FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id);
+  const user = await db.prepare('SELECT id, username FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id);
   if (!user) return error(res, '用户不存在', 404);
   
   if (parent_id !== undefined && parent_id !== null) {
     // 绑定/换上级
-    const targetParent = db.prepare('SELECT id, username FROM users WHERE id = ? AND is_deleted = 0').get(parent_id);
+    const targetParent = await db.prepare('SELECT id, username FROM users WHERE id = ? AND is_deleted = 0').get(parent_id);
     if (!targetParent) return error(res, '目标上级用户不存在');
     if (parseInt(parent_id) === parseInt(req.params.id)) return error(res, '不能将自己设为上级');
     
     // 检查是否会形成循环引用（简单检查：确保目标不是自己的下级）
     function isDescendant(userId, targetId, depth = 0) {
       if (depth > 20) return false;
-      const children = db.prepare('SELECT id FROM users WHERE parent_id = ? AND is_deleted = 0').all(userId);
+      const children = await db.prepare('SELECT id FROM users WHERE parent_id = ? AND is_deleted = 0').all(userId);
       for (const child of children) {
         if (child.id === targetId) return true;
         if (isDescendant(child.id, targetId, depth + 1)) return true;
@@ -246,13 +254,13 @@ router.post('/:id/bind-parent', (req, res) => {
 });
 
 // GET /api/users/:id/upline-chain - 查询用户的完整上级链路
-router.get('/:id/upline-chain', (req, res) => {
+router.get('/:id/upline-chain', async (req, res) => {
   const db = getDB();
   const maxDepth = 20;
   const visited = new Set();
   const chain = [];
   
-  let currentUserId = db.prepare('SELECT parent_id FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id)?.parent_id;
+  let currentUserId = await db.prepare('SELECT parent_id FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id)?.parent_id;
   
   while (currentUserId && visited.size < maxDepth) {
     if (visited.has(currentUserId)) break; // 防循环
@@ -294,7 +302,7 @@ router.get('/:id/upline-chain', (req, res) => {
 });
 
 // GET /api/users/check-invite-code - 验证邀请码是否有效，返回对应用户信息
-router.get('/check-invite-code', (req, res) => {
+router.get('/check-invite-code', async (req, res) => {
   const db = getDB();
   const { code } = req.query;
   if (!code) return error(res, '请提供邀请码');
@@ -316,7 +324,7 @@ router.get('/check-invite-code', (req, res) => {
 });
 
 // PUT /api/users/:id/invite-code - 管理员修改用户邀请码
-router.put('/:id/invite-code', (req, res) => {
+router.put('/:id/invite-code', async (req, res) => {
   const db = getDB();
   const userId = parseInt(req.params.id);
   if (!userId || isNaN(userId)) return error(res, '无效的用户ID');
@@ -333,36 +341,36 @@ router.put('/:id/invite-code', (req, res) => {
       for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
       attempts++;
       if (attempts > 20) return error(res, '生成邀请码失败，请重试');
-    } while (db.prepare('SELECT 1 FROM users WHERE invite_code = ? AND id != ?').get(code, userId));
+    } while (await db.prepare('SELECT 1 FROM users WHERE invite_code = ? AND id != ?').get(code, userId));
     new_code = code;
   } else {
     new_code = String(new_code).trim().toUpperCase();
     if (new_code.length < 2 || new_code.length > 10) return error(res, '邀请码长度应在2-10位之间');
     
     // 检查唯一性（排除自己）
-    const existing = db.prepare('SELECT id, username FROM users WHERE invite_code = ? AND id != ? AND is_deleted = 0').get(new_code, userId);
+    const existing = await db.prepare('SELECT id, username FROM users WHERE invite_code = ? AND id != ? AND is_deleted = 0').get(new_code, userId);
     if (existing) return error(res, `邀请码已被用户「${existing.username}」使用`);
   }
   
-  db.prepare('UPDATE users SET invite_code = ?, updated_at = ? WHERE id = ?').run(new_code, new Date().toISOString().replace('T', ' ').slice(0, 19), userId);
+  await db.prepare('UPDATE users SET invite_code = ?, updated_at = datetime("now","localtime") WHERE id = ?').run(new_code, userId);
   return success(res, { invite_code: new_code }, '邀请码已更新');
 });
 
 // GET /api/users/:id/balance - 查询用户当前余额
-router.get('/:id/balance', (req, res) => {
+router.get('/:id/balance', async (req, res) => {
   const db = getDB();
-  const user = db.prepare('SELECT id, username, real_name, balance FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id);
+  const user = await db.prepare('SELECT id, username, real_name, balance FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id);
   if (!user) return error(res, '用户不存在', 404);
   return success(res, { userId: user.id, balance: user.balance || 0 });
 });
 
 // POST /api/users/:id/balance - 管理员调整用户余额（含审计日志）
-router.post('/:id/balance', (req, res) => {
+router.post('/:id/balance', async (req, res) => {
   const db = getDB();
   const { amount, remark, operator_id, operator_name } = req.body;
   if (amount === undefined || amount === 0) return error(res, '调整金额不能为0');
   
-  const user = db.prepare('SELECT id, username, balance FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id);
+  const user = await db.prepare('SELECT id, username, balance FROM users WHERE id = ? AND is_deleted = 0').get(req.params.id);
   if (!user) return error(res, '用户不存在', 404);
   
   const balanceBefore = user.balance;
@@ -394,7 +402,7 @@ router.post('/:id/balance', (req, res) => {
 });
 
 // GET /api/users/:id/balance-logs - 用户余额变动日志
-router.get('/:id/balance-logs', (req, res) => {
+router.get('/:id/balance-logs', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 20, type } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -404,7 +412,7 @@ router.get('/:id/balance-logs', (req, res) => {
   if (type) { where.push('change_type = ?'); params.push(type); }
   
   const whereClause = 'WHERE ' + where.join(' AND ');
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM balance_logs ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM balance_logs ${whereClause}`).get(...params).cnt;
   const logs = db.prepare(`
     SELECT * FROM balance_logs ${whereClause}
     ORDER BY created_at DESC LIMIT ? OFFSET ?
@@ -414,14 +422,14 @@ router.get('/:id/balance-logs', (req, res) => {
 });
 
 // DELETE /api/users/:id - 软删除用户
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = getDB();
-  db.prepare('UPDATE users SET is_deleted = 1, updated_at = datetime(\'now\',\'localtime\') WHERE id = ?').run(req.params.id);
+  await db.prepare('UPDATE users SET is_deleted = 1, updated_at = datetime(\'now\',\'localtime\') WHERE id = ?').run(req.params.id);
   return success(res, null, '用户已删除');
 });
 
 // GET /api/users/:id/team-tree - 获取用户下级树形结构
-router.get('/:id/team-tree', (req, res) => {
+router.get('/:id/team-tree', async (req, res) => {
   const db = getDB();
   
   function buildTree(parentId) {
@@ -437,7 +445,7 @@ router.get('/:id/team-tree', (req, res) => {
     }));
   }
   
-  const user = db.prepare('SELECT id, username, real_name, agent_level FROM users WHERE id = ?').get(req.params.id);
+  const user = await db.prepare('SELECT id, username, real_name, agent_level FROM users WHERE id = ?').get(req.params.id);
   if (!user) return error(res, '用户不存在', 404);
   
   return success(res, { ...user, children: buildTree(req.params.id) });

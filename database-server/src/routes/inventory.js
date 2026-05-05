@@ -12,7 +12,7 @@ const { success, error } = require('../utils/response');
 // ==================== 库存商品管理 ====================
 
 // GET /api/inventory - 库存商品列表（带分页+搜索）
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDB();
   const { page = 1, pageSize = 10, keyword, category, status } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(pageSize);
@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
 
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM inventory_stock s ${whereClause}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM inventory_stock s ${whereClause}`).get(...params).cnt;
 
   const list = db.prepare(`
     SELECT s.*,
@@ -55,7 +55,7 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/inventory/categories - 获取所有分类（去重）
-router.get('/categories', (req, res) => {
+router.get('/categories', async (req, res) => {
   const db = getDB();
   const categories = db.prepare(`
     SELECT DISTINCT category, COUNT(*) as count
@@ -65,7 +65,7 @@ router.get('/categories', (req, res) => {
 });
 
 // GET /api/inventory/stats - 统计概览
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   const db = getDB();
 
   // 基础统计
@@ -102,7 +102,7 @@ router.get('/stats', (req, res) => {
 });
 
 // GET /api/inventory/report - 数据报表（按日/月/年）
-router.get('/report', (req, res) => {
+router.get('/report', async (req, res) => {
   const db = getDB();
   const { type = 'month', year, month } = req.query; // day | month | year
 
@@ -152,7 +152,7 @@ router.get('/report', (req, res) => {
     `;
   }
 
-  const data = db.prepare(sql).all();
+  const data = await db.prepare(sql).all();
 
   // TOP5 商品排行
   const top5 = db.prepare(`
@@ -166,7 +166,7 @@ router.get('/report', (req, res) => {
 });
 
 // POST /api/inventory - 入库操作（同步更新products表）
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const db = getDB();
   const {
     product_name, product_code, category, unit, quantity,
@@ -180,10 +180,10 @@ router.post('/', (req, res) => {
 
   const insertRecord = db.transaction(() => {
     // 1. 尝试在 products 表中查找对应商品（用于同步）
-    let product = db.prepare("SELECT id FROM products WHERE product_name = ? AND status != 0").get(product_name);
+    let product = await db.prepare("SELECT id FROM products WHERE product_name = ? AND status != 0").get(product_name);
 
     // 2. 查找或创建库存商品
-    let stock = db.prepare("SELECT * FROM inventory_stock WHERE product_name = ?").get(product_name);
+    let stock = await db.prepare("SELECT * FROM inventory_stock WHERE product_name = ?").get(product_name);
 
     if (stock) {
       // 更新现有库存 - 加权平均成本法
@@ -218,16 +218,16 @@ router.post('/', (req, res) => {
 
       // 如果之前没有 product_id，现在补上
       if (!stock.product_id && product?.id) {
-        db.prepare('UPDATE inventory_stock SET product_id = ? WHERE id = ?').run(product.id, stock.id);
+        await db.prepare('UPDATE inventory_stock SET product_id = ? WHERE id = ?').run(product.id, stock.id);
         stock.product_id = product.id;
       }
     }
 
     // 3. 【关键】同步更新 products 表的库存字段
     if (product) {
-      const prodInfo = db.prepare('SELECT stock_quantity FROM products WHERE id = ?').get(product.id);
+      const prodInfo = await db.prepare('SELECT stock_quantity FROM products WHERE id = ?').get(product.id);
       if (prodInfo) {
-        db.prepare('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?').run(quantity, product.id);
+        await db.prepare('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?').run(quantity, product.id);
       }
     }
 
@@ -255,14 +255,14 @@ router.post('/', (req, res) => {
 });
 
 // POST /api/inventory/out - 出库操作
-router.post('/out', (req, res) => {
+router.post('/out', async (req, res) => {
   const db = getDB();
   const { stock_id, quantity, remark, operator } = req.body;
 
   if (!stock_id) return error(res, '请选择出库商品');
   if (!quantity || quantity <= 0) return error(res, '出库数量必须大于0');
 
-  const stock = db.prepare('SELECT * FROM inventory_stock WHERE id = ?').get(stock_id);
+  const stock = await db.prepare('SELECT * FROM inventory_stock WHERE id = ?').get(stock_id);
   if (!stock) return error(res, '商品不存在', 404);
   if (stock.quantity < quantity) return error(res, `库存不足！当前库存仅 ${stock.quantity}${stock.unit}`);
 
@@ -303,7 +303,7 @@ router.post('/out', (req, res) => {
 // 注意：这两个路由必须在 /:id 之前注册，否则 :id 会拦截
 
 // GET /api/inventory/search-members - 搜索会员（按姓名/用户名模糊匹配）
-router.get('/search-members', (req, res) => {
+router.get('/search-members', async (req, res) => {
   const db = getDB();
   const { keyword } = req.query;
 
@@ -328,7 +328,7 @@ router.get('/search-members', (req, res) => {
 });
 
 // POST /api/inventory/special-out - 特供产品出货（不扣余额，只减库存）
-router.post('/special-out', (req, res) => {
+router.post('/special-out', async (req, res) => {
   const db = getDB();
   const {
     stock_id,          // 库存商品ID（必填）
@@ -343,12 +343,12 @@ router.post('/special-out', (req, res) => {
   if (!quantity || quantity <= 0) return error(res, '出库数量必须大于0');
 
   // 查询库存商品
-  const stock = db.prepare('SELECT * FROM inventory_stock WHERE id = ?').get(stock_id);
+  const stock = await db.prepare('SELECT * FROM inventory_stock WHERE id = ?').get(stock_id);
   if (!stock) return error(res, '库存商品不存在', 404);
   if (stock.quantity < quantity) return error(res, `库存不足！当前仅剩 ${stock.quantity}${stock.unit}`);
 
   // 查询会员信息（确认存在）
-  const member = db.prepare('SELECT id, real_name, username, agent_level FROM users WHERE id = ? AND status = 1').get(member_id);
+  const member = await db.prepare('SELECT id, real_name, username, agent_level FROM users WHERE id = ? AND status = 1').get(member_id);
   if (!member) return error(res, '会员不存在或已禁用', 404);
 
   const memberName = member.real_name || member.username;
@@ -403,9 +403,9 @@ router.post('/special-out', (req, res) => {
 });
 
 // GET /api/inventory/:id - 商品详情（含所有出入库记录）
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDB();
-  const stock = db.prepare('SELECT * FROM inventory_stock WHERE id = ?').get(req.params.id);
+  const stock = await db.prepare('SELECT * FROM inventory_stock WHERE id = ?').get(req.params.id);
   if (!stock) return error(res, '商品不存在', 404);
 
   // 分页获取记录
@@ -422,17 +422,17 @@ router.get('/:id', (req, res) => {
     ORDER BY created_at DESC LIMIT ? OFFSET ?
   `).all(...params, parseInt(pageSize), offset);
 
-  const total = db.prepare(`SELECT COUNT(*) as cnt FROM inventory_records WHERE ${where.join(' AND ')}`).get(...params).cnt;
+  const total = await db.prepare(`SELECT COUNT(*) as cnt FROM inventory_records WHERE ${where.join(' AND ')}`).get(...params).cnt;
 
   return success(res, { ...stock, records, total, page: parseInt(page), pageSize: parseInt(pageSize) });
 });
 
 // PUT /api/inventory/:id - 编辑库存商品信息
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = getDB();
   const { product_name, product_code, category, unit, min_alert, remark, status } = req.body;
 
-  const stock = db.prepare('SELECT id FROM inventory_stock WHERE id = ?').get(req.params.id);
+  const stock = await db.prepare('SELECT id FROM inventory_stock WHERE id = ?').get(req.params.id);
   if (!stock) return error(res, '商品不存在', 404);
 
   const fields = [];
@@ -451,18 +451,18 @@ router.put('/:id', (req, res) => {
   fields.push("updated_at = datetime('now','localtime')");
   params.push(req.params.id);
 
-  db.prepare(`UPDATE inventory_stock SET ${fields.join(', ')} WHERE id = ?`).run(...params);
+  await db.prepare(`UPDATE inventory_stock SET ${fields.join(', ')} WHERE id = ?`).run(...params);
   return success(res, null, '更新成功');
 });
 
 // DELETE /api/inventory/:id - 删除库存商品（级联删除记录）
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = getDB();
-  const stock = db.prepare('SELECT id FROM inventory_stock WHERE id = ?').get(req.params.id);
+  const stock = await db.prepare('SELECT id FROM inventory_stock WHERE id = ?').get(req.params.id);
   if (!stock) return error(res, '商品不存在', 404);
 
-  db.prepare('DELETE FROM inventory_records WHERE stock_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM inventory_stock WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM inventory_records WHERE stock_id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM inventory_stock WHERE id = ?').run(req.params.id);
   return success(res, null, '删除成功');
 });
 

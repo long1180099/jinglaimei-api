@@ -123,7 +123,7 @@ const STYLE_TEMPLATES = {
 /**
  * GET /api/mp/poster/quotes - 获取文案库
  */
-router.get('/quotes', (req, res) => {
+router.get('/quotes', async (req, res) => {
   const type = req.query.type || 'all';
   
   let data = {};
@@ -152,7 +152,7 @@ router.get('/quotes', (req, res) => {
 /**
  * GET /api/mp/poster/styles - 获取可用风格列表
  */
-router.get('/styles', (req, res) => {
+router.get('/styles', async (req, res) => {
   const styles = Object.keys(STYLE_TEMPLATES).map(key => ({
     id: key,
     name: STYLE_TEMPLATES[key].name,
