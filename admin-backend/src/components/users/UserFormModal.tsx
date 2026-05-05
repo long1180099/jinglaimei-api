@@ -69,14 +69,23 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      
+
       // 处理生日字段
       const formData: any = {
         ...values,
         birthday: values.birthday ? values.birthday.format('YYYY-MM-DD') : undefined,
       };
-      
+
       if (isEditMode) {
+        // 编辑模式：移除值为 null/空字符串的非必填字段，防止意外清空数据
+        // 例如：用户有 parent_id，但编辑弹窗里该字段为空（Input 未填），不应清空上级
+        const nullableFields = ['parent_id', 'team_id', 'email', 'real_name', 'remark'];
+        nullableFields.forEach((field: string) => {
+          if (formData[field] === null || formData[field] === '') {
+            delete formData[field];
+          }
+        });
+
         // 更新用户
         await dispatch(updateUser({
           userId: user!.id,

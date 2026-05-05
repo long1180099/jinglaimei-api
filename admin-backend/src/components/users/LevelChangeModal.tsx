@@ -130,7 +130,7 @@ const LevelChangeModal: React.FC<LevelChangeModalProps> = ({
       
       await dispatch(updateUser({
         userId: user.id,
-        data: { level: values.new_level },
+        data: { agent_level: values.new_level },
       })).unwrap();
       
       message.success('代理等级修改成功');
