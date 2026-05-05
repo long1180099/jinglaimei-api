@@ -443,6 +443,7 @@ async function _autoInit() {
       CREATE TABLE IF NOT EXISTS skin_report_issues (
         id INT AUTO_INCREMENT PRIMARY KEY,
         report_id INT NOT NULL,
+        issue_id INT DEFAULT 0,
         issue_name VARCHAR(200) NOT NULL DEFAULT '',
         category VARCHAR(100) DEFAULT '',
         severity VARCHAR(50) DEFAULT '',
@@ -452,7 +453,9 @@ async function _autoInit() {
         cause_text TEXT DEFAULT '',
         advice_text TEXT DEFAULT '',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (report_id) REFERENCES skin_reports(id) ON DELETE CASCADE
+        FOREIGN KEY (report_id) REFERENCES skin_reports(id) ON DELETE CASCADE,
+        INDEX idx_report_id (report_id),
+        INDEX idx_issue_id (issue_id)
       );
       CREATE TABLE IF NOT EXISTS study_points (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -468,6 +471,30 @@ async function _autoInit() {
     console.log('  ✅ 核心表结构就绪');
   } catch(e) {
     console.warn('  ⚠️ 核心表创建警告:', e.message);
+  }
+
+  // 增量迁移：给已有表补充缺失的列（不抛错，静默执行）
+  try {
+    const migrations = [
+      `ALTER TABLE skin_report_issues ADD COLUMN issue_id INT DEFAULT 0 AFTER report_id`,
+      `ALTER TABLE skin_report_issues ADD INDEX idx_issue_id (issue_id)`,
+    ];
+    for (const sql of migrations) {
+      try {
+        await db.exec(sql);
+        console.log('  ✅ 迁移执行成功:', sql.substring(0, 80));
+      } catch(e) {
+        if (e.code === 'ER_DUP_FIELDNAME' || e.code === 'ER_DUP_KEYNAME' ||
+            String(e.message).includes('Duplicate') || String(e.message).includes('exists')) {
+          // 已存在，跳过
+        } else {
+          console.warn('  ⚠️ 迁移跳过:', sql.substring(0, 60), '原因:', e.message.substring(0, 60));
+        }
+      }
+    }
+    console.log('  ✅ 增量迁移完成');
+  } catch(e) {
+    console.warn('  ⚠️ 增量迁移警告:', e.message);
   }
 
   // 插入默认管理员

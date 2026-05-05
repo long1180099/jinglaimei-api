@@ -223,16 +223,16 @@ router.post('/:id/bind-parent', async (req, res) => {
     if (parseInt(parent_id) === parseInt(req.params.id)) return error(res, '不能将自己设为上级');
     
     // 检查是否会形成循环引用（简单检查：确保目标不是自己的下级）
-    function isDescendant(userId, targetId, depth = 0) {
+    async function isDescendant(userId, targetId, depth = 0) {
       if (depth > 20) return false;
       const children = await db.prepare('SELECT id FROM users WHERE parent_id = ? AND is_deleted = 0').all(userId);
       for (const child of children) {
         if (child.id === targetId) return true;
-        if (isDescendant(child.id, targetId, depth + 1)) return true;
+        if (await isDescendant(child.id, targetId, depth + 1)) return true;
       }
       return false;
     }
-    if (isDescendant(req.params.id, parent_id)) return error(res, '不能将下级设为自己的上级（会形成循环）');
+    if (await isDescendant(req.params.id, parent_id)) return error(res, '不能将下级设为自己的上级（会形成循环）');
     
     db.prepare("UPDATE users SET parent_id = ?, updated_at = datetime('now','localtime') WHERE id = ?")
       .run(parent_id, req.params.id);

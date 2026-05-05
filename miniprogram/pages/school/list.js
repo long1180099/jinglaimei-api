@@ -5,17 +5,17 @@ Page({
   data: {
     studyPoints: 0,
     studyDays: 0,
-    // 五大功能板块
+    // 五大功能板块（视频学习暂未上架，审核期间隐藏入口）
     modules: [
-      {
-        key: 'courses',
-        icon: '🎬',
-        title: '视频学习',
-        desc: '新手入门 · 进阶课程 · 实战案例 · 系列课',
-        color: '#e94560',
-        bgColor: 'rgba(233, 69, 96, 0.08)',
-        url: '/pages/videos/list'
-      },
+      // {
+      //   key: 'courses',
+      //   icon: '🎬',
+      //   title: '视频学习',
+      //   desc: '新手入门 · 进阶课程 · 实战案例 · 系列课',
+      //   color: '#e94560',
+      //   bgColor: 'rgba(233, 69, 96, 0.08)',
+      //   url: '/pages/videos/list'
+      // },
       {
         key: 'ebooks',
         icon: '📕',

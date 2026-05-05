@@ -34,8 +34,8 @@
     </view>
   </view>
 
-  <!-- 热门课程推荐 -->
-  <view class="rec-area">
+  <!-- 热门课程推荐（视频学习暂未上架，审核期间隐藏） -->
+  <view class="rec-area" wx:if="{{false}}">
     <view class="rec-head">
       <text class="rec-tit">🎬 热门课程</text>
       <text class="rec-more" bindtap="goMyCourses">查看全部 ›</text>
